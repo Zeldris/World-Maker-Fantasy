@@ -10,7 +10,9 @@ import type { RetrievedLore } from '../services/retrieval.js';
 import {
   consultaDelCaso,
   FORMA_CONSULTA,
+  cortarTramo,
   digestDelModelo,
+  juntarSalidas,
   puestoDelPrimerEsperado,
   resumirCasos,
   salidaJson,
@@ -18,6 +20,7 @@ import {
   validarParejas,
   type CasoRag,
   type ResultadoCaso,
+  type Tramo,
 } from './ragEval.js';
 import {
   aplicarArgumentosRag,
@@ -94,8 +97,32 @@ import {
 /// `--umbral-anclado <x>` cambia el umbral de distancia (0,75) de `weaklyGrounded`. En `config.narrador`: `lore_trozo` y
 /// `lore_al_final` valen true o null (no usado), `umbral_anclado` el valor o null, y `max_lore_chars` el tope efectivo.
 ///
+/// Tandas (`QA-360`): `--desde <N> [--hasta <M>]` evalúa solo los casos con índice en [N, M) (base 0, `--hasta` excluido; por
+/// defecto, hasta el final), tras cargar y validar todos; el JSON lleva `config.tramo = { desde, hasta, total }` (sin los
+/// mandos, esa clave no existe). `--juntar <salida.json> <parte1.json> <parte2.json> …` une las salidas de las tandas en la
+/// de una corrida entera (sin base ni Ollama; reglas en `juntarSalidas`, `ragEval.ts`).
+///
 /// `--json` (`QA-329`, para el GVE): un solo objeto JSON por stdout (`config`, `indice_hash`, `casos`, `resumen`;
 /// forma en `ragEval.ts`, `salidaJson`; `indice_hash` lo guarda `reindex-lore` en `World.loreIndice`); cualquier otro texto va a stderr.
+
+const posJuntar = process.argv.indexOf('--juntar');
+if (posJuntar >= 0) {
+  const rutas = process.argv.slice(posJuntar + 1).filter((a, i, todos) => !a.startsWith('--') && todos.slice(0, i).every((b) => !b.startsWith('--')));
+  const [salida, ...partes] = rutas;
+  if (!salida || partes.length === 0) {
+    console.error('Uso: --juntar <salida.json> <parte1.json> <parte2.json> …');
+    process.exit(2);
+  }
+  try {
+    const unido = juntarSalidas(partes.map((r) => JSON.parse(readFileSync(r, 'utf8')) as unknown));
+    writeFileSync(salida, `${JSON.stringify(unido, null, 2)}\n`);
+    console.error(`Unidas ${partes.length} partes en ${salida}: ${unido.resumen.n} casos, recall ${unido.resumen.recall.toFixed(3)}, MRR ${unido.resumen.mrr.toFixed(3)}.`);
+  } catch (err) {
+    console.error(`--juntar: ${err instanceof Error ? err.message : err}`);
+    process.exit(2);
+  }
+  process.exit(0);
+}
 
 function argumento(nombre: string): string | undefined {
   const i = process.argv.indexOf(nombre);
@@ -183,7 +210,7 @@ const rutaRegistro = argumento('--registro');
 if (rutaRegistro) process.env.IA_REGISTRO = rutaRegistro;
 else delete process.env.IA_REGISTRO;
 
-const casos: CasoRag[] = rutasCasos.flatMap((ruta) =>
+const todosLosCasos: CasoRag[] = rutasCasos.flatMap((ruta) =>
   readFileSync(ruta, 'utf8')
     .split('\n')
     .map((texto, i) => ({ texto, linea: i + 1 }))
@@ -198,11 +225,29 @@ const casos: CasoRag[] = rutasCasos.flatMap((ruta) =>
     }),
 );
 
-const erroresDeCasos = [...validarCasos(casos), ...validarParejas(casos)];
+const erroresDeCasos = [...validarCasos(todosLosCasos), ...validarParejas(todosLosCasos)];
 if (erroresDeCasos.length > 0) {
   console.error(`${rutaCasos}: ${erroresDeCasos.length} errores en los casos (QA-328, QA-331):`);
   for (const e of erroresDeCasos) console.error(`  ${e}`);
   process.exit(2);
+}
+
+// `--desde`/`--hasta` (`QA-360`): sin ellos, `casos` son todos y no hay `tramo`.
+let casos = todosLosCasos;
+let tramo: Tramo | null = null;
+if (process.argv.includes('--desde') || process.argv.includes('--hasta')) {
+  for (const mando of ['--desde', '--hasta']) {
+    if (process.argv.includes(mando) && argumento(mando) === undefined) {
+      console.error(`${mando} necesita un número`);
+      process.exit(2);
+    }
+  }
+  try {
+    ({ casos, tramo } = cortarTramo(todosLosCasos, argumento('--desde'), argumento('--hasta')));
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(2);
+  }
 }
 
 // Sin red no se carga la base, ni la recuperación (que la usa), ni la configuración de Ollama.
@@ -360,6 +405,7 @@ if (comoJson) {
             },
           }
         : {}),
+      ...(tramo ? { tramo } : {}),
     },
     indice?.indice_hash ?? cacheCongelada?.cabecera.indice_hash ?? null,
     resultados,

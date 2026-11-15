@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   consultaDelCaso,
+  cortarTramo,
+  juntarSalidas,
   digestDelModelo,
   puestoDelPrimerEsperado,
   resumirCasos,
@@ -11,6 +13,7 @@ import {
   validarParejas,
   type CasoRag,
   type ConfigCorrida,
+  type ResultadoCaso,
 } from './ragEval.js';
 
 const caso = (id: string, debe = false): CasoRag => ({ id, pregunta: 'q', esperados: ['A'], causa: null, debe_pasar: debe });
@@ -132,5 +135,84 @@ describe('validarCasos (QA-328)', () => {
     expect(salida.resumen).toEqual({ k: 2, n: 3, recall: 2 / 3, mrr: 0.5, fallan_obligatorios: ['b'] });
     expect(salidaJson(config, null, [], 2).indice_hash).toBeNull();
     expect(JSON.parse(JSON.stringify(salida))).toEqual(salida);
+  });
+
+  describe('tandas (QA-360)', () => {
+    const lista = ['a', 'b', 'c', 'd', 'e'];
+
+    it('corta [desde, hasta) en base 0, con valores por defecto', () => {
+      expect(cortarTramo(lista, '1', '3')).toEqual({ casos: ['b', 'c'], tramo: { desde: 1, hasta: 3, total: 5 } });
+      expect(cortarTramo(lista, '3', undefined)).toEqual({ casos: ['d', 'e'], tramo: { desde: 3, hasta: 5, total: 5 } });
+      expect(cortarTramo(lista, undefined, '2').casos).toEqual(['a', 'b']);
+    });
+
+    it('valida enteros y límites diciendo el motivo', () => {
+      expect(() => cortarTramo(lista, 'x', '3')).toThrow('--desde debe ser un entero');
+      expect(() => cortarTramo(lista, '1.5', '3')).toThrow('--desde debe ser un entero');
+      expect(() => cortarTramo(lista, '-1', '3')).toThrow('--desde debe ser un entero');
+      expect(() => cortarTramo(lista, '0', 'y')).toThrow('--hasta debe ser un entero');
+      expect(() => cortarTramo(lista, '0', '6')).toThrow('--hasta 6 pasa del total: el archivo tiene 5');
+      expect(() => cortarTramo(lista, '5', undefined)).toThrow('--desde 5 está fuera del archivo');
+      expect(() => cortarTramo(lista, '3', '3')).toThrow('--desde 3 tiene que ser menor que --hasta 3');
+      expect(() => cortarTramo(lista, '4', '2')).toThrow('tiene que ser menor');
+    });
+
+    const config = { modelo: 'm', topK: 2, cases_file: 'c.jsonl', commit_dirty: false } as ConfigCorrida;
+    const casos: CasoRag[] = [
+      { id: 'a', pregunta: 'q', esperados: ['T'], causa: null, debe_pasar: true, lang: 'es', pair_id: 'p' },
+      { id: 'b', pregunta: 'q2', esperados: ['T'], causa: null, lang: 'es', pair_id: 'q' },
+      { id: 'a-en', pregunta: 'q-en', esperados: ['T'], causa: null, lang: 'en', pair_id: 'p' },
+      { id: 'b-en', pregunta: 'q2-en', esperados: ['T'], causa: 'ignorado', debe_pasar: true, lang: 'en', pair_id: 'q' },
+    ];
+    const res = (c: CasoRag, puesto: number | null): ResultadoCaso => ({
+      caso: c,
+      puesto,
+      consulta: c.pregunta,
+      devueltos: puesto === 2 ? [{ title: 'X', distance: 0.1 }, { title: 'T', distance: 0.2 }] : puesto ? [{ title: 'T', distance: 0.1 }] : [{ title: 'X', distance: 0.9 }],
+    });
+    const todos = [res(casos[0], 1), res(casos[1], 2), res(casos[2], 1), res(casos[3], null)];
+    const entera = salidaJson(config, 'sha256:h', todos, 2);
+    const parte = (desde: number, hasta: number, extra: Partial<ConfigCorrida> = {}) =>
+      JSON.parse(JSON.stringify(salidaJson({ ...config, ...extra, tramo: { desde, hasta, total: 4 } }, 'sha256:h', todos.slice(desde, hasta), 2)));
+
+    it('une tandas (en cualquier orden) en lo que daría la corrida entera, sin tramo', () => {
+      const unido = juntarSalidas([parte(2, 4), parte(0, 1), parte(1, 2)]);
+      expect(unido).toEqual(JSON.parse(JSON.stringify(entera)));
+      expect(Object.keys(unido)).toEqual(Object.keys(entera));
+      expect(Object.keys(unido.config)).toEqual(Object.keys(config));
+      expect('tramo' in unido.config).toBe(false);
+      expect(unido.resumen).toEqual({ k: 2, n: 4, recall: 0.75, mrr: (1 + 0.5 + 1) / 4, fallan_obligatorios: ['b-en'] });
+      expect(unido.casos.map((c) => c.par)).toEqual(['a-en', 'b-en', 'a', 'b']);
+    });
+
+    it('commit_dirty puede variar entre tandas: vale true si alguna lo tenía', () => {
+      expect(juntarSalidas([parte(0, 2), parte(2, 4, { commit_dirty: true })]).config.commit_dirty).toBe(true);
+    });
+
+    it('rechaza huecos y solapes', () => {
+      expect(() => juntarSalidas([parte(0, 1), parte(2, 4)])).toThrow('hueco: faltan los casos [1, 2) antes de parte 2');
+      expect(() => juntarSalidas([parte(1, 4)])).toThrow('hueco: faltan los casos [0, 1) antes de parte 1');
+      expect(() => juntarSalidas([parte(0, 3), parte(2, 4)])).toThrow('solape: parte 2 empieza en 2 y el tramo anterior llega hasta 3');
+      expect(() => juntarSalidas([parte(0, 2)])).toThrow('hueco: faltan los casos [2, 4) al final');
+    });
+
+    it('rechaza config o total distintos', () => {
+      expect(() => juntarSalidas([parte(0, 2), parte(2, 4, { modelo: 'otro' })])).toThrow('config distinta entre parte 1 y parte 2: modelo');
+      const otroTotal = parte(2, 4);
+      otroTotal.config.tramo.total = 5;
+      expect(() => juntarSalidas([parte(0, 2), otroTotal])).toThrow('el total de casos es distinto (5 frente a 4');
+      const otroHash = parte(2, 4);
+      otroHash.indice_hash = 'sha256:z';
+      expect(() => juntarSalidas([parte(0, 2), otroHash])).toThrow('indice_hash distinto');
+    });
+
+    it('rechaza partes que no son tandas o están incompletas', () => {
+      expect(() => juntarSalidas([])).toThrow('al menos una parte');
+      expect(() => juntarSalidas([JSON.parse(JSON.stringify(entera))])).toThrow('no trae config.tramo');
+      expect(() => juntarSalidas([{}])).toThrow('no es una salida de rag-eval');
+      const corta = parte(0, 2);
+      corta.casos.pop();
+      expect(() => juntarSalidas([corta, parte(2, 4)])).toThrow('trae 1 casos y su tramo [0, 2) pide 2');
+    });
   });
 });

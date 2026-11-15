@@ -63,7 +63,9 @@ export function puestoDelPrimerEsperado(devueltos: string[], esperados: string[]
   return i >= 0 ? i + 1 : null;
 }
 
-export function resumirCasos(resultados: ResultadoCaso[], k: number) {
+export type ParaResumen = Pick<ResultadoCaso, 'puesto'> & { caso: Pick<CasoRag, 'id' | 'debe_pasar'> };
+
+export function resumirCasos<R extends ParaResumen>(resultados: R[], k: number) {
   const n = resultados.length || 1;
   const dentro = resultados.filter((r) => r.puesto !== null && r.puesto <= k);
   const recall = dentro.length / n;
@@ -165,6 +167,32 @@ export interface ConfigCorrida {
   cache_hash?: string | null;
   /// Solo con `--narrar` (`QA-359`).
   narrador?: ConfigNarrador;
+  /// Solo con `--desde`/`--hasta` (`QA-360`): el tramo de casos de esta corrida (`desde` incluido, `hasta` excluido,
+  /// base 0) y cuántos casos tiene el archivo. Sin esos mandos la clave no existe. `--juntar` la quita.
+  tramo?: Tramo;
+}
+
+/// Tramo de una corrida partida en tandas (`QA-360`): casos `[desde, hasta)` de `total`.
+export interface Tramo {
+  desde: number;
+  hasta: number;
+  total: number;
+}
+
+/// `--desde`/`--hasta` (`QA-360`): los casos con índice en `[desde, hasta)` (base 0) y el tramo para `config.tramo`.
+/// `desde` por defecto 0 y `hasta` por defecto el total. Lanza `Error` con el motivo si no valen.
+export function cortarTramo<T>(casos: T[], desdeTexto: string | undefined, hastaTexto: string | undefined): { casos: T[]; tramo: Tramo } {
+  const total = casos.length;
+  const entero = (nombre: string, texto: string): number => {
+    if (!/^\d+$/.test(texto.trim())) throw new Error(`${nombre} debe ser un entero mayor o igual que 0 (recibido: ${texto})`);
+    return Number(texto);
+  };
+  const desde = desdeTexto === undefined ? 0 : entero('--desde', desdeTexto);
+  const hasta = hastaTexto === undefined ? total : entero('--hasta', hastaTexto);
+  if (desde >= total) throw new Error(`--desde ${desde} está fuera del archivo: tiene ${total} casos (índices 0 a ${total - 1})`);
+  if (hasta > total) throw new Error(`--hasta ${hasta} pasa del total: el archivo tiene ${total} casos`);
+  if (desde >= hasta) throw new Error(`--desde ${desde} tiene que ser menor que --hasta ${hasta}`);
+  return { casos: casos.slice(desde, hasta), tramo: { desde, hasta, total } };
 }
 
 /// Con qué se generaron las narraciones de `--narrar` (`QA-359`).
@@ -185,11 +213,21 @@ export const FORMA_CONSULTA = '{pregunta} [— {region}]';
 
 /// Salida de `rag-eval --json` (`QA-329`, T6 del GVE): un solo objeto con la configuración, la huella del índice
 /// (`sha256:<hex>` o null si el índice no la guarda), cada caso y el resumen.
-export function salidaJson(config: ConfigCorrida, indiceHash: string | null, resultados: ResultadoCaso[], k: number) {
+/// Id del caso gemelo (mismo `pair_id`, otro idioma) entre `todos`, o null (`QA-331`).
+function idDelGemelo(c: { pair_id?: string | null; lang?: string | null }, todos: { id: string; pair_id?: string | null; lang?: string | null }[]): string | null {
+  return (c.pair_id && c.lang && todos.find((o) => o.pair_id === c.pair_id && o.lang && o.lang !== c.lang)?.id) || null;
+}
+
+/// `resumen` de la salida JSON: lo calculan igual la corrida entera y `--juntar`.
+function resumenJson(resultados: ParaResumen[], k: number) {
   const resumen = resumirCasos(resultados, k);
+  return { k, n: resultados.length, recall: resumen.recall, mrr: resumen.mrr, fallan_obligatorios: resumen.fallanObligatorios };
+}
+
+export function salidaJson(config: ConfigCorrida, indiceHash: string | null, resultados: ResultadoCaso[], k: number) {
   /// `par`: id del gemelo en el otro idioma (mismo `pair_id`), recíproco; null si no está en la corrida.
   const gemelo = (c: CasoRag): string | null =>
-    (c.pair_id && c.lang && resultados.find((o) => o.caso.pair_id === c.pair_id && o.caso.lang && o.caso.lang !== c.lang)?.caso.id) || null;
+    idDelGemelo(c, resultados.map((o) => o.caso));
   return {
     config,
     indice_hash: indiceHash,
@@ -209,6 +247,84 @@ export function salidaJson(config: ConfigCorrida, indiceHash: string | null, res
       pasa: r.puesto !== null && r.puesto <= k,
       ...(r.narracion ? { narracion: r.narracion } : {}),
     })),
-    resumen: { k, n: resultados.length, recall: resumen.recall, mrr: resumen.mrr, fallan_obligatorios: resumen.fallanObligatorios },
+    resumen: resumenJson(resultados, k),
+  };
+}
+
+type SalidaJson = ReturnType<typeof salidaJson>;
+
+/// Forma estable (claves ordenadas) para comparar configuraciones.
+function canonico(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonico).join(',')}]`;
+  if (v && typeof v === 'object') {
+    return `{${Object.entries(v as Record<string, unknown>)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([c, x]) => `${JSON.stringify(c)}:${canonico(x)}`)
+      .join(',')}}`;
+  }
+  return JSON.stringify(v) ?? 'undefined';
+}
+
+/// `--juntar` (`QA-360`): une las salidas `--json` de varias corridas por tramos (`--desde`/`--hasta`) en la que habría
+/// escrito una corrida entera. Lanza `Error` con el motivo si no se pueden unir.
+///
+/// Qué tiene que casar y qué se hace con lo que varía por corrida:
+/// - `config` tiene que ser idéntico (comparación profunda, sin importar el orden de claves) salvo `tramo`, que se quita,
+///   y `commit_dirty`, que puede variar entre tandas (un archivo del árbol cambia mientras corre la siguiente): en la
+///   unión vale true si alguna tanda lo tenía, null si ninguna lo sabía. `indice_hash` y `resumen.k` también tienen que casar.
+/// - Los tramos, ordenados por `desde`, tienen que tener el mismo `total`, empezar en 0, ser contiguos (sin huecos ni
+///   solapes) y acabar en `total`; cada parte trae tantos casos como su tramo.
+/// - `casos` se concatenan en orden; `par` se recalcula sobre todos (en un tramo el gemelo puede quedar fuera, y salía
+///   null), y `resumen` se recalcula con la misma función que la corrida entera (`resumenJson`).
+/// - Lo inherentemente por corrida y que se conserva tal cual por caso: `narracion.ms` (tiempos), igual que la
+///   corrida entera tendría el suyo; el JSON unido es idéntico a una corrida entera salvo esos tiempos (y lo que
+///   cambie un modelo no determinista, que con temperatura 0 y semilla fija no debería).
+export function juntarSalidas(partes: unknown[]): SalidaJson {
+  if (partes.length === 0) throw new Error('--juntar necesita al menos una parte');
+  const ps = partes.map((p, i) => {
+    const o = p as Partial<SalidaJson> | null;
+    const quien = `parte ${i + 1}`;
+    if (!o || typeof o !== 'object' || !o.config || !Array.isArray(o.casos) || !o.resumen) throw new Error(`${quien}: no es una salida de rag-eval --json (faltan config, casos o resumen)`);
+    const t = (o.config as ConfigCorrida).tramo;
+    if (!t || ![t.desde, t.hasta, t.total].every((x) => Number.isInteger(x))) throw new Error(`${quien}: la salida no trae config.tramo (¿se corrió sin --desde/--hasta?)`);
+    if (o.casos.length !== t.hasta - t.desde) throw new Error(`${quien}: trae ${o.casos.length} casos y su tramo [${t.desde}, ${t.hasta}) pide ${t.hasta - t.desde}`);
+    return { quien, o: o as SalidaJson, t };
+  });
+  ps.sort((a, b) => a.t.desde - b.t.desde);
+  const total = ps[0].t.total;
+  for (const p of ps) if (p.t.total !== total) throw new Error(`${p.quien}: el total de casos es distinto (${p.t.total} frente a ${total} de ${ps[0].quien})`);
+  let siguiente = 0;
+  for (const p of ps) {
+    if (p.t.desde > siguiente) throw new Error(`hueco: faltan los casos [${siguiente}, ${p.t.desde}) antes de ${p.quien}`);
+    if (p.t.desde < siguiente) throw new Error(`solape: ${p.quien} empieza en ${p.t.desde} y el tramo anterior llega hasta ${siguiente}`);
+    siguiente = p.t.hasta;
+  }
+  if (siguiente !== total) throw new Error(`hueco: faltan los casos [${siguiente}, ${total}) al final (el total es ${total})`);
+
+  const sinTramo = (c: ConfigCorrida) => {
+    const { tramo: _t, commit_dirty: _d, ...resto } = c;
+    return resto;
+  };
+  const base = ps[0];
+  for (const p of ps.slice(1)) {
+    const a = sinTramo(base.o.config) as Record<string, unknown>;
+    const b = sinTramo(p.o.config) as Record<string, unknown>;
+    const claves = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((c) => canonico(a[c]) !== canonico(b[c]));
+    if (claves.length > 0) throw new Error(`config distinta entre ${base.quien} y ${p.quien}: ${claves.join(', ')}`);
+    if (canonico(p.o.indice_hash) !== canonico(base.o.indice_hash)) throw new Error(`indice_hash distinto entre ${base.quien} y ${p.quien}`);
+    if (p.o.resumen.k !== base.o.resumen.k) throw new Error(`k distinto entre ${base.quien} y ${p.quien} (${p.o.resumen.k} frente a ${base.o.resumen.k})`);
+  }
+
+  const { tramo: _tramo, ...config } = base.o.config;
+  const sucios = ps.map((p) => p.o.config.commit_dirty);
+  if ('commit_dirty' in config) config.commit_dirty = sucios.some((d) => d === true) ? true : sucios.every((d) => d === undefined || d === null) ? null : false;
+
+  const crudos = ps.flatMap((p) => p.o.casos);
+  const casos = crudos.map((c) => ({ ...c, par: idDelGemelo({ pair_id: c.pair_id, lang: c.idioma }, crudos.map((o) => ({ id: o.id, pair_id: o.pair_id, lang: o.idioma }))) }));
+  return {
+    config,
+    indice_hash: base.o.indice_hash,
+    casos,
+    resumen: resumenJson(casos.map((c) => ({ caso: { id: c.id, debe_pasar: c.debe_pasar }, puesto: c.puesto })), base.o.resumen.k),
   };
 }
