@@ -144,6 +144,10 @@ export interface ConfigCorrida {
   commit?: string | null;
   commit_dirty?: boolean | null;
   cases_file?: string;
+  /// `vivo` (índice de la base) o `congelado` (caché de `--sin-red`, `QA-358`).
+  indice?: 'vivo' | 'congelado';
+  /// `sha256:<hex>` del archivo de la caché con `--sin-red`; null con la base.
+  cache_hash?: string | null;
 }
 
 export const FORMA_CONSULTA = '{pregunta} [— {region}]';

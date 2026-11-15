@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import '../lib/setupFetch.js';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import type { PrismaClient } from '@prisma/client';
 import { execFileSync } from 'node:child_process';
 import { relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,13 +18,34 @@ import {
   type CasoRag,
   type ResultadoCaso,
 } from './ragEval.js';
-import { aplicarArgumentosRag, configRag, diferenciasDeIndice, RRF_K, type ConfigIndice, type ConfigRag } from '../lib/ragConfig.js';
+import {
+  aplicarArgumentosRag,
+  configRag,
+  diferenciasDeIndice,
+  hashDelIndice,
+  RRF_K,
+  textoConsulta,
+  type ConfigIndice,
+  type ConfigRag,
+} from '../lib/ragConfig.js';
+import {
+  buscarEnMemoria,
+  diferenciasDeCabecera,
+  filasDelIndice,
+  fusionarConsultas,
+  hashDeCache,
+  leerCache,
+  ordenarCache,
+  serializarCache,
+  type CabeceraCache,
+  type CacheRag,
+} from './ragCache.js';
 
 /// Evalúa el RAG del lore (skill opt-ai): por cada caso de `backend/ia/rag-casos.jsonl` llama a
 /// `retrieveLore` y mira en qué puesto sale el primer trozo esperado.
 /// Uso: npm run rag-eval -- [--casos <ruta>[,<ruta>…]] [--k 4] [--json] [--registro <ruta>] [--ignorar-indice]
 ///        [mandos del RAG: --tam-trozo, --solape, --prefijo-consulta, --prefijo-documento, --plantilla, --prefijos-nomic,
-///         --modelo <nombre de Ollama>, --hibrida]
+///         --modelo <nombre de Ollama>, --hibrida] [--grabar-cache <ruta.jsonl>] [--sin-red <ruta.jsonl>]
 ///
 /// Mandos (`QA-330`, también por variables RAG_*; ver `src/lib/ragConfig.ts`): los mismos que `reindex-lore`. Si no
 /// casan con los que guardó el último reindexado (`World.loreIndice`), sale con 2 diciendo cuáles, salvo con
@@ -39,6 +61,21 @@ import { aplicarArgumentosRag, configRag, diferenciasDeIndice, RRF_K, type Confi
 /// (`title`, texto exacto, sin distinguir mayúsculas). No vale el `id` de la tabla LoreChunk: es un
 /// UUID nuevo en cada `reindex-lore`. `retrieveLore` devuelve `title`, `text` y `distance`.
 /// Sale con código 1 si algún caso con `"debe_pasar": true` no sale en el top-k, y con 2 si no puede evaluar.
+///
+/// Sin red (`QA-358`, T9 del GVE): `--grabar-cache <ruta.jsonl>`, tras la corrida normal (con Ollama y la base), escribe
+/// una caché con el índice (un vector por trozo, de `loreChunks.ts` con la misma configuración que el índice, re-embebido
+/// con Ollama) y el vector de la consulta de cada caso usado (formato en `ragCache.ts`). Antes comprueba que esas filas
+/// den el `indice_hash` guardado en la base: si no, sale con 2. El orden de la caché es fijo: trozos por título y
+/// luego por texto, consultas por texto; los títulos van en el orden de la base (`SELECT DISTINCT title … ORDER BY title`,
+/// su collation, no el orden de código de JS), porque la posición del título en la caché es el desempate de la búsqueda
+/// en memoria, igual que `ORDER BY distance, title` en la base. Si el archivo ya existe y su cabecera casa (mismo
+/// `indice_hash`, modelo, prefijos, plantilla, trozo, solape), AÑADE las consultas nuevas y reescribe todo en el orden
+/// fijo (así una caché sirve para varios archivos de casos, corridos por separado); si no casa, sale con 2.
+/// `--sin-red <ruta.jsonl>` no llama a Ollama ni a la base: busca en memoria (distancia coseno como pgvector) con el
+/// índice y las consultas de la caché. Si falta el vector de una consulta, sale con 2 diciendo su texto exacto. Los mandos
+/// de la corrida tienen que casar con la cabecera (como con el índice de la base; `--ignorar-indice` también). No admite
+/// `--hibrida` ni `--narrar` (la caché no lleva texto completo ni el texto de los trozos). `config.indice` es `vivo`
+/// (base) o `congelado` (caché), y `config.cache_hash` el sha256 del archivo de la caché (null con la base).
 ///
 /// `--json` (`QA-329`, para el GVE): un solo objeto JSON por stdout (`config`, `indice_hash`, `casos`, `resumen`;
 /// forma en `ragEval.ts`, `salidaJson`; `indice_hash` lo guarda `reindex-lore` en `World.loreIndice`); cualquier otro texto va a stderr.
@@ -61,6 +98,22 @@ if (!Number.isInteger(k) || k <= 0) {
 }
 const comoJson = process.argv.includes('--json');
 const ignorarIndice = process.argv.includes('--ignorar-indice');
+const rutaGrabarCache = argumento('--grabar-cache');
+const rutaSinRed = argumento('--sin-red');
+for (const mando of ['--grabar-cache', '--sin-red']) {
+  if (process.argv.includes(mando) && !argumento(mando)?.trim()) {
+    console.error(`${mando} necesita la ruta de la caché`);
+    process.exit(2);
+  }
+}
+if (rutaSinRed && process.argv.includes('--hibrida')) {
+  console.error('--sin-red no admite --hibrida: la caché no lleva texto completo.');
+  process.exit(2);
+}
+if (rutaSinRed && rutaGrabarCache) {
+  console.error('--sin-red y --grabar-cache a la vez no tiene sentido: grabar necesita Ollama y la base.');
+  process.exit(2);
+}
 
 let cfg: ConfigRag;
 try {
@@ -98,21 +151,39 @@ if (erroresDeCasos.length > 0) {
   process.exit(2);
 }
 
-const { prisma } = await import('../lib/prisma.js');
-const { retrieveLore } = await import('../services/retrieval.js');
-const { env } = await import('../config/env.js');
+// Sin red no se carga la base, ni la recuperación (que la usa), ni la configuración de Ollama.
+const { prisma } = rutaSinRed ? { prisma: null } : await import('../lib/prisma.js');
+const { retrieveLore } = rutaSinRed ? { retrieveLore: null } : await import('../services/retrieval.js');
+const { env } = rutaSinRed ? { env: null } : await import('../config/env.js');
 const { busqueda: _busqueda, ...cfgIndice } = cfg;
+
+const textoCache = rutaSinRed ? leerArchivoCache(rutaSinRed) : null;
+let cacheCongelada: CacheRag | null = null;
+if (rutaSinRed && textoCache !== null) {
+  try {
+    cacheCongelada = leerCache(textoCache, rutaSinRed);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(2);
+  }
+}
 
 const resultados: ResultadoCaso[] = [];
 let indice: Partial<ConfigIndice> | null = null;
 let diferencias: string[] = [];
 try {
-  const world = await prisma.world.findFirst({ where: { slug: 'helek-sirik' } });
-  if (!world) {
-    console.error("No existe el mundo 'helek-sirik' en la base de datos: ¿falta el seed o apunta DATABASE_URL a otra base?");
-    process.exit(2);
+  let worldId = '';
+  if (prisma) {
+    const world = await prisma.world.findFirst({ where: { slug: 'helek-sirik' } });
+    if (!world) {
+      console.error("No existe el mundo 'helek-sirik' en la base de datos: ¿falta el seed o apunta DATABASE_URL a otra base?");
+      process.exit(2);
+    }
+    worldId = world.id;
+    indice = (world.loreIndice as Partial<ConfigIndice> | null) ?? null;
+  } else {
+    indice = cacheCongelada?.cabecera.indice ?? null;
   }
-  indice = (world.loreIndice as Partial<ConfigIndice> | null) ?? null;
   if (!indice) {
     console.error('Aviso: el índice del lore no guarda con qué se construyó (reindexado anterior a QA-330): no se comprueba.');
   } else {
@@ -131,15 +202,26 @@ try {
     const continente = caso.region ? continentForRegion(caso.region) : null;
     const excludeTags = continente ? [oppositeContinent(continente)] : [];
     const consulta = consultaDelCaso(caso);
-    const trozos = await retrieveLore(consulta, world.id, k, excludeTags);
+    let trozos: { title: string; distance: number | null }[];
+    if (cacheCongelada) {
+      try {
+        trozos = buscarEnMemoria(cacheCongelada, textoConsulta(cfg, consulta), k, excludeTags);
+      } catch (err) {
+        console.error(`${caso.id}: ${err instanceof Error ? err.message : err}`);
+        process.exit(2);
+      }
+    } else {
+      trozos = await retrieveLore!(consulta, worldId, k, excludeTags);
+    }
     const puesto = puestoDelPrimerEsperado(
       trozos.map((t) => t.title),
       caso.esperados,
     );
     resultados.push({ caso, puesto, consulta, devueltos: trozos.map((t) => ({ title: t.title, distance: t.distance })) });
   }
+  if (rutaGrabarCache && prisma) await grabarCache(rutaGrabarCache, prisma, worldId, indice);
 } finally {
-  await prisma.$disconnect();
+  await prisma?.$disconnect();
 }
 
 const resumen = resumirCasos(resultados, k);
@@ -159,7 +241,7 @@ if (comoJson) {
   const salida = salidaJson(
     {
       modelo: cfg.modelo,
-      digest: await digestDeOllama(env.ollamaBaseUrl, cfg.modelo),
+      digest: cacheCongelada ? cacheCongelada.cabecera.digest : await digestDeOllama(env!.ollamaBaseUrl, cfg.modelo),
       busqueda: cfg.busqueda,
       fusion: cfg.busqueda === 'hibrida' ? `rrf-${RRF_K}` : null,
       topK: k,
@@ -175,13 +257,84 @@ if (comoJson) {
       commit: git(['rev-parse', 'HEAD']),
       commit_dirty: git(['status', '--porcelain']) === null ? null : git(['status', '--porcelain']) !== '',
       cases_file: rutasCasos.map((r) => (raiz ? relative(raiz, r) : r)).join(','),
+      indice: cacheCongelada ? 'congelado' : 'vivo',
+      cache_hash: textoCache === null ? null : hashDeCache(textoCache),
     },
-    indice?.indice_hash ?? null,
+    indice?.indice_hash ?? cacheCongelada?.cabecera.indice_hash ?? null,
     resultados,
     k,
   );
   // Con `process.exit` justo después, una tubería podría quedarse con el JSON a medias: se espera a vaciarlo.
   await new Promise<void>((hecho) => process.stdout.write(`${JSON.stringify(salida, null, 2)}\n`, () => hecho()));
+}
+
+function leerArchivoCache(ruta: string): string {
+  try {
+    return readFileSync(ruta, 'utf8');
+  } catch (err) {
+    console.error(`No se puede leer la caché ${ruta}: ${err instanceof Error ? err.message : err}`);
+    process.exit(2);
+  }
+}
+
+/// `--grabar-cache` (`QA-358`): escribe la caché de `ruta` con el índice y las consultas de esta corrida (ver arriba).
+async function grabarCache(ruta: string, prisma: Pick<PrismaClient, '$queryRaw'>, worldId: string, indiceGuardado: Partial<ConfigIndice> | null): Promise<void> {
+  const { embed } = await import('../lib/embeddings.js');
+  const filas = filasDelIndice(cfg);
+  const hash = hashDelIndice(cfg.modelo, filas.map((f) => ({ titulo: f.titulo, texto: f.texto })));
+  if (!indiceGuardado?.indice_hash || hash !== indiceGuardado.indice_hash) {
+    console.error(
+      `No se graba la caché: las filas de loreChunks.ts con estos mandos dan ${hash}, y el índice guardado en la base, ${indiceGuardado?.indice_hash ?? 'ninguno'} (¿lore cambiado sin reindexar?).`,
+    );
+    process.exit(2);
+  }
+  const titulos = await prisma.$queryRaw<{ title: string }[]>`SELECT DISTINCT title FROM "LoreChunk" WHERE "worldId" = ${worldId} ORDER BY title`;
+  const ordenTitulos = titulos.map((t) => t.title);
+  const cabecera: CabeceraCache = {
+    tipo: 'cabecera',
+    modelo: cfg.modelo,
+    digest: await digestDeOllama(env!.ollamaBaseUrl, cfg.modelo),
+    prefijo_consulta: cfg.prefijoConsulta,
+    prefijo_documento: cfg.prefijoDocumento,
+    texto_embebido: cfg.plantilla,
+    trozo: cfg.tamTrozo,
+    solapamiento: cfg.solape,
+    indice_hash: hash,
+    indice: indiceGuardado,
+  };
+  let existente: CacheRag | null = null;
+  if (existsSync(ruta)) {
+    try {
+      existente = leerCache(readFileSync(ruta, 'utf8'), ruta);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : err);
+      process.exit(2);
+    }
+    const dif = diferenciasDeCabecera(existente.cabecera, cabecera);
+    if (dif.length > 0) {
+      console.error(`La caché ${ruta} ya existe y su cabecera no casa con esta corrida (bórrala o usa otra ruta):`);
+      for (const d of dif) console.error(`  ${d}`);
+      process.exit(2);
+    }
+  }
+  const trozos =
+    existente?.trozos ??
+    (await filas.reduce<Promise<CacheRag['trozos']>>(async (previo, f) => {
+      const acumulado = await previo;
+      acumulado.push({ tipo: 'trozo', titulo: f.titulo, texto: f.texto, ...(f.region ? { region: f.region } : {}), vector: await embed(f.texto, cfg.modelo) });
+      return acumulado;
+    }, Promise.resolve([])));
+  const yaEstaban = new Set((existente?.consultas ?? []).map((c) => c.texto));
+  const nuevas: CacheRag['consultas'] = [];
+  for (const texto of new Set(casos.map((c) => textoConsulta(cfg, consultaDelCaso(c))))) {
+    if (!yaEstaban.has(texto)) nuevas.push({ tipo: 'consulta', texto, vector: await embed(texto, cfg.modelo) });
+  }
+  const cache = ordenarCache(
+    { cabecera: existente?.cabecera ?? cabecera, trozos, consultas: fusionarConsultas(existente?.consultas ?? [], nuevas) },
+    ordenTitulos,
+  );
+  writeFileSync(ruta, serializarCache(cache));
+  console.error(`Caché escrita en ${ruta}: ${cache.trozos.length} trozos, ${cache.consultas.length} consultas (${nuevas.length} nuevas).`);
 }
 
 /// Salida de una orden de git, o null si no hay git o no es un repositorio.
