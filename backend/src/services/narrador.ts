@@ -1798,7 +1798,8 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       format,
       // QA-163: 220 → 300. Solo cuesta si el modelo los usa (p50 de salida ~150); con 220, 1 de cada ~40
       // intentos 1 se cortaba a mitad del JSON y pasaba al intento 2.
-      maxTokens: 300,
+      // QA-347: 400 en combate; con `resultadoDelGolpe` (QA-340) la salida p50 subió a ~196 y 1 de 12 llegó a 300.
+      maxTokens: ctx.enCombate ? 400 : 300,
       // Bajado de 180s a 90s (2026-08-04, "ronda larga de pruebas" — logs reales de la Deck bajo
       // presión de memoria: el intento 1 se colgó del todo y agotó los 180s completos en CADA
       // turno narrado de la sesión, y el intento 2 (que sí funcionó) tardó solo ~60-105s más

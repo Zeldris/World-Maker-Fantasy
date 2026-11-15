@@ -109,3 +109,5 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
   30 min del Cronista (`QA-308`), casos fijos del clasificador (`QA-309`), registro tras `escenario.sh cargar` (`QA-310`).
 - Aprobadas el 2026-11-14 (no se vuelven a proponer): calentar con el prompt de la partida al abrirla (`QA-339`),
   resultado del golpe como campo obligatorio en combate (`QA-340`), tokens de prompt reaprovechados en el registro (`QA-341`).
+- Aprobadas el 2026-11-15 (no se vuelven a proponer): tope de 400 tokens del 1.er intento en combate (`QA-347`) y calentar
+  con el prompt de combate al reabrir en combate (`QA-348`).
