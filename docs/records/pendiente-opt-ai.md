@@ -32,4 +32,9 @@ las filas analizadas pasan a «Analizadas» con la fecha y el informe.
 | 2026-11-14 | narrador (`tarkor-narrador-llama31`) | Deck, `logs/ia/qa289-ronda5b.jsonl` | 5 turnos (45-104 s) | Ronda 5b `QA-289`: P412 con el arreglo de `conAccionDelanteDe` | 4 de 5 abren con Gorhorn; «Observo el cielo» sigue abriendo con Ulkha (el campo de la acción, probablemente vacío o copiado: no se registra); arranque con coma empalmada y réplica del NPC atribuida a Gorhorn (tipo P469) |
 | 2026-11-14 | narrador (`tarkor-narrador-llama31`) | Deck, `logs/ia/qa289-ronda5c.jsonl` | 3 turnos sin diálogo (20-79 s en BD) | Ronda 5c `QA-289`: valor del campo de la acción (P412) | El campo llegó `null` 3 de 3 (no estaba en `required` del esquema); «Afilo mi cuchillo» abre con Ulkha |
 | 2026-11-14 | narrador (`tarkor-narrador-llama31`) | Deck, `logs/ia/qa289-ronda5d.jsonl` | 5 turnos (24-52 s en BD) | Ronda 5d `QA-289`: P412 con el campo obligatorio | P412 ✅ 5 de 5 abren con Gorhorn; el campo llega en formas distintas (3.ª persona, infinitivo, primera persona, frase con el nombre): las dos malas ya no se ponen delante |
+
+2026-11-15, `/gw-opt-ai` (informe en la conversación; comparada con `logs/ia/2026-11-14.jsonl`):
+
+| Fecha | Modelo | Máquina y registro | Turnos / llamadas | Qué se probó | Incoherencias y hallazgos |
+|---|---|---|---|---|---|
 | 2026-11-15 | narrador (`tarkor-narrador-llama31`) | Deck, `logs/ia/2026-11-15.jsonl` | 12 turnos de combate (23-50 s en BD) | `QA-340`: `resultadoDelGolpe` en el esquema | 1.ª pasada: 0 rechazos en 6 intercambios, 1 reintento por JSON cortado (300 tokens); 2.ª: «el orco desconocido» bien, 1 rechazo en un turno sin rival en el contexto (sin campo); P471 corta los intercambios desde el 3.er turno |
