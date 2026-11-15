@@ -32,10 +32,10 @@ describe('BAS-5 — GameHeader', () => {
 
   it('UX-41 — la fase pinta el pictograma de la marca si lo hay, y el emoji si no', () => {
     const conImagen = render(<GameHeader {...props} etiquetaFase={{ icono: '🧭', texto: 'Ocupado', imagen: '/ocupado.webp' }} />)
-    expect(conImagen.container.querySelector('img[data-pictograma]')?.getAttribute('src')).toBe('/ocupado.webp')
+    expect(conImagen.container.querySelector('img[src="/ocupado.webp"]')).not.toBeNull()
     cleanup()
     const sin = render(<GameHeader {...props} />)
-    expect(sin.container.querySelector('img[data-pictograma]')).toBeNull()
+    expect(sin.container.querySelector('img[src="/ocupado.webp"]')).toBeNull()
     expect(sin.getByText(/🧭/)).toBeTruthy()
   })
 })
