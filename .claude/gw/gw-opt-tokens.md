@@ -68,6 +68,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   y por trozos 9 (1,35M arrastrados).
 - **`marca-hallazgo.py --lista <grupo>`** (`QA-322`): los hallazgos de un estado (pendiente, parte, arreglado, cerrado…)
   con el final de su estado, en vez de `grep`/Python sobre `pruebas-0.3-hallazgos.md` (480k arrastrados, tandas 117-118).
+- **`tools/qa/aviso-lectura.py`** (`QA-349`, gancho PreToolUse de Bash y Read): avisa al leer enteros `plan-comprobacion-puerta.md`,
+  `pruebas-0.3-hallazgos.md`, `traspaso.md` y `rondas-de-pruebas.md` con su herramienta. En las tandas 131-133 se
+  leyeron 51 veces (1,7 M arrastrados de 13,2 M) pese a las reglas escritas.
 - **«Qué se prueba» una vez por sesión** (`QA-323`, `AGENTS.md`): en las tandas 117-118 se leyó 4 veces entero (344k).
 - **Diagnóstico de código en un subagente** (`QA-321`): leer el mismo archivo una y otra vez para entender un fallo
   (`moralGrupo.ts` 15 lecturas y `prepararReino.ts` 10 en la principal, lotes F-I, ~0,5M) va a un subagente con el
