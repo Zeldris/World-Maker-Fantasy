@@ -1,6 +1,6 @@
 import { restarVejez } from './cronista/edades.js';
 import { prisma } from '../lib/prisma.js';
-import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary, levenshtein } from './travel.js';
+import { normalizeText, fuzzyMatchCandidates, fuzzyMatchesAnyStem, findFuzzyStemMatch, matchesAliasBoundary, levenshtein, escapeForRegex } from './travel.js';
 import type { NpcKind, CondicionFisica, Temperamento, WeaponCategory, EquipSlot, ItemTipo, Prisma, NpcState, AbilityEffect, NpcInteractionType } from '@prisma/client';
 import type { Attribute, AttributeBlock } from './dice.js';
 import { sumAttributes } from './equipment.js';
@@ -426,6 +426,22 @@ function esErrataDeAlias(alias: string, palabra: string): boolean {
 /// sistema determinista, aunque el modelo narrara la pelea con total normalidad. Si la coincidencia
 /// exacta falla, se prueba también con distancia de edición ≤2 palabra a palabra, solo sobre
 /// palabras de 5+ letras (evita falsos positivos en palabras cortas y comunes).
+/// A quién le habla el jugador (QA-289, bench 17): «Le pregunto a Ulkha Ketg…» sin comillas respondía el primer NPC
+/// detectado (un orco metido en escena por un hecho de sus huellas). Orden: el citado entre comillas, el que la
+/// acción nombra (nombre entero, nombre de pila y, si los trae, alias), y si no nombra a nadie, el primero.
+export function elegirInterlocutor<T extends { id: string; name: string; aliases?: string[] }>(action: string, explicito: T | null, candidatos: T[]): T | null {
+  if (explicito) return explicito;
+  const accion = normalizeText(action);
+  const nombra = (nombre: string) => nombre.length >= 4 && matchesAliasBoundary(accion, normalizeText(nombre));
+  return (
+    candidatos.find((n) => nombra(n.name)) ??
+    candidatos.find((n) => nombra(n.name.split(' ')[0]!)) ??
+    candidatos.find((n) => n.aliases && matchNpcAliases(action, [{ id: n.id, aliases: n.aliases }]).length > 0) ??
+    candidatos[0] ??
+    null
+  );
+}
+
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {
   const normalized = normalizeText(text);
   // Sin puntuación pegada (2026-09-28): "mercado." o "arena," se comparaban tal cual y se saltaban
@@ -511,6 +527,28 @@ export function filterFarewellFacts(sessionFacts: string[], candidateNpcs: NpcWi
     if (!detectsFarewellIntent(fact)) return true;
     return matchNpcAliases(fact, candidateNpcs).length === 0;
   });
+}
+
+/// P422 (QA-289, bench 17): «La huella… de Orco enfurecido se dirige hacia el oeste» metía al orco en escena, y el
+/// diálogo lo cogía de interlocutor. Un rastro (huellas, pisadas, excrementos…) dice que pasó por aquí, no que esté:
+/// se quita del hecho el tramo «<rastro> … de <alias>» antes de buscar nombres. Solo en los hechos; la acción no
+/// pasa por aquí. Devuelve el hecho normalizado (sin tildes ni mayúsculas), que es lo que compara `matchNpcAliases`.
+const RASTRO = String.raw`(?:huellas?|rastros?|pisadas?|excrementos?|heces|deposiciones|marcas? de garras|zarpazos?|olor)`;
+
+export function sinRastrosDeNpc(fact: string, candidateNpcs: NpcWithAliases[]): string {
+  let texto = normalizeText(fact);
+  for (const npc of candidateNpcs) {
+    for (const alias of npc.aliases) {
+      const a = normalizeText(alias);
+      if (a.length < 4) continue;
+      const tramo = new RegExp(
+        String.raw`(?<![\p{L}])${RASTRO}(?![\p{L}])[^.;]{0,40}?(?<![\p{L}])del?\s+(?:(?:el|la|los|las|un|una|unos|unas)\s+)?${escapeForRegex(a)}(?![\p{L}\p{N}])`,
+        'gu',
+      );
+      texto = texto.replace(tramo, ' ');
+    }
+  }
+  return texto;
 }
 
 /// P344: quien está en combate con la jugadora está en escena (`enCombateCon` de `detectNpcsInScene`): los rivales del
@@ -631,9 +669,20 @@ export async function detectNpcsInScene(params: {
   // `faunaMomentoDelDia` y no coincide con el momento del día real de este turno — un Nuente
   // mencionado de día no debe poder aparecer en escena.
   const momentoActual = momentoDelDiaFor(params.fictionalMinutes);
+  const slugsDelModoDinamico = [saveRow?.pendingDynamicMode, saveRow?.pendingDynamicModeOffer]
+    .map((m) => (m && typeof m === 'object' && !Array.isArray(m) && typeof (m as { targetSlug?: unknown }).targetSlug === 'string' ? (m as { targetSlug: string }).targetSlug : null))
+    .filter((slug): slug is string => slug !== null);
+  const principalPresente = await principalPresenteEnZona({
+    npcs,
+    saveId: params.saveId,
+    currentLocationId: params.currentLocationId,
+    currentLocationSlug: currentLocation?.slug ?? null,
+    slugsDelModoDinamico,
+  });
   const candidateNpcs = npcs.filter((npc) => {
     if (estaEnCombate(npc)) return true;
     if (questTargetIds.has(npc.id)) return true;
+    if (npc.kind === 'PRINCIPAL' && !principalPresente(npc)) return false;
     if (encounteredIds.has(npc.id)) return true;
     if (npc.nucleoJugable === false) return false;
     const momentoRequerido = faunaMomentoDelDia[npc.slug];
@@ -646,7 +695,7 @@ export async function detectNpcsInScene(params: {
   });
   if (candidateNpcs.length === 0) return [];
 
-  const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs);
+  const relevantFacts = filterFarewellFacts(params.sessionFacts, candidateNpcs).map((f) => sinRastrosDeNpc(f, candidateNpcs));
   const haystack = [params.action, ...relevantFacts].join('\n');
   const matchedIds = new Set(matchNpcAliases(haystack, candidateNpcs));
   const ocultoNombrado = await ocultoNombradoPorSuVisible({
@@ -655,9 +704,7 @@ export async function detectNpcsInScene(params: {
     currentLocationId: params.currentLocationId,
     candidatos: candidateNpcs.filter((npc) => !retiredForeverSlugs.has(npc.slug)),
     estaEnCombate,
-    slugsDelModoDinamico: [saveRow?.pendingDynamicMode, saveRow?.pendingDynamicModeOffer]
-      .map((m) => (m && typeof m === 'object' && !Array.isArray(m) && typeof (m as { targetSlug?: unknown }).targetSlug === 'string' ? (m as { targetSlug: string }).targetSlug : null))
-      .filter((slug): slug is string => slug !== null),
+    slugsDelModoDinamico,
   });
   if (ocultoNombrado) matchedIds.add(ocultoNombrado);
   // P441: a quien va de compañera se la llama por su nombre de pila («a Tirag»), no solo por el completo de sus alias.
@@ -693,6 +740,32 @@ export async function detectNpcsInScene(params: {
     params.saveId,
     matchedNpcs.map((npc) => buildNpcInScene(npc, stateByKey.get(`${npc.id}|${scopeFor(npc.kind, params.currentLocationId)}`))),
   );
+}
+
+/// P419 (usuaria, 2026-11-03: «exigir que esté»): un `PRINCIPAL` ya no entra en escena solo por nombrarlo. Está si su
+/// casa es esta zona (35 de 61 no tienen punto en el mapa, casi todos de interiores), si tiene su punto activo aquí
+/// (se mudó: campamentos, Cronista), si es compañero de la partida o del modo dinámico; el itinerante (sin casa), como
+/// antes. Combate y misión activa se miran antes. Sin zona resuelta (viajando), no se acota.
+async function principalPresenteEnZona(params: {
+  npcs: { kind: NpcKind; homeLocationSlug: string | null }[];
+  saveId: string;
+  currentLocationId: string | null;
+  currentLocationSlug: string | null;
+  slugsDelModoDinamico: string[];
+}): Promise<(npc: { slug: string; homeLocationSlug: string | null }) => boolean> {
+  const enCasa = (npc: { homeLocationSlug: string | null }) => npc.homeLocationSlug === null || npc.homeLocationSlug === params.currentLocationSlug;
+  if (!params.currentLocationId || !params.currentLocationSlug) return () => true;
+  if (params.npcs.every((n) => n.kind !== 'PRINCIPAL' || enCasa(n))) return enCasa;
+  // Zona aún sin puntos propios en la partida (no se ha abierto su mapa: se clonan del catálogo al abrirla), valen las
+  // plantillas del catálogo (`saveId` nulo), como en P331 la zona sin visitar.
+  const [puntos, companeros] = await Promise.all([
+    prisma.zonePoint.findMany({ where: { OR: [{ saveId: params.saveId }, { saveId: null }], locationId: params.currentLocationId, tipo: 'NPC', activo: true }, select: { targetSlug: true, saveId: true } }),
+    prisma.companion.findMany({ where: { saveId: params.saveId, sourceSlug: { not: null } }, select: { sourceSlug: true } }),
+  ]);
+  const propios = puntos.filter((p) => p.saveId !== null);
+  const vigentes = propios.length > 0 ? propios : puntos;
+  const aqui = new Set([...vigentes.map((p) => p.targetSlug), ...companeros.map((c) => c.sourceSlug!), ...params.slugsDelModoDinamico]);
+  return (npc) => enCasa(npc) || aqui.has(npc.slug);
 }
 
 /// P441: ¿nombra el texto a alguien por una palabra de su nombre de 4 letras o más, como palabra entera («Le doy el
@@ -932,7 +1005,8 @@ function isNegatedMatch(normalized: string, matchIndex: number): boolean {
 /// Verbo de ataque directo (roadmap 2026-07-19: "roadmap 2" de calibración de combate, y
 /// reutilizado por la clasificación tabulada en turn.ts) — mismo regex que la red de seguridad de
 /// `combateIniciado` en turnResolution.ts, vive aquí para no duplicarlo entre los dos módulos.
-const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer/;
+const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer|\btajos?\b|mandoble|estocada|cuchillada|\bembist|\bembest|\bembisto\b|\bdescargo\b.*\bcontra\b/;
+// P471: «tajo»/«tajos» solo como palabra entera (nunca «atajo», «tajada»); «descargo … contra» pide ambos.
 
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;
@@ -1378,4 +1452,26 @@ export function calibrationLineFor(npcs: NpcInScene[], playerLevel: number): str
       return `Hay un personaje en escena, ${displayName(npc)} (nivel ${npc.level}) — las acciones directas contra él/ella tienden a ${label}.`;
     })
     .join(' ');
+}
+
+/// P410 (ronda QA-289, 2026-11-03): el narrador escribe «Ulka Ketg» por «Ulkha Ketg» con la ficha delante. Se corrige por
+/// código: un nombre de 2+ palabras, con mayúscula, misma cantidad de palabras y cada una a distancia ≤1 (las de 4+
+/// letras; las cortas, exactas). Solo nombres que el jugador ya conoce: corregir hacia uno oculto lo revelaría.
+export function corregirNombresCasi(texto: string, nombres: string[]): string {
+  const trozos = texto.split(/([^\p{L}']+)/u);
+  for (const nombre of new Set(nombres)) {
+    const partes = nombre.split(/\s+/);
+    if (partes.length < 2) continue;
+    for (let i = 0; i + 2 * (partes.length - 1) < trozos.length; i += 2) {
+      const palabras = partes.map((_, k) => trozos[i + 2 * k]!);
+      const casi = palabras.every((w, k) => {
+        const p = partes[k]!;
+        if (!/^\p{Lu}/u.test(w)) return false;
+        return p.length >= 4 ? levenshtein(w.toLowerCase(), p.toLowerCase()) <= 1 : w.toLowerCase() === p.toLowerCase();
+      });
+      const separadosPorEspacio = partes.slice(1).every((_, k) => /^\s+$/.test(trozos[i + 2 * k + 1]!));
+      if (casi && separadosPorEspacio && palabras.join(' ') !== nombre) partes.forEach((p, k) => { trozos[i + 2 * k] = p; });
+    }
+  }
+  return trozos.join('');
 }

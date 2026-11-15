@@ -13,6 +13,9 @@ import { matchNpcAliases, type NpcWithAliases } from './npcScene.js';
 const MAX_STORED_FACTS = 50;
 const MAX_SENT_FACTS = 10;
 const RECENCY_GUARANTEED = 3;
+/// Tope de la ventana de recientes (QA-289): RECENCY_GUARANTEED + los que alcancen hasta un ancla.
+const MAX_VENTANA = 6;
+export const PREFIJO_RECUERDO = 'Antes en esta partida: ';
 // Bajado de 0.7 a 0.65 (auditoría 2026-08-02, "revisar partida" — bug real jugando en vivo): dos
 // hechos seguidos del mismo combate, "El Orco Enfurecido ha sido derrotado y ahora está herido,
 // ~50/100 de salud" / "El Orco Enfurecido ahora está herido, ~50/100 de salud", tenían 0.69 de
@@ -105,19 +108,59 @@ export async function loadSessionFacts(saveId: string): Promise<string[]> {
 /// solo para el chequeo de duplicados (se muta localmente para que dos hechos nuevos casi
 /// idénticos ENTRE SÍ en el mismo turno también se filtren, no solo contra el historial previo) —
 /// nunca se reescribe en la base de datos, es un log de solo-inserción.
-export async function appendSessionFacts(saveId: string, existing: string[], newFacts: string[]): Promise<void> {
+///
+/// `presencia` (QA-289, P266): quién lo presenció. `testigos` = los NPC en escena (por nombre); `publico` =
+/// suceso del mundo que sabe cualquiera. Sin nada, no lo sabe ningún NPC (lo vio solo el jugador).
+/// P263 (ronda QA-289, 2026-11-03): de una réplica mezclada se guardó «Ulkha Ketg hermana de Ulkha Ketg». Un hecho que
+/// hace a alguien pariente de sí mismo (mismo nombre propio de 2+ palabras a los dos lados) no se guarda.
+const PARENTESCO = /^(herman[oa]s?|hij[oa]s?|padre|madre|espos[oa]|prim[oa]|t[ií][oa]|sobrin[oa]|abuel[oa]|nieto|nieta|pareja|compañer[oa])$/i;
+export function esParentescoConsigoMismo(fact: string): boolean {
+  const nombre = /\p{Lu}[\p{L}']+(?:\s+\p{Lu}[\p{L}']+)+/gu;
+  const vistos = [...fact.matchAll(nombre)];
+  for (let i = 0; i < vistos.length; i++) {
+    for (let j = i + 1; j < vistos.length; j++) {
+      if (vistos[i]![0] !== vistos[j]![0]) continue;
+      const entre = fact.slice(vistos[i]!.index! + vistos[i]![0].length, vistos[j]!.index!);
+      if (entre.split(/[^\p{L}]+/u).some((w) => PARENTESCO.test(w))) return true;
+    }
+  }
+  return false;
+}
+
+export interface Presencia {
+  testigos?: string[];
+  publico?: boolean;
+}
+
+export async function appendSessionFacts(saveId: string, existing: string[], newFacts: string[], presencia: Presencia = {}): Promise<void> {
   if (newFacts.length === 0) return;
+  const testigos = [...new Set(presencia.testigos ?? [])];
+  const publico = presencia.publico ?? false;
   const seen = [...existing];
   for (const fact of newFacts) {
+    if (esParentescoConsigoMismo(fact)) continue;
     if (seen.some((f) => factSimilarity(f, fact) >= DUPLICATE_THRESHOLD)) continue;
     seen.push(fact);
     const vector = await embed(fact);
     await prisma.$executeRaw`
-      INSERT INTO "SessionFact" (id, "saveId", text, embedding, "createdAt")
-      VALUES (${crypto.randomUUID()}, ${saveId}, ${fact}, ${toVectorLiteral(vector)}::vector, ${new Date()})
+      INSERT INTO "SessionFact" (id, "saveId", text, embedding, testigos, publico, "createdAt")
+      VALUES (${crypto.randomUUID()}, ${saveId}, ${fact}, ${toVectorLiteral(vector)}::vector, ${testigos}::text[], ${publico}, ${new Date()})
     `;
   }
   await pruneOldFacts(saveId);
+}
+
+/// Lo que sabe un NPC (QA-289, fila 2 de `docs/ia/investigacion-narrador-repos.md`, P266): los últimos hechos que
+/// presenció o que son públicos, en orden cronológico. Es lo único que recibe su réplica (`generateNpcReply`).
+const MAX_FACTS_NPC = 8;
+export async function loadFactsKnownBy(saveId: string, npcName: string): Promise<string[]> {
+  const rows = await prisma.sessionFact.findMany({
+    where: { saveId, OR: [{ publico: true }, { testigos: { has: npcName } }] },
+    orderBy: { createdAt: 'desc' },
+    take: MAX_FACTS_NPC,
+    select: { text: true },
+  });
+  return rows.map((r) => r.text).reverse();
 }
 
 async function pruneOldFacts(saveId: string): Promise<void> {
@@ -147,7 +190,13 @@ async function pruneOldFacts(saveId: string): Promise<void> {
 /// `loadSessionFacts`). Si hay MAX_SENT_FACTS o menos en total, no hace falta filtrar nada — ni
 /// una consulta ni un embedding de más en la mayoría de partidas cortas/medias, que es
 /// precisamente cuando esta mejora no hace falta todavía.
-export async function selectRelevantFacts(action: string, saveId: string, worldId: string, sessionFacts: string[]): Promise<string[]> {
+export async function selectRelevantFacts(
+  action: string,
+  saveId: string,
+  worldId: string,
+  sessionFacts: string[],
+  escena: string[] = [],
+): Promise<string[]> {
   // NPCs retirados para siempre (ver comentario arriba) — se excluyen de la fuente ANTES de
   // recortar por recencia/relevancia, para que ni siquiera cuenten como candidato "reciente
   // garantizado" (mismo criterio que `npcsRetiredForever` gana siempre en detectNpcsInScene).
@@ -167,13 +216,12 @@ export async function selectRelevantFacts(action: string, saveId: string, worldI
 
   if (filteredFacts.length <= MAX_SENT_FACTS) return filteredFacts;
 
-  // Los `RECENCY_GUARANTEED` más recientes van SIEMPRE primero en la combinación (nunca se
-  // recortan) — bug real encontrado probando en vivo (2026-07-30): con `relevant` primero y
-  // `recent` al final, un `.slice(0, MAX_SENT_FACTS)` podía descartar la recencia entera si la
-  // consulta de relevancia ya llenaba las 10 plazas ella sola.
-  const recent = filteredFacts.slice(-RECENCY_GUARANTEED);
+  // Los recientes van SIEMPRE (nunca se recortan) — bug real (2026-07-30): con `relevant` primero
+  // y `recent` al final, un `.slice(0, MAX_SENT_FACTS)` podía descartar la recencia entera.
+  const recent = ventanaReciente(filteredFacts);
   const remainingBudget = MAX_SENT_FACTS - recent.length;
-  const vector = await embed(action);
+  // QA-289: se busca por la escena (acción + NPC presentes + zona), no solo por la acción (P252).
+  const vector = await embed([action, ...escena].join(' · '));
   const rows = await prisma.$queryRaw<{ text: string }[]>`
     SELECT text FROM "SessionFact"
     WHERE "saveId" = ${saveId}
@@ -187,8 +235,27 @@ export async function selectRelevantFacts(action: string, saveId: string, worldI
     .map((r) => r.text)
     .filter((t) => filteredFacts.includes(t) && !recent.includes(t))
     .slice(0, remainingBudget);
-  const combined = new Set([...recent, ...relevant]);
-  // Orden final: cronológico según `filteredFacts` (no por score de similitud) — para que el
-  // Narrador los lea en secuencia natural, no mezclados por relevancia.
-  return filteredFacts.filter((f) => combined.has(f));
+  // QA-289: primero los recientes, cronológicos y con un inicio que no se mueve de un turno a otro
+  // (la caché de prefijo de Ollama llega hasta ellos); detrás, los recuerdos más antiguos que elige
+  // la similitud, también cronológicos y marcados para que el Narrador no los lea como presentes.
+  const recuerdos = filteredFacts.filter((f) => relevant.includes(f)).map((f) => PREFIJO_RECUERDO + f);
+  return [...recent, ...recuerdos];
+}
+
+/// QA-289: los recientes empiezan en un «ancla» elegida por el propio texto del hecho (como el
+/// troceado por contenido), no en `n - 3`: al añadir hechos o podar los viejos el inicio no se
+/// mueve, y el prefijo del prompt sigue siendo el mismo turno tras turno. Siempre entran los
+/// RECENCY_GUARANTEED últimos; sin ancla dentro de MAX_VENTANA, la ventana es la mínima.
+export function ventanaReciente(facts: string[]): string[] {
+  const minimo = Math.max(0, facts.length - RECENCY_GUARANTEED);
+  for (let i = minimo; i >= Math.max(0, facts.length - MAX_VENTANA); i--) {
+    if (esAncla(facts[i])) return facts.slice(i);
+  }
+  return facts.slice(minimo);
+}
+
+function esAncla(fact: string): boolean {
+  let h = 0;
+  for (const c of fact) h = (h * 31 + c.codePointAt(0)!) >>> 0;
+  return h % 3 === 0;
 }

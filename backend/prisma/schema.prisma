@@ -492,8 +492,19 @@ model Save {
   misionesOfrecidas MisionOfrecida[]
   ordenesComercio   OrdenComercio[]
   caravanas         Caravana[]
+  prefijoNarrador   PrefijoNarrador?
 
   @@index([userId])
+}
+
+/// QA-339 (`/gw-opt-ai`, 2026-11-14): el principio estable del último prompt del narrador de la partida
+/// (instrucciones, personaje y hechos de la zona). Al abrirla se manda a Ollama con `num_predict` 1, para que el
+/// primer turno encuentre su prefijo en la caché. En tabla aparte para no cargarlo con cada `Save`.
+model PrefijoNarrador {
+  saveId    String   @id
+  save      Save     @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  texto     String
+  updatedAt DateTime @updatedAt
 }
 
 /// Ubicación conocida del mundo (catálogo, no estado de partida). Se siembra desde
@@ -873,6 +884,10 @@ model SessionFact {
   /// Mismo patrón que LoreChunk.embedding — habilitado a mano vía `CREATE EXTENSION vector`, no
   /// gestionado por Prisma (preview feature postgresqlExtensions), ver comentario del datasource.
   embedding Unsupported("vector(768)")?
+  /// QA-289 (P266): NPC presentes cuando se registró (por nombre); la réplica de un NPC solo ve estos y los públicos.
+  testigos  String[]                    @default([])
+  /// Sucesos del mundo (Cronista): los sabe cualquiera. Los hechos anteriores a QA-289 quedaron públicos.
+  publico   Boolean                     @default(false)
   createdAt DateTime                    @default(now())
 
   @@index([saveId, createdAt])

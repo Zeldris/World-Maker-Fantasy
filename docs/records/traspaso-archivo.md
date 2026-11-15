@@ -2,6 +2,63 @@
 
 Entradas antiguas de «Hecho recientemente» de [`traspaso.md`](traspaso.md), de la más nueva a la más antigua. Se buscan con `recover.py --search` o `grep`.
 
+## Filas archivadas (2026-11-14, QA-342)
+
+Filas «Tarea en curso» de ramas ya fusionadas en `main` o borradas, tal cual estaban en la bitácora.
+
+| **Tarea en curso · `claude/gw-update-0.6`** | 🚧 Flujo Galivelop-workflow v0.5.0 → v0.6.0 (gw-update, usuaria 2026-11-14). Hecho: fase 1 (f68916df, 8 arreglos), ciNodeDirs, fase 2: /gw-opt-tokens (QA-332…QA-334) y retro aprobada entera (QA-335: MCP de Playwright solo en rondas; P21-P23 al flujo). Pendiente leve: CI duplicado, ledger compartido, test_fusionar sin ganchos; la usuaria desactiva el conector Claude Docs. Siguiente: check.sh, fase 3 (reviewed.sh) y PR a main. |
+| **Tarea en curso · `claude/pedido-mapa`** | Ronda local cerrada (P306, P310, P435 siguen; nuevos P447, P448). `/gw-opt-ai` aprobado: `QA-308`, `QA-309` (`clasificar-eval`, 2/5: P447 y amenaza de P306 en rojo) y `QA-310` hechos, y `QA-307` (prefijo estable en combate) en código; falta medirlo en la Deck. Presupuesto de compactaciones: 1. Fase 1 hecha (leves: caché de combate cortada por salud/memoria/NPC; `viaje.py`; `SENTIDO_NIVEL`). Fase 2: `QA-311`, `QA-312` hechos; retro aplicada (`QA-313`…`QA-316`); fase 3 hecha. **Siguiente:** PR a `main` y fusionar con el CI en verde. |
+| **Tarea en curso · `claude/ins-34-backend-sin-curacion`** | Fusionada en `main` sin PR, CI local (2026-10-27, `QA-215`; retro aprobada por la usuaria): `INS-34` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md)), backend empaquetado sin curación ni cloud. Leves sin tarea: test del bundle en ESM y `esbuild` pinneado; `image-prompt` GET/PUT, variables cloud de `env.ts` y aviso de `LIVE_TEACHER_CAPTURE_ENABLED` siguen en el build. Siguiente: nada. |
+| **Tarea en curso · `claude/ins-33-frontend-sin-admin`** | Fusionada en `main` sin PR (2026-10-26, `47f6806`, `QA-215`; retro aprobada por la usuaria): `INS-33` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor/blob/main/docs/05-plan-de-trabajo.md), fase 3), frontend sin admin empaquetado, y retro `QA-262`…`QA-265`. Leve pendiente: rama `custom` de `CharacterSelect` inalcanzable a propósito. **Siguiente:** nada en esta rama; `INS-34`. |
+| **Tarea en curso · `claude/pruebas-local`** | Rondas de pruebas en la Deck con Ollama real (2026-10-20; solo se apunta). Hecho: P238-P274 (graves: P240, P260); jugados UX-30, CR-21/22/23, CR-67; `/code-review`, `/opt-ai`, `/opt-tokens` y `/retro` pasados, sus propuestas aprobadas sin aplicar. Bloqueadas: CR-53/55/58/61/63/65 y CR-32/42. PR #68 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
+| **Tarea en curso · `claude/opt-ai-mejoras`** | ✅ `/opt-ai` (`QA-160`…`QA-168`): turno p50 61 → 29-35 s, primera palabra 45 → 17-19 s. `/code-review`, `/opt-tokens` y [retro](retro-2026-10-20-opt-ai-mejoras.md) hechos y aplicados (`QA-169`…`QA-175`; bench con `tools/qa/bench-ia.sh`). Tests: `tools/qa` 119 (2 de `test_host` fallan solo en el sandbox), `opt-ai` OK. PR #70 fusionado en `main`; rama por cerrar (paso 2 de la línea). |
+| **Tarea en curso · `claude/imagenes-local`** | A `main` **sin PR, CI local** (`QA-215`, cuota de Actions agotada; confirmado por la usuaria el 2026-10-24): ~~`CFG-38`~~…~~`CFG-40`~~, `probar.sh`, ~~`QA-222`~~…~~`QA-226`~~; descripción en `docs/records/pr/claude/imagenes-local.md`. Al fusionarse, rama terminada. **Siguiente:** la usuaria prueba prompts con `probar.sh` → `CFG-42` (en la Deck) → `CFG-41`. |
+| **Tarea en curso · `claude/interfaz-imagenes`** | ~~`CFG-43`~~ ✅: interfaz local del generador (`image-generator/abrir.sh`), todo por elemento en `generated/<tipo>/<slug>/`, con toda la enciclopedia y lo anidado (2.550). Tests 37/37, probada en la Deck. Roadmap `roadmap-imagenes.md` (`IMG-1`…`IMG-3`, `0.4`). Fases 1-3 hechas (retro `QA-228`…`QA-233`, leves `QA-234`). A `main` **sin PR, CI local** (`QA-215`, confirmado por la usuaria el 2026-10-25; [descripción](pr/claude/interfaz-imagenes.md)). **Siguiente:** `CFG-42` → `CFG-41`. |
+| **Tarea en curso · `claude/gh-en-la-deck`** | Fusionada en `main` (PR #82). Rama borrada el 2026-11-10, con `claude/fichas-banners` (ya entera en `claude/imagenes-por-fases`). |
+| **Tarea en curso · `claude/plan-imagenes`** | Fusionada en `main` (PR #80, 2026-11-03, `304872b9`, CI en verde): ~~`IMG-15`~~…~~`IMG-33`~~ ✅, ~~`IMG-4`~~ ✅, retro ~~`QA-280`~~…~~`QA-284`~~. Rama terminada. **Siguiente bloque:** `IMG-6`, los 5 pilotos con la cadena fotorreal en una tanda de noche (antes, preguntar a la usuaria qué cerrar por memoria); luego la noche (`IMG-16`, `IMG-17`) e `IMG-7` → `IMG-25`, en una rama nueva desde `main`. |
+| **Tarea en curso · `claude/ins-31-url-backend`** | Fusionada en `main` sin PR (2026-10-26, `b76c66b`, `QA-215`; retro aprobada por la usuaria): `INS-31` del instalador ([plan](https://github.com/Zeldris/Instalador-WMF-Tarkor), fase 3), `apiBaseUrl()` en `api.ts` (`window.__TARKOR__.apiUrl` → `VITE_API_URL` → `localhost:3001`), y retro `QA-259`…`QA-261`. GitHub marcó el PR #78 como fusionado. **Siguiente:** nada en esta rama. |
+
+## Archivado el 2026-11-14, tercera vez (el 2026-11-11, QA-342)
+
+- **2026-11-11** — PR #92 fusionado en `main` (`d8ef94ad`, CI en verde): tandas 107-116, lotes F-I (P440-P453) y retro `QA-317`…`QA-321`.
+- **2026-11-11** — ~~`QA-317`…`QA-321`~~ (retro y `/gw-opt-tokens` de los lotes F-I): comentario P444 en `dailyTick.ts`, P citados en `REVIEW.md`, commit con bitácora en el encargo de arreglos, `tools/qa/plan.py` y notas de tokens.
+- **2026-11-11** — ~~`QA-306`~~ (usuario): `/gw-opt-ai` por umbral, no por PR: cada tanda local apunta una fila en `docs/records/pendiente-opt-ai.md` y Claude lo recomienda al pasar ~30 turnos o 4 tandas (`AGENTS.md`, `rondas-de-pruebas.md`, `skills-y-modelos.md`).
+- **2026-11-11** — ~~`QA-313`~~, ~~`QA-314`~~, ~~`QA-315`~~, ~~`QA-316`~~ (retro de `claude/pedido-mapa`): `deck/ia-ronda.sh` para Ollama de la ronda; evals que llaman al juego; encargo de código con rojo sin arreglo; estado por SQL antes de jugar.
+- **2026-11-11** — ~~`QA-311`~~, ~~`QA-312`~~ (`/gw-opt-tokens` del PR de `claude/pedido-mapa`): `tools/qa/seccion.sh` para leer solo «Qué se prueba»; `escenario.sh lista <patrón>`.
+- **2026-11-11** — ~~`QA-308`~~, ~~`QA-309`~~, ~~`QA-310`~~ (`/gw-opt-ai` aprobado): Cronista con keep_alive 30m; `npm run clasificar-eval` con 5 casos (2/5); `escenario.sh` relanza con el registro de IA (`logs/juego-ia.env`). ~~`QA-307`~~: lo que cambia en cada ronda de combate va al final de los hechos (falta medirlo en la Deck).
+- **2026-11-11** — Lote G de herramientas cerrado (G1-G4: P370-P434), revisado sin graves ni medios; todo sin ver jugando.
+- **2026-11-11** — Decisión de la usuaria sobre P440 (el cazador sin partida no aporta comida) y lote G de herramientas abierto.
+
+## Archivado el 2026-11-14, segunda vez (hasta el 2026-11-10)
+
+- **2026-11-10** — Tanda 110 (lote F, juego): P440 y P442 ✅; P441 reabierto; P443 nuevo (leve). Antes: regresión de P375 en turn.integration arreglada (slug a `services/questSlugs.ts`).
+- **2026-11-10** — Tanda 109 (repesca de lotes A y E): P426 y P437 ✅ comprobados jugando; P441 confirmado 2 de 2; P442 nuevo (leve, dudoso); P375 con NPC ausente sin reproducir.
+- **2026-11-10** — Fase 1 de las tandas 107-108: P375 también descarta testigos inactivos a esa hora o ausentes tras un combate (test de integración); leves apuntados.
+- **2026-11-10** — Tanda 108 (lote E, juego): P270, P319, P358, P375 y P380 ✅ comprobados jugando; P441 nueva (leve: «Tirag» suelto se toma por el Tótem de Guerra).
+- **2026-11-10** — Tanda 107 (lote D, juego): P248, P381, P343, P379 y P435 (simulado) ✅ comprobados jugando; P342 sin ver (vasallo ajeno); sin hallazgos nuevos.
+- **2026-11-10** — Lote D de la puerta cerrado y revisado (P248, P342, P343, P379, P381, P435 a jugar; P368 cerrada; P440 nueva pendiente), plan `plan-comprobacion-puerta.md` al día.
+- **2026-11-10** — ~~`QA-303`~~: `marca-hallazgo.py --ver P<n>` y las tandas cerradas del plan de la puerta, en `plan-comprobacion-puerta-archivo.md` (86 → 22 kB).
+- **2026-11-10** — ~~`QA-301`~~: `tools/qa/inventario-suelto.py` en el check (inventario sin lo de compañeros y súbditos); arregló 4 consultas más (viajeros, entregables, recolectar).
+- **2026-11-10** — ~~`QA-304`~~, ~~`QA-305`~~ (retro del paso 3.4): el encargo de tanda lleva el tope de 50 llamadas (`skills-wmf.md`); `/clear` también al cerrar cada lote de una rama larga (`AGENTS.md`).
+- **2026-11-09** — ~~`QA-300`~~: `escenario.sh dar-reino` resta con valores negativos (`comida=-2`; también bebida, goirnos y tesoro), suelo en 0 y aviso si se pide más de lo que hay; deja el Granero 178/180 para P336. Test en `darReinoLib.test.ts`.
+- **2026-11-09** — ~~`QA-299`~~: `escenario.sh preparar` con `partida-caza:<presa>:heridos=<h>` (la partida vuelve sin piezas y con h heridos; aviso del juego en Reino › Avisos al preparar, P439) y `mochila-descartar[:<n>]` (tira lo suelto hasta dejar hueco; P336: `dar` no pasa de la capacidad y el Almacén lleno impedía `mochila-libre`). Sin cambio de reglas; tests rojos sin el arreglo.
+- **2026-11-09** — ~~`QA-298`~~: `escenario.sh preparar <partida> partida-caza:<presa>:<n>[:permanente]` deja la partida de caza del Reino a punto de volver con n piezas (por el camino normal al avanzar el día), para jugar P339 y, con `danar:desolladero`, P338 en la tanda 103.
+
+### Filas de ramas fusionadas y terminadas (de «Estado actual»)
+
+| | |
+|---|---|
+| **Tarea en curso · `claude/generador-mapas`** | Fusionada en `main` (PR #89, 2026-11-10, CI en verde): ~~MAP-1~~…~~MAP-9~~, ~~MAP-16~~, ~~MAP-17~~; `MAP-18` cerrado en `claude/pedido-mapa` (PR #90). Rama terminada. |
+| **Tarea en curso · `claude/limpieza`** | Fusionada en `main` sin PR, CI local (2026-11-02, `ab518ea8`, `QA-215`; confirmado por la usuaria): ~~`QA-271`~~ ✅ (código muerto fuera) y retro con `QA-278`, `QA-279` al roadmap. Rama terminada. |
+| **Tarea en curso · `claude/gw-update-0.5.0`** | Fusionada en `main` (PR #84, 2026-11-04, `5b1f6a2e`, CI en verde): flujo v0.4.3 → v0.5.0. Rama terminada; lo pendiente pasó a la fila de `claude/wonderful-volta-662qt8`. |
+| **Tarea en curso · `claude/puerta-pruebas`** | Fusionada en `main` (PR #74, 2026-10-21); rama cerrada. Las tandas 8-14 del 3.3 siguieron en `claude/pruebas-3.3`. |
+| **Tarea en curso · `claude/pruebas-3.3`** | Fusionada en `main` (PR #75, 2026-10-22); rama cerrada. Las tandas 15-21 siguieron en `claude/pruebas-reino`. |
+| **Tarea en curso · `claude/pruebas-reino`** | Fusionada en `main` sin PR (2026-10-22, cuota de Actions agotada; `tools/qa/ci-local.sh` en verde, `QA-215`): tandas 15-21 del [reparto](plan-comprobacion-reino.md), P312-P319, retro `QA-208`…`QA-214`. Rama cerrada. |
+| **Tarea en curso · `claude/piloto-galivelop-workflow`** | Fusionada en `main` sin PR (2026-10-23, cuota de Actions agotada; `tools/qa/ci-local.sh` en verde, `QA-215`): Galivelop-workflow v0.2.0 en WMF ([registro](piloto-galivelop-workflow.md), [retro](retro-2026-10-23-piloto-galivelop.md)); rama cerrada. **Pendiente:** la usuaria prueba `host.sh` en la Deck (push con el árbol sucio). |
+| **Tarea en curso · `claude/pruebas-mundo-vivo`** | Fusionada en `main` sin PR (2026-10-23, cuota de Actions agotada; `tools/qa/ci-local.sh` en verde, `QA-215`): tandas 22-27 y retro `QA-216`-`QA-221` ([PR preparado](pr/claude/pruebas-mundo-vivo.md)); rama cerrada. **Pendiente** de la ronda: P51, P95, P163, P193 y la cría de CR-55. Leves de la revisión de la fusión: quitar el `cleanup` local de ~70 tests (ya va en el setup) y un `--raiz` en `.githooks/pre-commit` para no copiarlo al repo (preguntar a la usuaria, es del flujo). |
+| **Tarea en curso · `claude/gh-en-la-deck`** | Fusionada en `main` (PR #82). Rama borrada el 2026-11-10, con `claude/fichas-banners` (ya entera en `claude/imagenes-por-fases`). |
+| **Tarea en curso · `claude/lore-enciclopedia`** | Fusionada en `main` (PR #81, 2026-11-03, `97190433`, CI en verde): ~~`QA-243`~~, ~~`QA-244`~~, ~~`QA-272`…`QA-277`~~ ✅. Rama terminada. |
+
 ## Archivado el 2026-11-14 (hasta el 2026-11-08)
 
 - **2026-11-08** — `MAP-1` y `MAP-2` (adelantados por la usuaria): `map-generator/importar.py` lee el `.map` de Azgaar sin escribirlo y `medir.py` comprueba las medidas del canon.

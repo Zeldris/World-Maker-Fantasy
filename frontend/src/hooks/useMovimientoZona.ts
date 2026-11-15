@@ -64,7 +64,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
   // real jugando en vivo con Playwright): `salidas[].alcanzable` solo se calculaba al abrir el
   // panel — tras caminar hasta una salida, pulsarla seguía diciendo "Tienes que acercarte más"
   // hasta cerrar y reabrir el modal.
-  async function moverA(destino: { x: number; y: number }, opciones: { rapido?: boolean; alLlegar?: (fresca: ZonaResponse) => void } = {}): Promise<ZonaResponse | null> {
+  async function moverA(destino: { x: number; y: number }, opciones: { rapido?: boolean; objetivoSlug?: string; alLlegar?: (fresca: ZonaResponse) => void } = {}): Promise<ZonaResponse | null> {
     if (bloqueoMovimiento) {
       setMensajeMovimiento(bloqueoMovimiento)
       return null
@@ -90,7 +90,7 @@ export function useMovimientoZona({ saveId, setData, bloqueoMovimiento = null, o
       let sigue = true
       while (sigue && movimientoTokenRef.current === miToken) {
         const pedido = performance.now()
-        const resultado = await moverEnZona(saveId, destino)
+        const resultado = await (opciones.objetivoSlug ? moverEnZona(saveId, destino, opciones.objetivoSlug) : moverEnZona(saveId, destino))
         latencia = performance.now() - pedido
         if (movimientoTokenRef.current !== miToken) break // cancelado por un clic nuevo mientras esperaba
         // Si la respuesta llega antes de que acabe la animación anterior, se espera a que acabe para

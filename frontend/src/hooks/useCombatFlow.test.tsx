@@ -463,6 +463,21 @@ describe('submitCombatAction — camino feliz', () => {
     expect(result.current.condicionFisica).toBe('MUERTO')
   })
 
+  // P459: cazando un grupo, tras la ronda el HUD seguía en «Ileso» con la base en «Grave» (hasta F5): cerrar
+  // el combate antes de que aterrizasen los dados descartaba el resultado pendiente en vez de aplicarlo.
+  it('P459: cerrar el combate antes de que aterricen los dados aplica la condición pendiente de la ronda', async () => {
+    mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
+    mockNarrate.mockResolvedValue(
+      baseNarrateResponse({ condicionFisica: 'GRAVE', combatExchangeDisplay: { atacanteEsJugador: false } as never }) as never,
+    )
+    const { result } = renderHook(() => useHarness())
+    await act(() => result.current.combat.submitCombatAction('Ataco a mi enemigo', {}))
+    expect(result.current.condicionFisica).toBe('ILESO')
+
+    act(() => result.current.combat.closeCombat())
+    expect(result.current.condicionFisica).toBe('GRAVE')
+  })
+
   it('P363: la entrada en vivo lleva el XP de la ronda (y el del hito), como tras recargar', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
@@ -1117,7 +1132,7 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
   // de que pasaran los 10s, el timer del turno YA CERRADO seguía vivo y aplicaba su resultado
   // obsoleto por encima del estado ya reseteado por `closeCombat`. `exchangeApplyTimerRef` debe
   // cancelarlo.
-  it('cerrar el combate mientras el timer del intercambio sigue pendiente no aplica el resultado obsoleto después', async () => {
+  it('cerrar el combate mientras el timer del intercambio sigue pendiente aplica la condición real una vez y no reabre el combate después (P459)', async () => {
     mockClassify.mockResolvedValue({ classification: { atributo: 'fuerza', dificultad: 15, razon: 'x', banda: 'instantanea' }, roll: undefined } as never)
     mockNarrate.mockResolvedValue(
       baseNarrateResponse({
@@ -1143,13 +1158,15 @@ describe('handleCombatTurnResolved — condición/energía/vida del rival se ret
     expect(result.current.combat.combatOpen).toBe(false)
     expect(result.current.combateIniciado).toBeNull()
 
-    // Sin el `clearTimeout`, este avance dispararía `applyExchangeResult` por encima del estado ya
-    // reseteado por `closeCombat` — `condicionFisica` no debe reflejar el golpe de un combate ya
-    // cerrado.
+    // P459: el golpe de la ronda ya está en la base, así que `closeCombat` lo aplica en el acto (antes se
+    // descartaba y el HUD seguía en «Ileso» hasta recargar)...
+    expect(result.current.condicionFisica).toBe('HERIDO')
+    // ...y sin el `clearTimeout`, este avance volvería a disparar `applyExchangeResult` por encima del estado
+    // ya reseteado por `closeCombat` (reabriría el combate cerrado con el `combateIniciado` del turno).
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10000)
     })
-    expect(result.current.condicionFisica).toBe('ILESO')
+    expect(result.current.condicionFisica).toBe('HERIDO')
     expect(result.current.combat.combatOpen).toBe(false)
     expect(result.current.combateIniciado).toBeNull()
   })

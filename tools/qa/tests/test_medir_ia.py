@@ -101,6 +101,27 @@ class MedirTest(unittest.TestCase):
         self.assertEqual(list(medir.analizar(ruta)['llamadas']), [('deck', 'narrar', '-')])
         self.assertIn(('deck', 'calentar', '-'), medir.analizar(ruta, con_calentar=True)['llamadas'])
 
+    def test_reaprovechado_estimado_con_el_ritmo_en_frio(self):
+        # QA-341: frío 6.000 tokens en 36 s (6 ms/token); en caliente, 12 s = 2.000 evaluados -> 2/3 reaprovechado.
+        frio = {'gen_ai.usage.input_tokens': 6000, 'app.prefill_ms': 36000}
+        caliente = {'gen_ai.usage.input_tokens': 6000, 'app.prefill_ms': 12000}
+        f = medir.analizar(self.reg([llamada(1, **frio), llamada(1, **caliente)]))['llamadas'][('deck', 'narrar', '-')]
+        self.assertAlmostEqual(f['reaprov_pct'], (0 + 100 * 2 / 3) / 2)
+
+    def test_reaprovechado_calibra_con_calentar_aunque_no_salga(self):
+        regs = [llamada(1, tarea='calentar', **{'gen_ai.usage.input_tokens': 3000, 'app.prefill_ms': 18000}),
+                llamada(1, **{'gen_ai.usage.input_tokens': 6000, 'app.prefill_ms': 18000})]
+        f = medir.analizar(self.reg(regs))['llamadas'][('deck', 'narrar', '-')]
+        self.assertAlmostEqual(f['reaprov_pct'], 50)
+
+    def test_reaprovechado_por_modelo_y_sin_datos(self):
+        regs = [llamada(1, **{'gen_ai.request.model': 'a', 'gen_ai.usage.input_tokens': 1000, 'app.prefill_ms': 10000}),
+                llamada(1, **{'gen_ai.request.model': 'b', 'gen_ai.usage.input_tokens': 1000, 'app.prefill_ms': 1000}),
+                llamada(1, tarea='sugerir')]
+        ll = medir.analizar(self.reg(regs))['llamadas']
+        self.assertEqual(ll[('deck', 'narrar', 'b')]['reaprov_pct'], 0)  # el ritmo lento de «a» no cuenta para «b»
+        self.assertIsNone(ll[('deck', 'sugerir', '-')]['reaprov_pct'])
+
     def test_lineas_corruptas(self):
         r = medir.analizar(self.reg([llamada(10), '{no es json', '[1,2]', llamada(30)]))
         self.assertEqual(r['llamadas'][('deck', 'narrar', '-')]['n'], 2)

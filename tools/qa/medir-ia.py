@@ -13,6 +13,12 @@ Por turno (app.turno, QA-162): n, p50, p95 y máximo del turno (del inicio de su
 `narrar`/`narrar_respaldo`), primera palabra p50/p95 (ttft del intento 1, desde el inicio del turno), % de turnos con intento 2 y
 con respaldo, y los rechazos (líneas `app.evento: rechazo`) por motivo. Con --anterior, la diferencia por fila.
 Las líneas corruptas se ignoran con un aviso; las tareas sin perfil se avisan.
+
+`reaprov_pct` (QA-341): % medio del prompt que Ollama sacó de su caché de prefijo. Ollama no lo dice
+(`prompt_eval_count` cuenta el prompt entero, en frío o en caliente), así que se estima: por perfil y modelo, el
+ritmo en frío es la llamada más lenta por token de entrada (prefill_ms / input_tokens, con >= 500 tokens; también
+cuenta `calentar`); los tokens evaluados de cada llamada son prefill_ms / ese ritmo, y el resto, reaprovechado. Con
+una sola llamada por modelo, o sin ninguna en frío en el registro, sale 0 o se queda corto.
 """
 import argparse, json, math, sys
 from datetime import datetime
@@ -23,6 +29,7 @@ SIN_MODELO = '-'
 CALENTAR = 'calentar'
 NARRAR = ('narrar', 'narrar_respaldo')
 RECHAZO = 'rechazo'
+MIN_TOK_CALIBRAR = 500
 
 
 def percentil(valores, p):
@@ -73,7 +80,23 @@ def pct(parte, total):
     return 100 * parte / total if total else None
 
 
-def fila_llamadas(rs):
+def ms_por_token_en_frio(rs):
+    ritmos = [r['app.prefill_ms'] / r['gen_ai.usage.input_tokens'] for r in rs
+              if not r.get('app.error') and es_num(r.get('app.prefill_ms')) and r['app.prefill_ms'] > 0
+              and es_num(r.get('gen_ai.usage.input_tokens')) and r['gen_ai.usage.input_tokens'] >= MIN_TOK_CALIBRAR]
+    return max(ritmos) if ritmos else None
+
+
+def reaprovechado(r, ritmo):
+    if not ritmo or r.get('app.error') or not es_num(r.get('app.prefill_ms')):
+        return None
+    total = r.get('gen_ai.usage.input_tokens')
+    if not es_num(total) or total <= 0:
+        return None
+    return max(0.0, 1 - (r['app.prefill_ms'] / ritmo) / total)
+
+
+def fila_llamadas(rs, ritmo=None):
     n = len(rs)
     ok = [r for r in rs if not r.get('app.error')]
     dec = [r for r in ok if es_num(r.get('gen_ai.usage.output_tokens'))
@@ -90,6 +113,8 @@ def fila_llamadas(rs):
         'tok_in': media(nums(rs, 'gen_ai.usage.input_tokens')),
         'tok_out': media(nums(rs, 'gen_ai.usage.output_tokens')),
         'tok_s': toks / (ms / 1000) if ms else None,
+        'reaprov_pct': (lambda xs: 100 * media(xs) if xs else None)(
+            [x for x in (reaprovechado(r, ritmo) for r in rs) if x is not None]),
         'frio_pct': pct(sum(1 for x in cargas if x > FRIO_MS), len(cargas)),
         'recortado_pct': pct(sum(1 for x in recortes if x), len(recortes)),
         'error_pct': 100 * sum(1 for r in rs if r.get('app.error')) / n,
@@ -145,7 +170,7 @@ def fila_turnos(turnos):
 
 
 def agrupar(registros, perfil=None, con_calentar=False):
-    llamadas, rag, turnos = {}, {}, {}
+    llamadas, rag, turnos, calibrar = {}, {}, {}, {}
     for r in registros:
         p = r.get('app.machine_profile') or SIN_PERFIL
         if perfil and p != perfil:
@@ -155,12 +180,15 @@ def agrupar(registros, perfil=None, con_calentar=False):
         if r.get('app.evento'):
             continue
         t = r.get('app.task') or 'sin_tarea'
+        m = r.get('gen_ai.request.model') or SIN_MODELO
+        if r.get('gen_ai.operation.name') != 'retrieval':
+            calibrar.setdefault((p, m), []).append(r)
         if t == CALENTAR and not con_calentar:
             continue
-        m = r.get('gen_ai.request.model') or SIN_MODELO
         destino = rag if r.get('gen_ai.operation.name') == 'retrieval' else llamadas
         destino.setdefault((p, t, m), []).append(r)
-    return ({k: fila_llamadas(v) for k, v in sorted(llamadas.items())},
+    ritmos = {k: ms_por_token_en_frio(v) for k, v in calibrar.items()}
+    return ({(p, t, m): fila_llamadas(v, ritmos.get((p, m))) for (p, t, m), v in sorted(llamadas.items())},
             {k: fila_rag(v) for k, v in sorted(rag.items())},
             {(p, 'turno', '-'): fila_turnos(list(ts.values())) for p, ts in sorted(turnos.items())})
 
@@ -199,7 +227,7 @@ def fmt_dif(v, dec=0):
 
 
 COLS_LL = [('n', 0), ('p50_ms', 0), ('p95_ms', 0), ('ttft_p50_ms', 0), ('tok_in', 0), ('tok_out', 0),
-           ('tok_s', 1), ('frio_pct', 0), ('recortado_pct', 0), ('error_pct', 0)]
+           ('tok_s', 1), ('reaprov_pct', 0), ('frio_pct', 0), ('recortado_pct', 0), ('error_pct', 0)]
 COLS_RAG = [('n', 0), ('embed_p50_ms', 0), ('search_p50_ms', 0), ('score_1', 3)]
 COLS_TURNO = [('n', 0), ('p50_ms', 0), ('p95_ms', 0), ('max_ms', 0), ('primera_p50_ms', 0), ('primera_p95_ms', 0),
               ('intento2_pct', 0), ('respaldo_pct', 0)]
@@ -239,7 +267,7 @@ def main(argv=None):
                           'diferencia_turnos': claves(dif_tur),
                           'avisos': avisos}, ensure_ascii=False, indent=2))
     else:
-        out = tabla('LLAMADAS (ms; tok/s de generación; % frío/recortado/error)', act['llamadas'], COLS_LL, dif_ll)
+        out = tabla('LLAMADAS (ms; tok/s de generación; % reaprovechado de la caché, estimado; % frío/recortado/error)', act['llamadas'], COLS_LL, dif_ll)
         out += tabla('RAG', act['rag'], COLS_RAG, dif_rag)
         out += tabla('TURNOS (ms; primera palabra = ttft del intento 1; % con intento 2 / con respaldo)', act['turnos'],
                      COLS_TURNO, dif_tur)

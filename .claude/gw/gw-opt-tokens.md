@@ -99,6 +99,10 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
 - **Bitácora archivada** (`QA-333`): «Hecho recientemente» antiguo, en `docs/records/traspaso-archivo.md`
   (`handoff.py archive` va por versiones publicadas y WMF no las etiqueta). Quedan 39k de 20k (`logSize`): el resto
   son filas de otras ramas y propuestas abiertas, que se encogen al cerrar esas ramas.
+- **Bitácora bajo 20k** (`QA-342`, 2026-11-14): filas de ramas cerradas a `traspaso-archivo.md`; «Propuestas aprobadas» en `docs/records/propuestas-aprobadas.md` y pendientes leves de PR fusionados en `docs/records/pendientes-leves.md`. Al cerrar un PR, su sección de leves pasa a ese archivo.
+- **`python3 tools/roadmap/resolver-conflicto.py`** (`QA-343`): al traer `main`, resuelve en los roadmaps los conflictos de tachados y filas añadidas; lo que queda (una misma fila cambiada por los dos lados), a mano y sin volcar el archivo.
+- **`set-row` que imprime la fila** (retro del lote J, 2026-11-14, propuesta al flujo): la tarea leyó `traspaso.md`
+  22 veces (759k arrastrados) para ver la propia fila; mientras llega, la fila se ve con `recover.py --state`.
 - **Roadmap por id** (`QA-334`): en una revisión, `python3 .claude/gw/scripts/roadmap.py show <id>` para cada tarea
   tocada, no el diff de `roadmap-front.md` (en la fase 1 de la v0.6.0, 6 lecturas y 83k arrastrados).
 

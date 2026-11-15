@@ -5007,10 +5007,12 @@ describe('Desaparición de un cadáver tras 48h de ficción (docs/19 pieza 2)', 
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  it('un turno cualquiera borra el NpcState del cadáver', async () => {
+  // P461 (2026-11-14): el NpcState de un PRINCIPAL muerto ya no se borra al desaparecer el cadáver,
+  // se conserva con `muerto: true` para que no reaparezca vivo.
+  it('un turno cualquiera hace desaparecer el cadáver y conserva el NpcState como muerto (P461)', async () => {
     await doTurn(saveId, 'Exploro la zona con cuidado.');
     const state = await prisma.npcState.findUnique({ where: { saveId_npcId_scope: { saveId, npcId, scope: '' } } });
-    expect(state).toBeNull();
+    expect(state?.muerto).toBe(true);
   }, 20_000);
 });
 
@@ -8235,6 +8237,8 @@ describe('pendingCombatNpcSlugs no arrastra a un NPC pacífico "de paso" cuando 
     // relación con los demás tests del archivo que también usan a Orco Enfurecido.
     await prisma.npcState.create({ data: { saveId, npcId: orcoId, scope: '', condicionFisica: 'ILESO' } });
     await prisma.npcState.create({ data: { saveId, npcId: torgashId, scope: '', condicionFisica: 'ILESO' } });
+    // P419: un PRINCIPAL que vive en otra zona solo está aquí con su punto activo en la zona.
+    await prisma.zonePoint.create({ data: { locationId: hondonada.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     classifyAction.mockResolvedValue({
       requiereTirada: true, atributo: 'fuerza', dificultad: 12, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
     });
@@ -9382,6 +9386,9 @@ describe('P306 — un saludo no pide tirada ni abre combate salvo reputación ho
   // el saludado (aunque el narrador proponga combate con él).
   it('caso mixto: saludar a Torgash Ketg con el orco AGRESIVO en escena abre combate solo con el orco', async () => {
     const saveId = await partida('Gorhorn de prueba (P306 mixto)');
+    // P419: un PRINCIPAL solo está en escena si vive aquí o tiene aquí su punto activo; Torgash vive en otra zona.
+    const hondonada = (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId!;
+    await prisma.zonePoint.create({ data: { locationId: hondonada, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: 'torgash-ketg', cantidad: 1, activo: true } });
     const { classification, combateIniciado } = await saludar(
       saveId,
       "Saludo a 'Torgash Ketg' y le pregunto por el 'Orco enfurecido'.",
@@ -9875,7 +9882,7 @@ describe('Tanda NPC (decisiones 2026-10-26)', () => {
     narrateAction.mockImplementationOnce(async () => deterministicFallbackNarration({ action: accion }));
     await doTurn(saveId, accion);
     const texto = (await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } })).text;
-    expect(texto).toMatch(/te escucha en silencio/);
+    expect(texto).toMatch(/escucha a Gorhorn P245 en silencio/);
     expect(texto).toMatch(/narrador no ha respondido/);
     expect(texto).not.toMatch(/sin incidentes/);
     expect(texto).not.toMatch(/sobre el camino/);
@@ -10006,5 +10013,43 @@ describe('Dos rondas de combate seguidas comparten el prefijo del prompt del nar
       expect(n).toBeGreaterThan(a.indexOf(estable));
     }
     expect(a.indexOf('RESULTADO DEL INTERCAMBIO')).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+  }, 30_000);
+});
+
+describe('P471: el combate 1v1 sobrevive a un turno sin intercambio', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn P471', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor', attributes: ATTRS, portraitInitial: 'G',
+        currentLocationId: location.id, pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un turno en combate sin intercambio y sin combateIniciado del modelo mantiene al rival agresivo en pendingCombatNpcSlugs', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockImplementationOnce(async () => ({ narration: 'El orco gruñe.', newFacts: [] }));
+    const app = await buildApp();
+    const action = 'Observo al orco y recupero el aliento.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+    expect(res.statusCode).toBe(200);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
   }, 30_000);
 });

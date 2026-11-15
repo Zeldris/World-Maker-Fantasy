@@ -96,8 +96,8 @@ p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-3
 
 ## Script de parada
 
-<!-- La orden que para lo que levantó una ronda (servidores, modelos locales, inhibidores de suspensión); es el paso
-     de cierre de cada ronda. -->
+`bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh parar` (`QA-313`): baja Ollama, el juego, el driver y el
+inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 
 ## Ya en marcha
 
@@ -108,3 +108,7 @@ p50 ≤ 35 s y p95 ≤ 90 s; turno de combate p50 ≤ 45 s (a revisar tras `QA-3
 - Aprobadas el 2026-11-11 (no se vuelven a proponer): prefijo estable entre rondas de combate (`QA-307`), `keep_alive`
   30 min del Cronista (`QA-308`), casos fijos del clasificador (`QA-309`), registro tras `escenario.sh cargar` (`QA-310`).
 - Aprobadas el 2026-11-12: el hecho del golpe al final del prompt (`QA-326`) y la cola de noche robusta del generador (`IMG-44`: reintento, `handle-power-key`, temperatura por imagen). Ya hecho: vigilante de `qwen21` a 1000 MB y el botón de encendido de KDE sin acción. El tope de consumo de la APU (10-12 W) **no** se vuelve a proponer: solo si la Deck se apaga por calor.
+- Aprobadas el 2026-11-14 (no se vuelven a proponer): calentar con el prompt de la partida al abrirla (`QA-339`),
+  resultado del golpe como campo obligatorio en combate (`QA-340`), tokens de prompt reaprovechados en el registro (`QA-341`).
+- Aprobadas el 2026-11-15 (no se vuelven a proponer): tope de 400 tokens del 1.er intento en combate (`QA-347`) y calentar
+  con el prompt de combate al reabrir en combate (`QA-348`).

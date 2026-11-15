@@ -4,7 +4,11 @@
 # puede ser de otro código, QA-167), arranca el juego con IA_PERFIL=deck e IA_REGISTRO, espera el calentamiento, juega
 # los turnos de `benchmark-turno` muestreando la RAM y `ollama ps`, y compara con `medir.py`.
 #
-#   bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N]
+#   bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N] [--reabrir [--abrir]]
+#
+# QA-339: --reabrir mide el primer turno tras volver a abrir el juego: juega un turno de cebado (deja el prefijo de la
+# partida en `PrefijoNarrador`, en un registro aparte), reinicia el juego y espera el calentamiento de `server.ts`.
+# Con --abrir, además abre la partida (`GET /saves/:id`) y espera a que acabe su calentamiento antes de medir.
 #
 # Deja backend/ia/registro-bench-<etiqueta>.jsonl, logs/bench-<etiqueta>.json y logs/ram-<etiqueta>.log; enseña solo
 # el resumen del bench, la RAM libre mínima, los modelos cargados y la salida de medir.py. Tarda ~10 min con 8 turnos:
@@ -15,12 +19,14 @@ if [ -e /.flatpak-info ] || [ -n "${FLATPAK_ID:-}" ]; then exec bash tools/qa/ho
 [ -d logs/bin ] && PATH="$PWD/logs/bin:$PATH"
 . tools/qa/deck/_path.sh
 
-et="${1:?uso: bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N]}"; shift
-anterior=""; turnos=8
+et="${1:?uso: bench-ia.sh <etiqueta> [--anterior <etiqueta>] [--turnos N] [--reabrir [--abrir]]}"; shift
+anterior=""; turnos=8; reabrir=0; abrir=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --anterior) anterior="$2"; shift 2 ;;
     --turnos) turnos="$2"; shift 2 ;;
+    --reabrir) reabrir=1; shift ;;
+    --abrir) abrir=1; shift ;;
     *) echo "bench-ia.sh: opción desconocida $1" >&2; exit 2 ;;
   esac
 done
@@ -37,8 +43,23 @@ psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq -c "DROP DATABASE IF 
 pg_restore --no-owner -d "$URL" "$ESCENARIO" 2> logs/escenario-restore.log || true
 rm -f logs/catalogo-tarkor_juego.huella
 (cd backend && DATABASE_URL=$URL DIRECT_URL=$URL npm run --silent reindex-lore > /dev/null)
+if [ "$reabrir" = 1 ]; then
+  rm -f "$reg.cebado"
+  IA_REGISTRO="$reg.cebado" IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh > /dev/null
+  sleep 45
+  (cd backend && npm run --silent benchmark-turno -- --save "$SAVE" --turnos 1 --salida "../logs/bench-$et-cebado.json") > /dev/null 2>&1
+  echo "cebado: $(psql "$URL" -Atq -c 'SELECT count(*) FROM "PrefijoNarrador"') prefijo(s) guardado(s)"
+  bash tools/playwright-e2e/arrancar-juego.sh --parar > /dev/null
+fi
 IA_REGISTRO="$reg" IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh > /dev/null
 sleep 45  # el calentamiento del narrador al arrancar (~30 s) no entra en la medida
+if [ "$abrir" = 1 ]; then
+  curl -sf "localhost:3001/saves/$SAVE" > /dev/null
+  t0=$(date +%s)
+  # Espera la segunda llamada `calentar` del registro (la primera es la de server.ts), hasta 4 min.
+  until [ "$(grep -c '"app.task":"calentar"' "$reg" 2>/dev/null || echo 0)" -ge 2 ] || [ $(( $(date +%s) - t0 )) -gt 240 ]; do sleep 2; done
+  echo "calentamiento de la partida: $(( $(date +%s) - t0 )) s ($(grep -c '"app.task":"calentar"' "$reg") llamadas calentar)"
+fi
 
 # Cada 20 s: hora, MB disponibles y los modelos cargados con su contexto.
 (while true; do

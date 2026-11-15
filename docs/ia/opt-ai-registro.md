@@ -12,7 +12,7 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `gen_ai.request.model` | texto | Modelo pedido |
 | `gen_ai.request.max_tokens` | entero | `num_predict` o equivalente |
 | `gen_ai.request.temperature` | número | |
-| `gen_ai.usage.input_tokens` | entero | Tokens del prompt (Ollama: `prompt_eval_count`) |
+| `gen_ai.usage.input_tokens` | entero | Tokens del prompt (Ollama: `prompt_eval_count`; cuenta el prompt entero aunque salga de la caché de prefijo: lo reaprovechado lo estima `medir-ia.py`, columna `reaprov_pct`, `QA-341`) |
 | `gen_ai.usage.output_tokens` | entero | Tokens generados (Ollama: `eval_count`) |
 | `gen_ai.response.finish_reason` | texto | `stop`, `length`, `error`… |
 | `app.task` | texto | Tarea del proyecto (en Tarkor: `narrar`, `narrar_respaldo`, `clasificar`, `sugerir`, `dialogo_npc`, `combate`, `modo_dinamico`, `resumen`, `prompts_imagen`, `embedding`, `rag`; `calentar` es el calentamiento al arrancar y se excluye del análisis) |
@@ -21,6 +21,7 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `app.turno` | texto | Id del turno: lo abre `/turn/classify` y lo siguen las llamadas de `/turn/narrate` de la misma partida (`QA-162`) |
 | `app.intento` | entero | Intento de la cascada de `narrar` (1, 2, o 3 = respaldo) |
 | `app.evento` | texto | `rechazo`: línea sin llamada, un guard rechazó el texto de ese intento (`app.rechazo` = motivo) |
+| `app.rechazo_texto` | texto | QA-289: los primeros 600 caracteres del texto rechazado, para separar un acierto del guard de un falso positivo |
 | `app.keep_alive` | texto | Tiempo que el modelo sigue cargado |
 | `app.duration_ms` | número | Total de la llamada, medido por el cliente |
 | `app.load_ms` | número | Carga del modelo (>0 = carga en frío) |

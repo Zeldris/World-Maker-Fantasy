@@ -35,6 +35,7 @@ vi.mock('../scripts/worldCatalog.js', () => ({
   harvestSourceDescriptions: { 'una-flor-sin-npc': 'Flor silvestre sin fauna asociada.' },
   harvestSourceRegion: { 'corredor-de-cauce': 'Llanuras del Viento Rojo' },
   sourceDisplayNameFor: (slug: string, npcName?: string | null) => npcName ?? slug,
+  harvestYields: [], // P328: combateDesde → entityDiscovery lo lee al importarse
 }));
 
 const { loreContextFor, stripLocationTimeVariant, ejemplosDePromptsUsados } = await import('./imagePromptContext.js');

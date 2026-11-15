@@ -1,5 +1,4 @@
-import { entityTypeDeSerVivo, FUENTES_DE_CATALOGO } from '../../services/entityDiscovery.js';
-import { recordEntityDiscoveries } from '../../services/entityDiscovery.js';
+import { recordEntityDiscoveries, descubrirNpc } from '../../services/entityDiscovery.js';
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
@@ -82,12 +81,7 @@ const ORCO_ENFURECIDO_QUEST_DESCRIPTION =
 /// sessionFact narrativo (recuperable, no bloquea nada mecánico) puede perderse, nunca la marca de
 /// "descubierto" que decide visibilidad en el mapa.
 async function marcarNpcConocidoRapido(tx: Prisma.TransactionClient, saveId: string, targetSlug: string): Promise<void> {
-  const entityType = entityTypeDeSerVivo(targetSlug, FUENTES_DE_CATALOGO);
-  await tx.discoveredEntity.upsert({
-    where: { saveId_entityType_entitySlug: { saveId, entityType, entitySlug: targetSlug } },
-    create: { saveId, entityType, entitySlug: targetSlug, fase: 'DESCUBIERTO' },
-    update: { fase: 'DESCUBIERTO' },
-  });
+  await descubrirNpc(tx, saveId, targetSlug);
 }
 
 /// P324: corre DESPUÉS de la transacción que ya cerró la conversación, así que si el embebido (Ollama
@@ -98,7 +92,7 @@ async function marcarNpcConocidoRapido(tx: Prisma.TransactionClient, saveId: str
 async function registrarNpcConocidoSessionFact(saveId: string, targetName: string): Promise<void> {
   try {
     const sessionFacts = await loadSessionFacts(saveId);
-    await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`]);
+    await appendSessionFacts(saveId, sessionFacts, [`${targetName} conversa con el personaje.`], { testigos: [targetName] });
   } catch (err) {
     console.warn(`[modo-dinamico] no se pudo guardar el hecho de sesión de ${targetName} (save ${saveId}):`, err instanceof Error ? err.message : err);
   }

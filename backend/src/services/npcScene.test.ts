@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -30,7 +30,7 @@ const findManyLocation = vi.fn();
 const findManyQuest = vi.fn();
 const findManyNpcState = vi.fn();
 const findUniqueSave = vi.fn();
-const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string; locationId: string }[]);
+const findManyZonePoint = vi.fn(async (..._args: unknown[]) => [] as { targetSlug: string; locationId: string; saveId?: string | null }[]);
 const findManyCompanion = vi.fn(async (..._args: unknown[]) => [] as { sourceSlug: string }[]);
 const findManyDiscovered = vi.fn(async (..._args: unknown[]) => [] as { entitySlug: string }[]);
 
@@ -49,7 +49,7 @@ vi.mock('../lib/prisma.js', () => ({
     save: { findUnique: (...args: unknown[]) => findUniqueSave(...args) },
     // P327: `detectNpcsInScene` consulta qué NPC con nombre propio ya conoce la jugadora.
     discoveredEntity: { findMany: (...args: unknown[]) => findManyDiscovered(...args) },
-    // P331: puntos de NPC por partida y compañeros.
+    // P419: presencia de un PRINCIPAL por su punto activo en la zona o por ser compañero. P331: puntos de NPC por partida y compañeros.
     zonePoint: { findMany: (...args: unknown[]) => findManyZonePoint(...args) },
     companion: { findMany: (...args: unknown[]) => findManyCompanion(...args) },
   },
@@ -224,6 +224,23 @@ describe('filterFarewellFacts', () => {
   });
 });
 
+describe('sinRastrosDeNpc (P422)', () => {
+  const ORCO = { id: 'orco', aliases: ['orco enfurecido'] };
+  const ULKHA = { id: 'ulkha', aliases: ['ulkha', 'ulkha ketg'] };
+
+  it('un hecho que solo habla de las huellas del NPC no lo mete en escena', () => {
+    const fact = 'La huella… de Orco enfurecido se dirige hacia el oeste.';
+    expect(matchNpcAliases(sinRastrosDeNpc(fact, [ORCO]), [ORCO])).toEqual([]);
+    expect(matchNpcAliases(sinRastrosDeNpc('Encuentro el rastro reciente de un orco enfurecido.', [ORCO]), [ORCO])).toEqual([]);
+  });
+
+  it('conserva al NPC que está de verdad y a los demás nombrados en el mismo hecho', () => {
+    const fact = 'Ulkha Ketg señala las pisadas del orco enfurecido junto al paso.';
+    expect(matchNpcAliases(sinRastrosDeNpc(fact, [ORCO, ULKHA]), [ORCO, ULKHA])).toEqual(['ulkha']);
+    expect(matchNpcAliases(sinRastrosDeNpc('El orco enfurecido ruge junto a sus huellas.', [ORCO]), [ORCO])).toEqual(['orco']);
+  });
+});
+
 describe('contraataqueDifficultyFor', () => {
   it('resta la defensa sin bajar del suelo de 8', () => {
     expect(contraataqueDifficultyFor(2, 5, 0)).toBe(8);
@@ -293,6 +310,20 @@ describe('detectsAttackIntent', () => {
   it('detecta verbos de ataque directo', () => {
     expect(detectsAttackIntent('Cargo contra mi enemigo')).toBe(true);
     expect(detectsAttackIntent('Miro el paisaje')).toBe(false);
+  });
+
+  it('P471: reconoce tajo, mandoble, estocada, cuchillada, embestir y «descargo … contra», sin confundir «atajo»/«tajada»', () => {
+    expect(detectsAttackIntent('Lanzo un tajo al costado del orco')).toBe(true)
+    expect(detectsAttackIntent('Le suelto dos tajos seguidos')).toBe(true)
+    expect(detectsAttackIntent('Descargo un mandoble')).toBe(true)
+    expect(detectsAttackIntent('Intento una estocada al pecho')).toBe(true)
+    expect(detectsAttackIntent('Le arreo una cuchillada')).toBe(true)
+    expect(detectsAttackIntent('Embisto al orco con el hombro')).toBe(true)
+    expect(detectsAttackIntent('Intento embestir al orco')).toBe(true)
+    expect(detectsAttackIntent('Descargo toda mi furia contra el orco')).toBe(true)
+    expect(detectsAttackIntent('Tomo un atajo por el bosque')).toBe(false)
+    expect(detectsAttackIntent('Corto una tajada de pan')).toBe(false)
+    expect(detectsAttackIntent('No lanzo ningún tajo')).toBe(false)
   });
 
   it('tolera una errata de distancia 2 en un stem literal (auditoría 2026-07-20, P0.4)', () => {
@@ -494,7 +525,7 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
     });
   });
 
-  it('un NPC PRINCIPAL es candidato en cualquier escena, sin importar la ubicación', async () => {
+  it('un NPC PRINCIPAL itinerante (sin casa) es candidato en cualquier escena', async () => {
     findManyNpc.mockResolvedValue([baseNpc({ kind: 'PRINCIPAL', homeLocationSlug: null })]);
     findUniqueLocation.mockResolvedValue(HONDONADA);
     findManyLocation.mockResolvedValue([]);
@@ -504,6 +535,58 @@ describe('detectNpcsInScene — acotar el candidato por escena', () => {
       fictionalMinutes: 480,
     });
     expect(result.map((n) => n.id)).toEqual(['lurker']);
+  });
+
+  // P419 (ronda 2 de QA-289): «Saludo a Ulkha Ketg» en la Hondonada la traía a escena aunque vive en el campamento
+  // Serhu. Usuaria, 2026-11-03: «exigir que esté».
+  describe('P419: un PRINCIPAL nombrado solo está si está en la zona', () => {
+    const ulkha = () => baseNpc({ id: 'ulkha', slug: 'ulkha-ketg', name: 'Ulkha Ketg', kind: 'PRINCIPAL', homeLocationSlug: 'campamento-serhu', aliases: ['ulkha', 'ulkha ketg'] });
+    const saludo = { action: 'Saludo a Ulkha Ketg', worldId: 'w1', sessionFacts: [], saveId: 's1', currentLocationId: 'loc-hondonada', fictionalMinutes: 480 };
+    beforeEach(() => {
+      findManyNpc.mockResolvedValue([ulkha()]);
+      findUniqueLocation.mockResolvedValue(HONDONADA);
+      findManyLocation.mockResolvedValue([]);
+      findManyNpcState.mockResolvedValue([{ npcId: 'ulkha' }]);
+      findManyZonePoint.mockResolvedValue([]);
+      findManyCompanion.mockResolvedValue([]);
+    });
+
+    it('con casa en otra zona y sin punto aquí, no está aunque se la conozca (NpcState)', async () => {
+      expect(await detectNpcsInScene(saludo)).toEqual([]);
+    });
+
+    it('con su punto activo en esta zona, está', async () => {
+      findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada' }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('con la zona aún sin puntos propios en la partida, vale el punto del catálogo', async () => {
+      findManyZonePoint.mockResolvedValue([{ targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada', saveId: null }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('con puntos propios en la zona, el del catálogo ya no cuenta (se fue)', async () => {
+      findManyZonePoint.mockResolvedValue([
+        { targetSlug: 'ulkha-ketg', locationId: 'loc-hondonada', saveId: null },
+        { targetSlug: 'orco-enfurecido-hondonada', locationId: 'loc-hondonada', saveId: 's1' },
+      ]);
+      expect(await detectNpcsInScene(saludo)).toEqual([]);
+    });
+
+    it('si es compañera de la partida, está', async () => {
+      findManyCompanion.mockResolvedValue([{ sourceSlug: 'ulkha-ketg' }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('en su casa está aunque no tenga punto en el mapa (interiores)', async () => {
+      findUniqueLocation.mockResolvedValue({ slug: 'campamento-serhu', region: 'Llanuras del Viento Rojo' });
+      expect((await detectNpcsInScene({ ...saludo, currentLocationId: 'loc-serhu' })).map((n) => n.id)).toEqual(['ulkha']);
+    });
+
+    it('con una misión activa que la apunta, está esté donde esté', async () => {
+      findManyQuest.mockResolvedValue([{ targetNpcId: 'ulkha' }]);
+      expect((await detectNpcsInScene(saludo)).map((n) => n.id)).toEqual(['ulkha']);
+    });
   });
 
   // Cobertura nueva (auditoría 2026-08-14, bug real jugando en vivo: Sella Marn —Nabieus de una
@@ -1237,6 +1320,36 @@ describe('nombraPorNombreVisible (P327, usuaria 2026-10-26)', () => {
 
   it('«Alguien» (sin raza conocida) nunca casa: sale en cualquier frase', () => {
     expect(nombraPorNombreVisible('Busco a alguien que me ayude', 'Alguien')).toBe(false);
+  });
+});
+
+describe('elegirInterlocutor (QA-289, bench 17)', () => {
+  const orco = { id: 'o', name: 'Orco Enfurecido', aliases: ['orco enfurecido'] };
+  const ulkha = { id: 'u', name: 'Ulkha Ketg', aliases: ['ulkha', 'jefa del clan serhu'] };
+
+  it('responde el NPC que la acción nombra, aunque no sea el primero detectado', () => {
+    expect(elegirInterlocutor('Le pregunto a Ulkha Ketg qué la trae al paso.', null, [orco, ulkha])).toBe(ulkha);
+    expect(elegirInterlocutor('Le digo a la jefa del clan Serhu que vengo en paz', null, [orco, ulkha])).toBe(ulkha);
+    expect(elegirInterlocutor('Le pregunto a Ulkha qué la trae', null, [{ id: 'o', name: 'Orco Enfurecido' }, { id: 'u', name: 'Ulkha Ketg' }])?.id).toBe('u');
+  });
+
+  it('el citado entre comillas manda; sin nombre, el primero; sin candidatos, nadie', () => {
+    expect(elegirInterlocutor("Le hablo a 'Orco Enfurecido' y a Ulkha", orco, [ulkha, orco])).toBe(orco);
+    expect(elegirInterlocutor('Le pregunto qué hace aquí', null, [orco, ulkha])).toBe(orco);
+    expect(elegirInterlocutor('Hola', null, [])).toBeNull();
+  });
+});
+
+describe('corregirNombresCasi (QA-289, P410)', () => {
+  it('corrige un nombre conocido escrito casi bien, y deja lo demás', () => {
+    expect(corregirNombresCasi('Ulka Ketg mira a Gorhorn. «Ulkha Ketg no se repite».', ['Ulkha Ketg'])).toBe('Ulkha Ketg mira a Gorhorn. «Ulkha Ketg no se repite».');
+    expect(corregirNombresCasi('Habla con Ulkha Ketg y Torgas Ketg.', ['Ulkha Ketg', 'Torgash Ketg'])).toBe('Habla con Ulkha Ketg y Torgash Ketg.');
+  });
+
+  it('no toca palabras en minúscula, nombres lejanos ni nombres de una palabra', () => {
+    expect(corregirNombresCasi('ulka ketg', ['Ulkha Ketg'])).toBe('ulka ketg');
+    expect(corregirNombresCasi('Ugrak Ketg', ['Ulkha Ketg'])).toBe('Ugrak Ketg');
+    expect(corregirNombresCasi('Gogorat ruge.', ['Gogorath'])).toBe('Gogorat ruge.');
   });
 });
 

@@ -30,6 +30,7 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 | Fusionar la rama de un subagente (merge, conflictos de hallazgos, tests del paquete) | `tools/qa/fusionar.sh <rama> "<mensaje>"` (`QA-135`) |
 | Medir la IA local de una tanda, evaluar el RAG | `/gw-opt-ai` (registro con `IA_REGISTRO`/`IA_PERFIL`, `npm run rag-eval`, [formato](ia/opt-ai-registro.md)) |
 | Tests de un archivo | `cd backend && npx vitest run <ruta>` (filtra con `grep -E "Test Files\|Tests \|FAIL"`) |
+| Lint | `npm run --silent lint` (oxlint) en `backend/` o `frontend/`; nunca `npx eslint` (instala eslint sin configuración, `QA-346`) |
 
 ## Datos que se confunden
 
@@ -131,6 +132,8 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
 - **Datos:** `CombatEncounter`, `CombatParticipant`, `CombatGroup`.
 - **Interfaz:** `f/components/CombatPanel.tsx`, `f/hooks/useCombatFlow.ts#useCombatFlow`; test id `combate-usables`.
 - **Trampas:** `dueloYaResueltoPorElOtro` nunca da por resuelto el duelo de la JUGADORA (P192).
+- **Quién lee los cadáveres** (al cambiar `NpcState.muerto` o el despawn, P461): `saquear-zona`, «Cadáveres en el
+  mapa» de `GET /zona`, la búsqueda de Desollar, y el despawn en `turnResolution` y `companionSupervivencia`.
 
 ## Reino y construcción
 
