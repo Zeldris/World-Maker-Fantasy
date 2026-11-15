@@ -28,6 +28,8 @@ ARCHIVOS = {
         'tools/qa/seccion.sh',
         '`bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "<sección>"`, una sección (QA-311, QA-323)'),
 }
+# El cuerpo de un heredoc (un mensaje de commit, un archivo que se escribe) es texto, no una lectura.
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1[^\n]*\n.*?^\s*\2\s*$", re.S | re.M)
 LECTOR = re.compile(r'(^|[\s|;&(`])(cat|sed|head|tail|awk|grep|rg|less|more|nl|python3?)\b')
 
 
@@ -36,7 +38,7 @@ def avisos(evento: dict) -> list:
     entrada = evento.get('tool_input') or {}
     salida = []
     if herramienta == 'Bash':
-        orden = entrada.get('command') or ''
+        orden = HEREDOC.sub(' ', entrada.get('command') or '')
         if not LECTOR.search(orden):
             return []
         for ruta, (atajo, uso) in ARCHIVOS.items():

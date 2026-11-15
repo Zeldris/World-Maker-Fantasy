@@ -40,6 +40,15 @@ class AvisoLectura(unittest.TestCase):
         orden = 'git add docs/records/traspaso.md && git commit -m x'
         self.assertEqual(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}}), '')
 
+    def test_mensaje_de_commit_en_heredoc_no_avisa(self):
+        orden = ("git add docs/records/traspaso.md && git commit -F - <<'EOF'\n"
+                 "Bitácora: head y cat de docs/records/traspaso.md\nEOF\ngit log --oneline -1")
+        self.assertEqual(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}}), '')
+
+    def test_lectura_tras_un_heredoc_si_avisa(self):
+        orden = "cat > /tmp/x <<EOF\nhola\nEOF\ncat docs/records/traspaso.md"
+        self.assertIn('recover.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
+
     def test_read_entero_avisa_y_por_trozos_no(self):
         ruta = '/repo/docs/runbooks/rondas-de-pruebas.md'
         self.assertIn('seccion.sh', contexto(correr({'tool_name': 'Read', 'tool_input': {'file_path': ruta}})))
