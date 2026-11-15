@@ -10015,3 +10015,41 @@ describe('Dos rondas de combate seguidas comparten el prefijo del prompt del nar
     expect(a.indexOf('RESULTADO DEL INTERCAMBIO')).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
   }, 30_000);
 });
+
+describe('P471: el combate 1v1 sobrevive a un turno sin intercambio', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn P471', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor', attributes: ATTRS, portraitInitial: 'G',
+        currentLocationId: location.id, pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un turno en combate sin intercambio y sin combateIniciado del modelo mantiene al rival agresivo en pendingCombatNpcSlugs', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockImplementationOnce(async () => ({ narration: 'El orco gruñe.', newFacts: [] }));
+    const app = await buildApp();
+    const action = 'Observo al orco y recupero el aliento.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+    expect(res.statusCode).toBe(200);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
+});

@@ -1005,7 +1005,8 @@ function isNegatedMatch(normalized: string, matchIndex: number): boolean {
 /// Verbo de ataque directo (roadmap 2026-07-19: "roadmap 2" de calibración de combate, y
 /// reutilizado por la clasificación tabulada en turn.ts) — mismo regex que la red de seguridad de
 /// `combateIniciado` en turnResolution.ts, vive aquí para no duplicarlo entre los dos módulos.
-const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer/;
+const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer|\btajos?\b|mandoble|estocada|cuchillada|\bembist|\bembest|\bembisto\b|\bdescargo\b.*\bcontra\b/;
+// P471: «tajo»/«tajos» solo como palabra entera (nunca «atajo», «tajada»); «descargo … contra» pide ambos.
 
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;

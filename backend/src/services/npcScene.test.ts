@@ -312,6 +312,20 @@ describe('detectsAttackIntent', () => {
     expect(detectsAttackIntent('Miro el paisaje')).toBe(false);
   });
 
+  it('P471: reconoce tajo, mandoble, estocada, cuchillada, embestir y «descargo … contra», sin confundir «atajo»/«tajada»', () => {
+    expect(detectsAttackIntent('Lanzo un tajo al costado del orco')).toBe(true)
+    expect(detectsAttackIntent('Le suelto dos tajos seguidos')).toBe(true)
+    expect(detectsAttackIntent('Descargo un mandoble')).toBe(true)
+    expect(detectsAttackIntent('Intento una estocada al pecho')).toBe(true)
+    expect(detectsAttackIntent('Le arreo una cuchillada')).toBe(true)
+    expect(detectsAttackIntent('Embisto al orco con el hombro')).toBe(true)
+    expect(detectsAttackIntent('Intento embestir al orco')).toBe(true)
+    expect(detectsAttackIntent('Descargo toda mi furia contra el orco')).toBe(true)
+    expect(detectsAttackIntent('Tomo un atajo por el bosque')).toBe(false)
+    expect(detectsAttackIntent('Corto una tajada de pan')).toBe(false)
+    expect(detectsAttackIntent('No lanzo ningún tajo')).toBe(false)
+  });
+
   it('tolera una errata de distancia 2 en un stem literal (auditoría 2026-07-20, P0.4)', () => {
     expect(detectsAttackIntent('Le doy un hachaso brutal con mi arma')).toBe(true)
     expect(detectsAttackIntent('Me arremte contra el enemigo sin dudar')).toBe(true)

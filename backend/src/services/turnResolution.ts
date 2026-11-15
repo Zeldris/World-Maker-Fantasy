@@ -2446,10 +2446,28 @@ async function resolveCombatSlugsAndPersist(params: {
   // de verdad (resolveExchange), el NPC de ese intercambio SIEMPRE se incluye aquí — así
   // `combateIniciado` (y con él la condición física fresca del NPC) llega al frontend en CADA
   // turno donde de verdad pasó algo, no solo cuando el modelo se acuerda de repetir el slug.
-  const combatSlugsWithAttack =
+  const combatSlugsConAtaque =
     exchangeHappened && npcAttackTarget && !baseCombatSlugs.includes(npcAttackTarget.slug)
       ? [...baseCombatSlugs, npcAttackTarget.slug]
       : baseCombatSlugs;
+  // P471: con el combate ya abierto, un turno sin intercambio (p.ej. «lanzo un tajo» que el
+  // clasificador no reconoce) y sin `combateIniciado` del modelo dejaba `combatSlugs` en [] y
+  // `guardarSlugsDeCombate` vaciaba `pendingCombatNpcSlugs`: el rival se perdía. Los que ya
+  // estaban pendientes, siguen vivos en escena y son AGRESIVO/ENEMIGO se mantienen. `justDied`,
+  // `npcHuidoSlug` y los MUERTO siguen fuera (los filtra `justDied` y `combatSlugsToPersist`).
+  const pendientesRaw = enCombate
+    ? (await prisma.save.findUnique({ where: { id: saveId }, select: { pendingCombatNpcSlugs: true } }))?.pendingCombatNpcSlugs
+    : null;
+  const pendientesDelSave = Array.isArray(pendientesRaw) ? pendientesRaw.filter((x): x is string => typeof x === 'string') : [];
+  const combatSlugsMantenidos = pendientesDelSave.filter((slug) =>
+    slug !== params.npcHuidoSlug &&
+    npcsInSceneVivos.some((n) => {
+      if (n.slug !== slug) return false;
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    }),
+  );
+  const combatSlugsWithAttack = [...new Set([...combatSlugsConAtaque, ...combatSlugsMantenidos])];
   // Saqueo parcial (ver `partiallyLootedSlugs` del caller): un NPC tocado este turno que se queda
   // CON botín pendiente sigue contando como "en combate" para que `pendingCombatNpcSlugs`
   // sobreviva a un resync/recarga — sin esto, un turno de solo-saqueo (sin exchange) vaciaba el
