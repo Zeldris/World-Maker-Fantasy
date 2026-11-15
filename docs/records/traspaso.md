@@ -16,7 +16,7 @@ cada commit.**
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | Lote J (tandas 126-130) en el PR #96 a main (2026-11-14), con la usuaria de acuerdo; fases 1-3 hechas, retro aprobada (QA-337 nuevo). Pendiente: P184 (QA-337), P16 sin reproducir. Siguiente: fusionar el PR #96 con el CI en verde; luego /clear. |
-| **Tarea en curso · `claude/narrador-tiempos`** | QA-289 tanda 131 hecha (P471 ✅, QA-347 ✅). QA-348 🚧: código hecho (en combate el prefijo de calentar lleva todos los hechos de la escena; test rojo sin arreglo). Falta medirlo en la Deck (tanda 132: hondonada-inicio + combate1v1, reabrir y comparar el prefill del 1.er narrar con 24-25 s). Siguiente: tanda 132 en la Deck. |
+| **Tarea en curso · `claude/narrador-tiempos`** | QA-289: tandas 131 y 132 hechas (Deck, Ollama real). ~~QA-348~~ ✅: el 1.er turno tras reabrir en combate baja de 24-25 s a 9,4 s de prefill. Bench de 8 turnos (26-qa348 vs 23) en logs/. Siguiente: ia-ronda.sh parar y volver a la ronda local 2 (claude/ronda-local-2): imágenes y voces; recordar /gw-opt-ai al cerrarla. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
 | **Tests** | Rama `claude/wonderful-volta-662qt8` (2026-10-20, antes del PR de `opt-ai`): backend `tsc` 0, `vitest` 302 archivos / 3661 con 2 rojos que también fallan en `main` con la misma base (`mundoPartida` y `deudaDeVida`, integración: estado de la base tras la ronda con Ollama real, no del PR); frontend `tsc -b` 0; `tools/qa/tests` 68 y `opt-ai` 16 en verde. Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
@@ -166,8 +166,8 @@ Los pendientes leves de revisiones ya cerradas están en [`pendientes-leves.md`]
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-15 — QA-347: tope de 400 tokens medido en la Deck (tanda 131): 0 llamadas al tope, máx. 222 tokens, p50 192; P471 comprobado
-2. 2026-11-15 — QA-340: resultadoDelGolpe obligatorio en el esquema del combate; Deck: 0 rechazos del guardia en 6 intercambios
-3. 2026-11-15 — QA-339: el narrador se calienta con el prefijo de la partida al abrirla; en la Deck, primera palabra del primer turno 25 → 12 s
-4. 2026-11-15 — QA-341: medir-ia.py estima el % del prompt reaprovechado de la caché de Ollama (reaprov_pct); el registro no cambia porque Ollama no da el dato
-5. 2026-11-14 — QA-288: ci-local.sh para el Ollama simulado al salir (2026-11-03)
+1. 2026-11-15 — QA-348: calentar con todos los hechos al reabrir en combate; 1.er turno 24-25 s → 9,4 s de prefill en la Deck (tanda 132)
+2. 2026-11-15 — QA-347: tope de 400 tokens medido en la Deck (tanda 131): 0 llamadas al tope, máx. 222 tokens, p50 192; P471 comprobado
+3. 2026-11-15 — QA-340: resultadoDelGolpe obligatorio en el esquema del combate; Deck: 0 rechazos del guardia en 6 intercambios
+4. 2026-11-15 — QA-339: el narrador se calienta con el prefijo de la partida al abrirla; en la Deck, primera palabra del primer turno 25 → 12 s
+5. 2026-11-15 — QA-341: medir-ia.py estima el % del prompt reaprovechado de la caché de Ollama (reaprov_pct); el registro no cambia porque Ollama no da el dato
