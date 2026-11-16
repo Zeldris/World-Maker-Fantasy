@@ -159,7 +159,4 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md) 
 
 
 1. 2026-11-16 — UX-40: marca de Tarkor en la interfaz, sin imágenes (llega a main con UX-41)
-2. 2026-11-16 — QA-368: tools/qa/css-sin-uso.py y 4 clases CSS sin uso quitadas
-3. 2026-11-16 — QA-367: hoja.sh para piezas de interfaz (ALTO, FONDO, cualquier formato de imagen)
-4. 2026-11-16 — QA-366: aviso-lectura.py avisa del diff de un roadmap y apunta a roadmap.py show
-5. 2026-11-16 — QA-365: el LEEME de tarkor-final, por grep (nota local)
+2. 2026-11-16 — QA-364, QA-365, QA-366, QA-367, QA-368: `/gw-opt-tokens` y retro de UX-41 (hoja de piezas, aviso de diff de roadmap, hoja.sh con FONDO, css-sin-uso.py en el check)
