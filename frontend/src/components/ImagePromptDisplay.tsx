@@ -7,6 +7,7 @@ import {
   type ImagePromptEntityType,
   type ImagePromptSizeProfile,
 } from '../lib/api'
+import { Pictograma } from './Pictograma'
 import { useHerramientasAdminVisibles } from '../lib/modoDesarrollador'
 
 /// Extraído de DetailModal.tsx (auditoría 2026-07-22): la generación de prompts de imagen (red +
@@ -99,7 +100,7 @@ function ImageLightbox({ imageUrl, onClose }: { imageUrl: string; onClose: () =>
   )
 }
 
-export function MediaSlot({ icon, variant = 'active', imageUrl }: { icon: string; variant?: 'active' | 'placeholder'; imageUrl?: string | null }) {
+export function MediaSlot({ icon, iconImage, variant = 'active', imageUrl }: { icon: string; iconImage?: string; variant?: 'active' | 'placeholder'; imageUrl?: string | null }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   if (imageUrl) {
     return (
@@ -122,7 +123,9 @@ export function MediaSlot({ icon, variant = 'active', imageUrl }: { icon: string
         variant === 'placeholder' ? 'border border-dashed border-iron-700/60' : 'border border-iron-700'
       }`}
     >
-      <span className="text-5xl leading-none opacity-90">{icon}</span>
+      <span className="text-5xl leading-none opacity-90">
+        <Pictograma src={iconImage} emoji={icon} className="h-14 w-14" />
+      </span>
     </div>
   )
 }

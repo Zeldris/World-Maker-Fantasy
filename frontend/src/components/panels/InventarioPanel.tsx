@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import type { InventoryItemInfo, ItemTipo } from '../../types'
 import { statBonusLabels } from '../../lib/dice'
-import { ITEM_TIPO_LABEL, ITEM_TIPO_ORDER, apilarObjetos, itemIcon } from '../../lib/enciclopediaTargets'
+import { ITEM_TIPO_LABEL, ITEM_TIPO_ORDER, apilarObjetos, itemIcon, itemImagen } from '../../lib/enciclopediaTargets'
 import { totalInventoryUnits } from '../../lib/inventoryCapacity'
 import { postDepositarCaptura, postSoltarCaptura } from '../../lib/api'
 import { useSubmitError } from '../../hooks/useSubmitError'
 import { PanelEmptyState } from '../PanelEmptyState'
 import { PanelSection } from '../PanelSection'
 import { IconCard } from '../IconCard'
+import { imagenCategoria } from '../../lib/imagenesInterfaz'
 import { useModoConsulta } from '../../context/useModoConsulta'
 import { useNavegacionRejilla } from '../../hooks/useNavegacionRejilla'
 
@@ -99,6 +100,7 @@ function ItemGrid({ items, onUse, onDetail }: Pick<InventarioPanelProps, 'items'
           // "Tótem Maktor" equipados salían con icono de arma. El badge "E" de abajo ya distingue
           // "equipado" visualmente; el icono debe reflejar el objeto real siempre, tipo o no.
           icon={item.tipo === 'ESPECIAL' ? '✨' : itemIcon(item.category ?? '', item.name)}
+          imagen={item.tipo === 'ESPECIAL' ? imagenCategoria('especial') : itemImagen(item.category ?? '', item.name)}
           name={item.name}
           tooltip={item.effectDescription ?? item.description}
           onUse={() => onUse(item)}

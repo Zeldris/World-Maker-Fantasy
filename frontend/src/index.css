@@ -48,6 +48,23 @@
   --color-accent2-500: #6b7d8c;
   --color-accent2-600: #52626f;
 
+  /* Marca de Tarkor (UX-40, docs/producto/diseno-interfaz-marca.md): no tematizables por mundo.
+     «La madera sostiene, el oro remata»: el oro solo en filos, juntas, remaches y la estrella
+     (≤10 % de la pantalla; el brillo, gold-100/300, ≤5 %). gold-500 no vale como texto sobre
+     hueso (2,58:1): ahí, gold-900. Sin morado ni violeta (luz reservada del canon). */
+  --color-gold-100: #ffe9a8; /* núcleo de luz: estrella, junta */
+  --color-gold-300: #f2c45a; /* bisel con luz */
+  --color-gold-500: #b8862b; /* cuerpo del metal */
+  --color-gold-700: #7a5a1e; /* pátina, cara en sombra */
+  --color-gold-900: #5a3a14; /* filo, contorno, tinta sobre claro */
+  /* Piedra de la Semilla */
+  --color-stone-500: #6b6257;
+  --color-stone-700: #3a342d;
+  /* Noche de marca (fuera del juego y en .crystal-sky) */
+  --color-night-900: #1a2140;
+  --color-night-950: #0f1428;
+  --color-crystal-deep: #1f4a55; /* campo del emblema; fondo de gema */
+
   /* Fijos, no tematizables: estado de éxito/fallo, y el modo multijugador (fuera de cualquier mundo) */
   --color-moss-400: #8fae6a;
   --color-moss-500: #6f9450;
@@ -118,6 +135,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Titulares de interfaz en Cinzel 700 (UX-40). En la capa base, para que una utilidad de peso
+   (font-normal…) en el propio titular siga mandando. */
+@layer base {
+  :where(h1, h2, h3, h4).font-serif {
+    font-weight: 700;
+  }
+}
+
 #root {
   min-height: 100svh;
   display: flex;
@@ -182,6 +207,10 @@ body {
     inset 0 0 0 1px rgba(0, 0, 0, 0.35),
     0 8px 24px -12px rgba(0, 0, 0, 0.7);
 }
+/* Panel activo (mundo elegido, modal en primer plano): filo de oro (UX-40) */
+.plank-panel[data-active="true"] {
+  border-color: var(--color-gold-900);
+}
 
 /* Turno de defensa en combate (CombatPanel.tsx, petición explícita 2026-08-15: "el turno de
    ataque el fondo por defecto y en el de defensa la madera de fondo que sea azul") — sustituye
@@ -219,6 +248,8 @@ body {
     repeating-linear-gradient(90deg, color-mix(in srgb, var(--color-accent2-300) 26%, transparent) 0px, transparent 1.5px, transparent 16px),
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 45%),
     linear-gradient(175deg, var(--color-iron-700), var(--color-iron-800) 55%, var(--color-iron-900));
+  /* Filo de pátina abajo: el oro remata la banda (UX-40) */
+  box-shadow: inset 0 -1px 0 var(--color-gold-700);
 }
 
 /* Línea de luz de cristal — la firma del mundo activo (acento tematizable), usada como
@@ -241,6 +272,16 @@ body {
     transparent
   );
 }
+/* Separador de marca (Home, modales de título), UX-40: el de cristal sigue siendo la firma del mundo */
+.gold-hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-gold-500) 80%, transparent) 50%,
+    transparent
+  );
+}
 
 /* Gema de cristal — marcador de identidad de cada canal (rombo con brillo propio) */
 .gem {
@@ -250,7 +291,10 @@ body {
   transform: rotate(45deg);
   border-radius: 2px;
   background: linear-gradient(135deg, var(--color-accent-300), var(--color-accent-600));
-  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent-500) 55%, transparent);
+  /* Engastada en oro (UX-40) */
+  box-shadow:
+    0 0 0 1px var(--color-gold-700),
+    0 0 8px color-mix(in srgb, var(--color-accent-500) 55%, transparent);
 }
 .gem2 {
   width: 9px;
@@ -259,12 +303,15 @@ body {
   transform: rotate(45deg);
   border-radius: 2px;
   background: linear-gradient(135deg, var(--color-accent2-300), var(--color-accent2-600));
-  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent2-500) 45%, transparent);
+  box-shadow:
+    0 0 0 1px var(--color-gold-900),
+    0 0 6px color-mix(in srgb, var(--color-accent2-500) 45%, transparent);
 }
 
 /* Cielo de Cristal (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1): lavado disperso y
-   ESTÁTICO de micro-cristales (posiciones fijas, nunca aleatorio ni animado) — cero hexes nuevos,
-   deriva de --color-accent-300/400 vía color-mix. Canon: genesis.md Era 0, cinturón de
+   ESTÁTICO de micro-cristales (posiciones fijas, nunca aleatorio ni animado) (estrellas
+   derivadas de --color-accent-300/400 vía color-mix) sobre el cielo pintado cielo.webp (UX-41) y un degradado
+   de noche fijo (--color-night-950/900 e iron-900, sin luna). Canon: genesis.md Era 0, cinturón de
    micro-cristales que da brillo perlado nocturno — algo que ningún bando posee. */
 .crystal-sky {
   background-image:
@@ -282,8 +329,13 @@ body {
     radial-gradient(1px 1px at 85% 65%, color-mix(in srgb, var(--color-accent-400) 60%, transparent), transparent 100%),
     radial-gradient(1.5px 1.5px at 92% 25%, color-mix(in srgb, var(--color-accent-300) 90%, transparent), transparent 100%),
     radial-gradient(1px 1px at 97% 50%, color-mix(in srgb, var(--color-accent-400) 50%, transparent), transparent 100%),
-    linear-gradient(180deg, #0d2230 0%, color-mix(in srgb, var(--color-accent-600) 34%, var(--color-iron-900)) 50%, var(--color-iron-900) 100%);
+    /* Cielo pintado de la marca (UX-41), bajo las estrellas y sobre el degradado base */
+    url('./assets/interfaz/cielo.webp'),
+    /* Noche de marca, sin luna (UX-40); las estrellas de arriba siguen siendo el polvo de micro-cristales */
+    linear-gradient(180deg, var(--color-night-950) 0%, var(--color-night-900) 50%, var(--color-iron-900) 100%);
   background-repeat: no-repeat;
+  background-size: auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, auto, cover, auto;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, 0 0, center, 0 0;
 }
 
 /* Hierro Grabado/Ley (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1): retícula de líneas
@@ -378,29 +430,45 @@ body {
   font-size: 1.85rem;
   line-height: 1;
   background: linear-gradient(155deg, var(--color-iron-800), var(--color-iron-900) 70%);
-  border: 1px solid color-mix(in srgb, var(--color-wood-400) 65%, var(--color-iron-900));
+  border: 1px solid transparent; /* el marco (7px) se pinta encima: el hueco del icono sigue en 42px */
+  border-image: url('./assets/interfaz/ranura.webp') 32 / 7px / 2px stretch; /* marco de oro (UX-41) */
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
     inset 0 1px 2px rgba(0, 0, 0, 0.8),
     0 1px 0 rgba(255, 255, 255, 0.06);
   transition:
-    border-color 120ms ease-out,
+    filter 120ms ease-out,
     box-shadow 120ms ease-out;
 }
 .skill-slot span {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.9));
 }
 .skill-slot:hover:not(:disabled) {
-  border-color: var(--color-accent-400);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
     inset 0 1px 2px rgba(0, 0, 0, 0.8),
-    0 0 0 1px color-mix(in srgb, var(--color-accent-500) 60%, transparent),
-    0 0 10px -2px var(--color-accent-500);
+    /* Oro pegado al borde y el cristal por fuera: el cristal es la respuesta del mundo (UX-40) */
+    0 0 0 3px var(--color-gold-700),
+    0 0 0 4px color-mix(in srgb, var(--color-accent-500) 60%, transparent),
+    0 0 12px 1px var(--color-accent-500);
+  filter: brightness(1.25);
 }
 .skill-slot:disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+/* Titular en oro (UX-40): solo el h1 del hero de la Home, el único oro grande de la interfaz */
+.title-gold {
+  font-family: var(--font-serif);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: linear-gradient(180deg, var(--color-gold-300), var(--color-gold-700));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* drop-shadow y no text-shadow: con background-clip:text la sombra de texto taparía el degradado */
+  filter: drop-shadow(0 1px 0 var(--color-gold-900));
 }
 
 /* Composer enriquecido (enlaces de objeto/habilidad estilo WoW, insertados dentro del propio
@@ -722,9 +790,6 @@ body {
     opacity: 1;
   }
 }
-.animate-edge-flash-amber {
-  animation: edge-flash 0.5s ease-out 0.45s both;
-}
 .animate-edge-flash-accent {
   animation: edge-flash 0.5s ease-out both;
 }
@@ -748,11 +813,6 @@ body {
 }
 .animate-pop-once {
   animation: pop-once 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-/* Sello retrasado 0,2s — StatBadge al equipar: primero encaja el objeto, luego "suena" el bonus */
-.animate-stamp-in-equip {
-  animation: stamp-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
 }
 
 /* Barrido de luz de una sola pasada — subida de nivel, no el ambiental en bucle de thinking-sheen */
@@ -897,11 +957,9 @@ body {
   :root:not([data-motion='completas']) .animate-pulse-slow,
   :root:not([data-motion='completas']) .animate-stamp-in,
   :root:not([data-motion='completas']) .animate-shake-no,
-  :root:not([data-motion='completas']) .animate-edge-flash-amber,
   :root:not([data-motion='completas']) .animate-edge-flash-accent,
   :root:not([data-motion='completas']) .animate-edge-flash-red,
   :root:not([data-motion='completas']) .animate-pop-once,
-  :root:not([data-motion='completas']) .animate-stamp-in-equip,
   :root:not([data-motion='completas']) .animate-sheen-sweep-once,
   :root:not([data-motion='completas']) .animate-combat-enter,
   :root:not([data-motion='completas']) .animate-line-extend,
@@ -948,16 +1006,12 @@ body {
 :root[data-motion='ninguna'] .animate-stamp-in,
 :root[data-motion='reducidas'] .animate-shake-no,
 :root[data-motion='ninguna'] .animate-shake-no,
-:root[data-motion='reducidas'] .animate-edge-flash-amber,
-:root[data-motion='ninguna'] .animate-edge-flash-amber,
 :root[data-motion='reducidas'] .animate-edge-flash-accent,
 :root[data-motion='ninguna'] .animate-edge-flash-accent,
 :root[data-motion='reducidas'] .animate-edge-flash-red,
 :root[data-motion='ninguna'] .animate-edge-flash-red,
 :root[data-motion='reducidas'] .animate-pop-once,
 :root[data-motion='ninguna'] .animate-pop-once,
-:root[data-motion='reducidas'] .animate-stamp-in-equip,
-:root[data-motion='ninguna'] .animate-stamp-in-equip,
 :root[data-motion='reducidas'] .animate-sheen-sweep-once,
 :root[data-motion='ninguna'] .animate-sheen-sweep-once,
 :root[data-motion='reducidas'] .animate-combat-enter,

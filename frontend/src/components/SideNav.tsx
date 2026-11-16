@@ -1,4 +1,6 @@
 import type { PanelId, Tab } from './NavTabs'
+import { Pictograma } from './Pictograma'
+import { imagenPestana } from '../lib/imagenesInterfaz'
 import { TooltipAnchor } from './TooltipAnchor'
 
 interface SideNavProps {
@@ -56,8 +58,8 @@ export function SideNav({ tabs, active, onSelect, align, dimmed, disabledIds, di
                   }`}
                 />
               )}
-              <span className={`text-base leading-none transition-[filter,opacity] ${active === tab.id ? '' : 'opacity-75 grayscale'}`}>
-                {tab.icon}
+              <span className={`text-base leading-none transition-[filter,opacity] ${active === tab.id ? '' : 'opacity-70 saturate-50'}`}>
+                <Pictograma src={imagenPestana(tab.id)} emoji={tab.icon} className="h-6 w-6" />
               </span>
               {/* B24 (pruebas 2026-09-28): "Compañeros"/"Enciclopedia" se cortaban ("ompañeros",
                   "nciclopedia") en un riel de 64px — riel algo más ancho + tracking ajustado. */}

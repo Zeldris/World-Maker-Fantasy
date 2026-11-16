@@ -9,6 +9,7 @@ import { EnciclopediaLinkProvider } from '../context/EnciclopediaLinkContext'
 import { MisionesContext } from '../context/misionesContext'
 import { CombatComposer } from '../components/CombatComposer'
 import { formatCountdown, formatFictionalDuration } from '../lib/gameViewHelpers'
+import { imagenInterfaz } from '../lib/imagenesInterfaz'
 
 import { useGameViewState } from './useGameViewState'
 import { GameViewContext } from './GameViewContext'
@@ -143,9 +144,13 @@ export function GameView() {
 
   if (!saveId || !worldName || !characterName || !characterAttributes || !secondaryAttributes) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="gem animate-pulse-soft" />
-        <p className="text-wood-500 italic">Cargando partida...</p>
+      <div
+        className="relative flex flex-1 flex-col items-center justify-center gap-3 bg-cover bg-center px-6 text-center"
+        style={{ backgroundImage: imagenInterfaz('carga') ? `url(${imagenInterfaz('carga')})` : undefined }}
+      >
+        <div aria-hidden="true" className="absolute inset-0 bg-wood-950/50" />
+        <span className="gem animate-pulse-soft relative" />
+        <p className="relative font-serif text-wood-300 italic">Cargando partida...</p>
       </div>
     )
   }

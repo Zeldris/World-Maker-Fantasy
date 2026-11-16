@@ -108,6 +108,11 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   22 veces (759k arrastrados) para ver la propia fila; mientras llega, la fila se ve con `recover.py --state`.
 - **Roadmap por id** (`QA-334`): en una revisión, `python3 .claude/gw/scripts/roadmap.py show <id>` para cada tarea
   tocada, no el diff de `roadmap-front.md` (en la fase 1 de la v0.6.0, 6 lecturas y 83k arrastrados).
+- **Hoja para las piezas de interfaz** (`QA-364`, `QA-365`): `hoja.sh --archivos` también para `tarkor-final/` y los
+  montajes del scratchpad; el `LEEME.md` de `tarkor-final`, por `grep` a su tabla (en `UX-41`, 18 imágenes sueltas,
+  970k arrastrados, y el `LEEME.md` entero, 197k).
+- **Aviso de diff de roadmap** (`QA-366`): `tools/qa/aviso-lectura.py` avisa de `git diff|show` de un `roadmap*.md`
+  y apunta a `roadmap.py show <id>` (en `UX-41`, un diff de 5,6k arrastró 325k pese a `QA-334`).
 
 ## Costes conocidos
 
