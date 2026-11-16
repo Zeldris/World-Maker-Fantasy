@@ -51,3 +51,16 @@ Movido de [`traspaso.md`](traspaso.md) el 2026-11-14 (`QA-342`). Pendientes leve
 
 - GET `/defensa`: `asaltosRecientes` se lee fuera de la transacción del resto de la respuesta.
 - `tools/qa/aviso-lectura.py` (`QA-349`): no avisa de las lecturas enteras con Grep ni con `jq`, `wc` o `node`.
+
+## Pendiente
+
+Los pendientes leves de revisiones ya cerradas están en [`pendientes-leves.md`](pendientes-leves.md) (`QA-342`); el del PR en curso (`QA-289`), abajo.
+
+Del PR de `QA-289`, revisión de bloque (2026-11-14):
+
+- La réplica anterior que ve el NPC (`ultimaReplica(lastNarration)`, `turnResolution.ts`) puede ser de otro NPC.
+- `retrieval.ts`: `SELECT DISTINCT title` y la consulta de filas directas, en serie en cada turno; cachear los títulos por mundo y lanzarlas en paralelo.
+- `narrador.ts`: `console.warn('[lint] campo-accion …')` en cada turno sin fallo.
+- Escapado de regex y normalización sin tildes repetidos (`escapar`, `contieneNombre`, `normalizar`…); usar `escapeForRegex` y `normalizeText`.
+- Altura: la «una voz por llamada» es una cadena de parches de regex sobre la narración; valorar el gesto del NPC como campo del JSON.
+- Si `generateNpcReply` lanza excepción, el `catch` sigue sin réplica de respaldo; `quitarFrasesRepetidas` une con espacio y pierde los párrafos si quita una frase.
