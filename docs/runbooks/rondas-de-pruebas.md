@@ -121,6 +121,8 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    En la Deck, Ollama con `bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh arrancar` (iGPU y sin suspensión),
    y **al acabar la ronda, `ia-ronda.sh parar`**: baja el juego y Ollama, y dice si queda algo en pie (`QA-313`).
+   Ollama va en su propio scope de systemd y arranca un vigilante de memoria (`vigilante-memoria.sh`, registro en
+   `logs/vigilante-memoria.log`) que para la tanda si MemAvailable < 1.500 MiB más de 30 s (`QA-353`).
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
    Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
    QA-310: `arrancar-juego.sh` apunta el `IA_PERFIL` y el `IA_REGISTRO` del arranque en `logs/juego-ia.env`; `escenario.sh cargar` y `avanzar` relanzan con ellos (un `--parar` entero lo borra), así la tanda sigue escribiendo en `logs/ia/`.
