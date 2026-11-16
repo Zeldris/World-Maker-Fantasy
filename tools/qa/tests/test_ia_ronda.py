@@ -98,6 +98,49 @@ class IaRonda(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(d, 'logs', 'vigilante-memoria.pid')))
         self.assertTrue(os.path.exists(os.path.join(d, 'juego-parado')))
 
+    def test_si_systemd_run_no_funciona_se_lanza_sin_scope_y_avisa(self):
+        d = self.repo()
+        b = os.path.join(d, 'bin')
+        os.makedirs(b)
+        escribir(os.path.join(b, 'systemd-run'), '#!/bin/bash\necho "Failed to connect to bus" >&2\nexit 1\n')
+        os.chmod(os.path.join(b, 'systemd-run'), 0o755)
+        r = self.correr(d, 'lanzador', {'PATH': f'{b}:{os.environ["PATH"]}'})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn('systemd-run', r.stdout)
+        self.assertIn('systemd-inhibit', r.stdout)
+        self.assertIn('sin scope', r.stderr)
+
+    def con_ollama_en_pie(self, d: str):
+        """Un «ollama» (copia de sleep) y un puerto que escucha, sin tocar el :11434 de nadie."""
+        import socket
+        srv = socket.socket()
+        srv.bind(('127.0.0.1', 0))
+        srv.listen(5)
+        self.addCleanup(srv.close)
+        os.makedirs(os.path.join(d, 'bin'))
+        falso = os.path.join(d, 'bin', 'ollama')
+        shutil.copy(shutil.which('sleep'), falso)
+        proc = subprocess.Popen([falso, '300'])
+        self.addCleanup(proc.kill)
+        return {'PUERTO_OLLAMA': str(srv.getsockname()[1]), 'MEMINFO': os.path.join(d, 'mem')}
+
+    def test_arrancar_con_ollama_ya_en_pie_rearma_el_vigilante_y_estado_lo_dice(self):
+        d = self.repo()
+        escribir(os.path.join(d, 'mem'), 'MemAvailable: 99999999 kB\n')
+        extra = self.con_ollama_en_pie(d)
+        r = self.correr(d, 'estado', extra)
+        self.assertIn('FALTA el vigilante', r.stdout)
+        r = self.correr(d, 'arrancar', extra)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('no se lanza otro', r.stdout)
+        pidf = os.path.join(d, 'logs', 'vigilante-memoria.pid')
+        self.assertTrue(os.path.exists(pidf), 'el vigilante no se rearmó')
+        pid = int(leer(pidf))
+        self.addCleanup(lambda: os.path.exists(f'/proc/{pid}') and os.kill(pid, 15))
+        self.assertIn('En pie: vigilante de memoria', self.correr(d, 'estado', extra).stdout)
+        self.correr(d, 'arrancar', extra)  # repetir no lo duplica
+        self.assertEqual(int(leer(pidf)), pid)
+
 
 class VigilanteMemoria(unittest.TestCase):
     def vigilar(self, meminfo, **extra):
@@ -124,6 +167,22 @@ class VigilanteMemoria(unittest.TestCase):
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
         self.assertIn('ALERTA', r.stdout)
         self.assertTrue(os.path.exists(os.path.join(d, 'tanda-parada')))
+
+    def test_por_defecto_para_la_ronda_entera_y_dice_la_memoria_vista(self):
+        d = carpeta()
+        deck = os.path.join(d, 'tools', 'qa', 'deck')
+        os.makedirs(deck)
+        for nombre in ('_raiz.sh', 'vigilante-memoria.sh'):
+            shutil.copy(os.path.join(QA, 'deck', nombre), os.path.join(deck, nombre))
+        escribir(os.path.join(deck, 'ia-ronda.sh'), f'#!/bin/bash\necho "$@ $DESDE_VIGILANTE" > {d}/llamada\n')
+        escribir(os.path.join(d, 'meminfo'), 'MemAvailable:   10240 kB\n')
+        env = {k: v for k, v in os.environ.items() if k != 'PARAR_TANDA'}
+        env.update(MEMINFO=os.path.join(d, 'meminfo'), UMBRAL_MIB='100', VENTANA_S='2', INTERVALO_S='1', MAX_VUELTAS='20')
+        r = subprocess.run(['bash', os.path.join(deck, 'vigilante-memoria.sh')], env=env, capture_output=True,
+                           text=True, timeout=30)
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertEqual(leer(os.path.join(d, 'llamada')).strip(), 'parar 1')
+        self.assertIn('10 MiB', r.stderr)
 
     def test_memoria_suficiente_no_para(self):
         d, r = self.vigilar('MemAvailable:   1024000 kB\n', MAX_VUELTAS='5')

@@ -27,21 +27,36 @@ nuestro() { vivo "$1" && case "$(ps -o comm= -p "$1" 2>/dev/null)" in systemd-in
 # Prefijo de la orden de Ollama: scope (si hay systemd-run) y systemd-inhibit (salvo INHIBIR=0), uno por línea.
 lanzador() {
   if [ "${SCOPE:-1}" = 1 ] && command -v systemd-run > /dev/null; then
-    printf '%s\n' systemd-run --user --scope --quiet --unit="wmf-ollama-ronda-$$"
+    # Sin bus de usuario (flatpak-spawn --host sin DBUS/XDG_RUNTIME_DIR) el scope falla: se prueba antes.
+    if systemd-run --user --scope --quiet true > /dev/null 2>&1; then
+      printf '%s\n' systemd-run --user --scope --quiet --unit="wmf-ollama-ronda-$$"
+    else
+      echo "Aviso: systemd-run --user no funciona (¿sin bus de usuario?); Ollama se lanza sin scope." >&2
+    fi
   fi
   if [ "${INHIBIR:-1}" = 1 ]; then
     printf '%s\n' systemd-inhibit --what=sleep:idle --mode=block --who=wmf-ronda --why="ronda local"
   fi
 }
+vigilante_vivo() { [ -f "$PIDS_VIGILANTE" ] && vivo "$(cat "$PIDS_VIGILANTE")"; }
+arrancar_vigilante() {
+  [ "${VIGILANTE:-1}" = 1 ] || return 0
+  vigilante_vivo && return 0
+  mkdir -p "$RAIZ/logs"
+  nohup bash "$DECK/vigilante-memoria.sh" >> "$RAIZ/logs/vigilante-memoria.log" 2>&1 < /dev/null &
+  echo $! > "$PIDS_VIGILANTE"
+}
+PUERTO_OLLAMA="${PUERTO_OLLAMA:-11434}"
 escucha() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
 estado() {
   local algo=0 p
-  for p in 11434 3001 5173 9333; do
+  for p in "$PUERTO_OLLAMA" 3001 5173 9333; do
     if escucha "$p"; then echo "En pie: :$p"; algo=1; fi
   done
   if [ -f "$PIDS" ] && nuestro "$(cat "$PIDS")"; then echo "En pie: Ollama de la ronda (PID $(cat "$PIDS"))"; algo=1; fi
-  if [ -f "$PIDS_VIGILANTE" ] && vivo "$(cat "$PIDS_VIGILANTE")"; then echo "En pie: vigilante de memoria (PID $(cat "$PIDS_VIGILANTE"))"; algo=1; fi
+  if vigilante_vivo; then echo "En pie: vigilante de memoria (PID $(cat "$PIDS_VIGILANTE"))"; algo=1
+  elif [ "${VIGILANTE:-1}" = 1 ] && escucha "$PUERTO_OLLAMA"; then echo "FALTA el vigilante de memoria con Ollama en pie: ia-ronda.sh arrancar lo vuelve a armar."; fi
   if command -v systemd-inhibit > /dev/null && systemd-inhibit --list 2>/dev/null | grep -q wmf-ronda; then
     echo "En pie: inhibidor de suspensión «wmf-ronda»"; algo=1
   fi
@@ -51,9 +66,9 @@ estado() {
 
 case "${1:-}" in
   arrancar)
-    if escucha 11434; then
+    if escucha "$PUERTO_OLLAMA"; then
       # El Ollama simulado (`mock-ollama.mjs` de una tanda sin IA) también escucha ahí: la ronda iría contra él.
-      if pgrep -u "$(id -u)" -x ollama > /dev/null; then echo "Ollama ya escucha en :11434; no se lanza otro."; exit 0; fi
+      if pgrep -u "$(id -u)" -x ollama > /dev/null; then arrancar_vigilante; echo "Ollama ya escucha en :$PUERTO_OLLAMA; no se lanza otro."; exit 0; fi
       echo ":11434 está ocupado y no es Ollama (¿el simulado?): bash tools/qa/deck/juego.sh --parar y repite."; exit 1
     fi
     mkdir -p "$RAIZ/logs"
@@ -61,22 +76,20 @@ case "${1:-}" in
     OLLAMA_IGPU_ENABLE=1 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 \
       nohup "${pre[@]}" "$OLLAMA" serve > "$RAIZ/logs/ollama.log" 2>&1 < /dev/null &
     echo $! > "$PIDS"
-    for _ in $(seq 1 30); do escucha 11434 && break; sleep 1; done
-    escucha 11434 || { echo "Ollama no responde en 30 s: mira logs/ollama.log"; exit 1; }
+    for _ in $(seq 1 30); do escucha "$PUERTO_OLLAMA" && break; sleep 1; done
+    escucha "$PUERTO_OLLAMA" || { echo "Ollama no responde en 30 s: mira logs/ollama.log"; exit 1; }
     . "$RAIZ/tools/playwright-e2e/ia-comprobaciones.sh"
     sleep 2  # «dropping integrated GPU» sale al detectar la GPU, justo tras abrir el puerto
     ia_comprobar_log_gpu "$RAIZ/logs/ollama.log" || exit 1
-    if [ "${VIGILANTE:-1}" = 1 ]; then
-      nohup bash "$DECK/vigilante-memoria.sh" >> "$RAIZ/logs/vigilante-memoria.log" 2>&1 < /dev/null &
-      echo $! > "$PIDS_VIGILANTE"
-    fi
+    arrancar_vigilante
     echo "Ollama en :11434 (PID $(cat "$PIDS")). Al acabar la ronda: ia-ronda.sh parar"
     ;;
   parar)
     # El vigilante primero: si no, vería caer la memoria al parar y volvería a parar la tanda. Un PID muerto no estorba.
     if [ -f "$PIDS_VIGILANTE" ]; then
       vig="$(cat "$PIDS_VIGILANTE")"
-      if vivo "$vig" && [ "$(ps -o args= -p "$vig" 2>/dev/null | grep -c vigilante-memoria)" = 1 ]; then
+      # Si lo llama el propio vigilante (DESDE_VIGILANTE), no se mata a sí mismo: acaba solo tras parar.
+      if [ -z "${DESDE_VIGILANTE:-}" ] && vivo "$vig" && [ "$(ps -o args= -p "$vig" 2>/dev/null | grep -c vigilante-memoria)" = 1 ]; then
         kill "$vig" 2>/dev/null
       fi
       rm -f "$PIDS_VIGILANTE"

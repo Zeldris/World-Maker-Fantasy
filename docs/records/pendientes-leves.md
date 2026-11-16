@@ -68,3 +68,8 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 ## Actualización del flujo a v0.7.0 (`claude/wonderful-volta-662qt8`, 2026-11-16)
 
 - `test_measure.py` (parche P24): `next(...)` sin valor por defecto lanza `StopIteration` si el archivo no está ni en la raíz ni en `gw/`; mejor un error que nombre la ruta.
+
+## QA-353 (`claude/ronda-local-2`, 2026-11-16)
+
+- `vigilante-memoria.sh`: con MemAvailable ilegible `desde` no se reinicia (la racha previa se hereda al volver la lectura) y, tras suspender la Deck, `SECONDS` salta y una racha abierta antes de dormir dispara la alerta al despertar.
+- `vigilante-memoria.sh`: la ventana de 30 s es fija; un `escenario.sh cargar` que dure más de 30 s por debajo de 1500 MiB para la ronda en mitad de la carga (`VENTANA_S` la sube a mano).
