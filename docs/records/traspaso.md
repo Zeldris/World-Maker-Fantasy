@@ -10,12 +10,12 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-11-15 |
+| **Actualizado** | 2026-11-16 |
 | **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/generador-mapas`, `claude/banco-narrador`. Filas de ramas cerradas: [`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342). Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #92 de `claude/wonderful-volta-662qt8` (2026-11-11, `d8ef94ad`, CI en verde): puerta de pruebas, tandas 107-116, lotes F-I (P440-P453), `QA-317`…`QA-321`. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | Fusionada en `main` por PR (usuaria, 2026-11-15: «vamos con tus recomendaciones»): retro de la fase 2 (`QA-349`, `QA-350`) y arreglos de su /code-review. Leves, en `pendientes-leves.md`. Rama terminada. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/narrador-tiempos`** | `QA-289` 🚧 (usuario, 2026-11-14): ronda cerrada (P412, P423, P417 ✅; nuevos P469, P470), `/gw-opt-ai` hecho (`QA-339`…`QA-341`). Fases 1 y 2 hechas (retro aprobada: ~~`QA-345`~~, ~~`QA-346`~~). Fase 3: arreglos del code-review de la fase 2 hechos (`Findings: 8`, resolver-conflicto.py con base y por id). **Siguiente:** `reviewed.sh`, push y PR con gh; luego QA-339…341. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
 | **Tests** | Rama `claude/wonderful-volta-662qt8` (2026-10-20, antes del PR de `opt-ai`): backend `tsc` 0, `vitest` 302 archivos / 3661 con 2 rojos que también fallan en `main` con la misma base (`mundoPartida` y `deudaDeVida`, integración: estado de la base tras la ronda con Ollama real, no del PR); frontend `tsc -b` 0; `tools/qa/tests` 68 y `opt-ai` 16 en verde. Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
@@ -149,25 +149,16 @@ cd frontend && npx tsc -b && npx vitest run && npx oxlint
 # (ver reglas comunes en docs/producto/plan-roadmap-0.1.md)
 ```
 
-## Pendientes leves
+## Pendiente (leves)
 
-Los pendientes leves de revisiones ya cerradas están en [`pendientes-leves.md`](pendientes-leves.md) (`QA-342`); el del PR en curso (`QA-289`), abajo.
-
-## Pendientes leves de la revisión de bloque de `QA-289` (2026-11-14)
-
-- La réplica anterior que ve el NPC (`ultimaReplica(lastNarration)`, `turnResolution.ts`) puede ser de otro NPC.
-- `retrieval.ts`: `SELECT DISTINCT title` y la consulta de filas directas, en serie en cada turno; cachear los títulos por mundo y lanzarlas en paralelo.
-- `narrador.ts`: `console.warn('[lint] campo-accion …')` en cada turno sin fallo.
-- Escapado de regex y normalización sin tildes repetidos (`escapar`, `contieneNombre`, `normalizar`…); usar `escapeForRegex` y `normalizeText`.
-- Altura: la «una voz por llamada» es una cadena de parches de regex sobre la narración; valorar el gesto del NPC como campo del JSON.
-- Si `generateNpcReply` lanza excepción, el `catch` sigue sin réplica de respaldo; `quitarFrasesRepetidas` une con espacio y pierde los párrafos si quita una frase.
+Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md) (6 entradas); se añade y se quita allí.
 
 ## Hecho recientemente
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-15 — QA-350: matriz-pruebas.py --comprobar en los tests relacionados de la rama
-2. 2026-11-15 — QA-349: aviso al leer enteros los registros con herramienta (tools/qa/aviso-lectura.py)
-3. 2026-11-14 — QA-288: ci-local.sh para el Ollama simulado al salir (2026-11-03)
-4. 2026-11-14 — QA-346: fila «Lint» (oxlint, nunca npx eslint) en docs/mapa-agente.md (misma retro)
-5. 2026-11-14 — QA-345: docs/metrics/ledger.jsonl con merge=union en .gitattributes (retro de narrador-tiempos)
+1. 2026-11-16 — QA-363: `Findings:` en el bloque final (AGENTS.md) y suelo fijo de ~81k en gw-opt-tokens.md (retro de la v0.7.0 del flujo)
+2. 2026-11-15 — QA-350: matriz-pruebas.py --comprobar en los tests relacionados de la rama
+3. 2026-11-15 — QA-349: aviso al leer enteros los registros con herramienta (tools/qa/aviso-lectura.py)
+4. 2026-11-14 — QA-288: ci-local.sh para el Ollama simulado al salir (2026-11-03)
+5. 2026-11-14 — QA-346: fila «Lint» (oxlint, nunca npx eslint) en docs/mapa-agente.md (misma retro)
