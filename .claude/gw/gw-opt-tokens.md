@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.6.0 -->
+<!-- galivelop-workflow v0.7.0 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la usuaria aprueba un cambio. El flujo
@@ -108,6 +108,11 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   22 veces (759k arrastrados) para ver la propia fila; mientras llega, la fila se ve con `recover.py --state`.
 - **Roadmap por id** (`QA-334`): en una revisión, `python3 .claude/gw/scripts/roadmap.py show <id>` para cada tarea
   tocada, no el diff de `roadmap-front.md` (en la fase 1 de la v0.6.0, 6 lecturas y 83k arrastrados).
+- **Hoja para las piezas de interfaz** (`QA-364`, `QA-365`): `hoja.sh --archivos` también para `tarkor-final/` y los
+  montajes del scratchpad; el `LEEME.md` de `tarkor-final`, por `grep` a su tabla (en `UX-41`, 18 imágenes sueltas,
+  970k arrastrados, y el `LEEME.md` entero, 197k).
+- **Aviso de diff de roadmap** (`QA-366`): `tools/qa/aviso-lectura.py` avisa de `git diff|show` de un `roadmap*.md`
+  y apunta a `roadmap.py show <id>` (en `UX-41`, un diff de 5,6k arrastró 325k pese a `QA-334`).
 
 ## Costes conocidos
 
@@ -127,7 +132,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   copias del flujo; el subagente de `/code-review` (Opus, 27 llamadas) metió 2,51 M de 4,24 M. De ahí `QA-294`.
   En la misma tarea, un `grep -rn` de 2,4k arrastró 29k y un `actions_list` de 1,4k, 18k (`QA-295`).
 - **Suelo fijo de ~77k por llamada**, también tras `/clear` (`measure.py`, sesión de `claude/gw-update-0.5.0`,
-  2026-11-04): instrucciones del sistema y herramientas; sin palanca desde el proyecto.
+  2026-11-04): instrucciones del sistema y herramientas; sin palanca desde el proyecto. El 2026-11-16 (v0.7.0 del
+  flujo) era ~81k, el 87 % del arranque: la única palanca es que la usuaria desconecte en claude.ai los conectores
+  que no use en las sesiones de código (p. ej. Claude Docs), ~4k por llamada (`QA-363`).
 
 - **Subagentes con Opus para lo mecánico** (`claude/interfaz-imagenes`, 2026-10-25, `QA-233`): 3 de 4; el de reescribir
   la interfaz con un plan cerrado fue con Sonnet y salió bien. Se aplica `gw-selector` al lanzar cada uno.

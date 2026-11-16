@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Fuente de las imágenes de la marca (98 MB, croma sin recortar): se prepara con tools/interfaz/preparar-imagenes.py (UX-41)
+src/assets/tarkor-final/

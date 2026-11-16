@@ -1,4 +1,6 @@
 import type { Attribute, AttributeBlock, CondicionFisica, EquipSlot, InventoryItemInfo, SecondaryAttributeBlock } from '../../types'
+import { Pictograma } from '../Pictograma'
+import { imagenPestana } from '../../lib/imagenesInterfaz'
 import { EquipoPanel } from './EquipoPanel'
 import { EstadisticasPanel } from './EstadisticasPanel'
 import { EtiquetasSection } from './EtiquetasSection'
@@ -18,8 +20,8 @@ import { EtiquetasSection } from './EtiquetasSection'
 // "El mundo" (NavTabs.ts): conceptualmente es del eje mundo/facciones, no del personaje.
 export type PersonajeSubTab = 'equipo' | 'estadisticas' | 'titulos'
 
-const SUB_TABS: { id: PersonajeSubTab; label: string; icon: string }[] = [
-  { id: 'equipo', label: 'Equipo', icon: '⚔️' },
+const SUB_TABS: { id: PersonajeSubTab; label: string; icon: string; imagen?: string }[] = [
+  { id: 'equipo', label: 'Equipo', icon: '⚔️', imagen: imagenPestana('equipo') },
   { id: 'estadisticas', label: 'Estadísticas', icon: '📊' },
   // CR-14 (hito 0.3): etiquetas ganadas.
   { id: 'titulos', label: 'Títulos', icon: '🏷️' },
@@ -84,7 +86,9 @@ export function PersonajePanel({
                 : 'text-wood-400 hover:bg-wood-950/40 hover:text-wood-200'
             }`}
           >
-            <span className="text-sm leading-none">{tab.icon}</span>
+            <span className="text-sm leading-none">
+              <Pictograma src={tab.imagen} emoji={tab.icon} className="h-4 w-4" />
+            </span>
             {tab.label}
           </button>
         ))}

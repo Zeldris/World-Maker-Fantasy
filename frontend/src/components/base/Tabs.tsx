@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Pictograma } from '../Pictograma'
 import { conTransicion } from '../../lib/transicionVista'
 
 // BAS-8 (hito 0.2) — pestañas con indicador deslizante bajo la activa (patrón WAI-ARIA tablist:
@@ -8,6 +9,7 @@ export interface Pestana<T extends string> {
   id: T
   label: string
   icono?: string
+  imagen?: string
 }
 
 export function Tabs<T extends string>({ pestanas, activa, onChange, etiqueta }: { pestanas: Pestana<T>[]; activa: T; onChange: (id: T) => void; etiqueta: string }) {
@@ -45,7 +47,7 @@ export function Tabs<T extends string>({ pestanas, activa, onChange, etiqueta }:
           onClick={() => conTransicion(() => onChange(p.id))}
           className={`tactile px-3 py-1.5 text-xs transition-colors ${p.id === activa ? 'text-accent-200' : 'text-wood-400 hover:text-wood-200'}`}
         >
-          {p.icono && <span aria-hidden="true" className="mr-1.5">{p.icono}</span>}
+          {p.imagen ? <Pictograma src={p.imagen} className="h-4 w-4 mr-1.5" /> : p.icono && <span aria-hidden="true" className="mr-1.5">{p.icono}</span>}
           {p.label}
         </button>
       ))}

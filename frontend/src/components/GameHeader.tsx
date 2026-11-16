@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Pictograma } from './Pictograma'
 import { LIMITE_MUERTES } from '../lib/muertes'
 import { HealthBar } from './HealthBar'
 import { BotonAjustes } from './BotonAjustes'
@@ -27,7 +28,7 @@ interface GameHeaderProps {
   avisoDecision: string
   onAbrirDecision: () => void
   /// UX-8 — indicador de fase (null en `libre`) y su motivo para el tooltip.
-  etiquetaFase: { icono: string; texto: string } | null
+  etiquetaFase: { icono: string; texto: string; imagen?: string } | null
   motivoFase: string | null
   /// Fin de la actividad en curso si la fase es `ocupado` (cuenta atrás en el indicador).
   ocupadoHasta: string | null
@@ -160,7 +161,7 @@ export function GameHeader({
               title={motivoFase ?? undefined}
               className="rounded-full border border-iron-700 bg-wood-950/60 px-2.5 py-1 font-serif text-2xs tracking-wide text-wood-300"
             >
-              <span aria-hidden="true">{etiquetaFase.icono}</span> {etiquetaFase.texto}
+              <Pictograma src={etiquetaFase.imagen} emoji={etiquetaFase.icono} className="h-5 w-5" /> {etiquetaFase.texto}
               {ocupadoHasta ? ` · ${formatCountdown(ocupadoHasta, nowTick)}` : ''}
             </span>
           )}

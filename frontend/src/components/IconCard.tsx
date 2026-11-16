@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { TooltipAnchor } from './TooltipAnchor'
+import { Pictograma } from './Pictograma'
 
 /// Deduplicado (auditoría 2026-07-22): InventarioPanel.tsx y HabilidadesPanel.tsx repetían la
 /// misma tarjeta de icono al carácter (tooltip + botón de usar + botón "ⓘ" de detalle solo
@@ -9,6 +10,7 @@ import { TooltipAnchor } from './TooltipAnchor'
 /// genuinamente distinto, no la misma tarjeta con otro nombre.
 export function IconCard({
   icon,
+  imagen,
   name,
   tooltip,
   onUse,
@@ -19,6 +21,8 @@ export function IconCard({
   passive,
 }: {
   icon: string
+  /// UX-41: pictograma de la marca; si falta, se pinta el emoji `icon`.
+  imagen?: string
   name: string
   tooltip: string
   onUse: () => void
@@ -55,7 +59,9 @@ export function IconCard({
                 : 'border-iron-700 bg-wood-950/40 hover:border-accent-600/60 hover:bg-accent-500/10'
           }`}
         >
-          <span className="text-2xl leading-none">{icon}</span>
+          <span className="text-2xl leading-none">
+            <Pictograma src={imagen} emoji={icon} className="h-8 w-8" />
+          </span>
           <span className="text-2xs leading-tight text-wood-200">{name}</span>
           {extra}
         </button>
