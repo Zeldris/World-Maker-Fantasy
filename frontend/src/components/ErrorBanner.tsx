@@ -1,3 +1,6 @@
+import { Pictograma } from './Pictograma'
+import { imagenEstado } from '../lib/imagenesInterfaz'
+
 /// UX-24 (hito 0.1, roadmap-front-ux.md H23) — aviso común para una acción que ha fallado contra el
 /// backend: qué no se pudo hacer, el motivo si el backend lo dio, *Reintentar* y cerrar. Antes varias
 /// acciones (Reino, Descansar en el campamento) usaban `try/finally` sin `catch` y fallaban sin que
@@ -17,7 +20,7 @@ export function ErrorBanner({ fallo, onCerrar }: ErrorBannerProps) {
   if (!fallo) return null
   return (
     <div role="alert" className="flex items-start gap-2 rounded-lg border border-danger-600/50 bg-danger-500/10 px-3 py-2 text-xs">
-      <span aria-hidden="true">⚠️</span>
+      <Pictograma src={imagenEstado('aviso')} emoji="⚠️" className="h-6 w-6" />
       <div className="min-w-0 flex-1">
         <p className="font-medium text-danger-300">{fallo.mensaje}</p>
         {fallo.detalle && <p className="mt-0.5 text-2xs text-wood-400">{fallo.detalle}</p>}

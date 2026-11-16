@@ -23,6 +23,7 @@ import type {
 import type { RecipeStatusInfo } from '../types'
 import type { EnciclopediaLinkTarget } from './enciclopediaIndex'
 import type { ItemTipo } from '../types'
+import { imagenCategoria } from './imagenesInterfaz'
 
 // Sesión de diseño 2026-07-23 (tier/requisitos de objetos) — mapa combinado para resolver
 // cualquier clave de `requisitos` (atributo jugable o secundario) a su etiqueta en español.
@@ -195,6 +196,13 @@ export function itemIcon(category: string, name?: string): string {
   return ITEM_CATEGORY_ICON[category] ?? '📦'
 }
 
+/// UX-41: pictograma de la marca de la categoría; solo si el emoji sale de la categoría (un nombre
+/// concreto de `ICONO_POR_NOMBRE` lo sustituye y entonces se queda el emoji).
+export function itemImagen(category: string, name?: string): string | undefined {
+  if (name && ICONO_POR_NOMBRE.some(([patron]) => patron.test(name))) return undefined
+  return imagenCategoria(category)
+}
+
 /// P18 (QA-27): cada unidad es una fila propia, y tres raciones salían como tres casillas iguales
 /// sin número. Se apilan las iguales (mismo nombre, categoría y tipo) que no están equipadas; las
 /// equipadas van siempre aparte. Mantiene el orden de la primera aparición.
@@ -314,6 +322,7 @@ export function itemToDetailTarget(item: EnciclopediaItemInfo): EnciclopediaLink
   return {
     kind: 'info',
     icon: itemIcon(item.category, item.name),
+    imagen: itemImagen(item.category, item.name),
     name: item.name,
     meta: ITEM_CATEGORY_LABEL[item.category] ?? item.category,
     description: item.description,

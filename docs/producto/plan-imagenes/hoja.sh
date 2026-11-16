@@ -8,6 +8,10 @@
 #   generated/banco/hojas/<prefijo>-<n>.png, y escribe la leyenda (casilla → prueba/intento), en orden de lectura.
 # La hoja sirve para descartar; la imagen finalista se abre entera, que a este tamaño se pierde el detalle fino.
 # ffmpeg sin drawtext: las casillas no llevan rótulo, la leyenda va en la salida. BANCO_DIR cambia la carpeta (tests).
+# QA-367 (piezas de interfaz): --archivos acepta cualquier imagen que ffprobe lea (.webp, .jpg…). La casilla mide ANCHO × alto
+#   de la primera imagen (por defecto) o ANCHO × ALTO=<px>; cada imagen se escala dentro sin deformar y se centra, así que
+#   tamaños y aspectos distintos caben. FONDO=<color ffmpeg, p. ej. 0x3a281a> compone las imágenes con alfa sobre ese color
+#   (piezas sobre madera) y rellena con él los bordes; sin FONDO, relleno negro y el alfa se descarta como hasta ahora.
 set -euo pipefail
 R=$(cd "$(dirname "$0")/../../.." && pwd)
 BANCO=${BANCO_DIR:-$R/image-generator/generated/banco}
@@ -27,12 +31,15 @@ fi
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 ent=()
 for ((k = 0; k < ${#imgs[@]}; k++)); do
-  ln -s "$(realpath "${imgs[k]}")" "$T/$k.png"; ent+=("$T/$k.png")
-  tam=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$T/$k.png" | tr , ' ') \
+  ext=${imgs[k]##*.}; [[ $ext =~ ^[A-Za-z0-9]{1,5}$ ]] || ext=png  # la extensión real, que ffmpeg la usa para elegir lector
+  ln -s "$(realpath "${imgs[k]}")" "$T/$k.$ext"; ent+=("$T/$k.$ext")
+  tam=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$T/$k.$ext" | tr , ' ') \
     && [[ $tam =~ ^[1-9][0-9]*\ [1-9][0-9]*$ ]] || { echo "ABORTO: ffprobe no lee ${imgs[k]} (¿no es imagen, o a medio escribir?)"; exit 1; }
   [ "$k" -gt 0 ] || read -r w0 h0 <<< "$tam"
 done
-H=$(( W * h0 / w0 / 2 * 2 ))
+H=${ALTO:-$(( W * h0 / w0 / 2 * 2 ))}
+[[ $H =~ ^[1-9][0-9]*$ ]] || { echo "ABORTO: ALTO «$H» no es un número de píxeles"; exit 2; }
+[[ -z ${FONDO:-} || $FONDO =~ ^[A-Za-z0-9#@.]+$ ]] || { echo "ABORTO: FONDO «$FONDO» no vale (color de ffmpeg: 0x3a281a, nombre…)"; exit 2; }
 mkdir -p "$BANCO/hojas"
 for f in "$BANCO/hojas/$PREFIJO"-*.png; do  # las de una pasada anterior parecerían de esta; solo <prefijo>-<n>.png
   n=${f##*/}; n=${n#"$PREFIJO"-}; [[ ${n%.png} =~ ^[0-9]+$ ]] && rm -f "$f"
@@ -42,10 +49,14 @@ for ((ini = 0, hoja = 1; ini < ${#imgs[@]}; ini += N, hoja++)); do
   entradas=(); filtro=''; capas=''; layout=''
   for ((i = 0; i < n; i++)); do
     entradas+=(-i "${tent[i]}")
-    filtro+="[$i:v]scale=$W:$H:force_original_aspect_ratio=decrease,pad=$W:$H:(ow-iw)/2:(oh-ih)/2,format=rgb24[v$i];"  # xstack pide un solo formato (rgba y rgb24 no casan)
+    if [ -n "${FONDO:-}" ]; then
+      filtro+="color=c=$FONDO:s=${W}x$H,format=rgba[f$i];[$i:v]format=rgba,scale=$W:$H:force_original_aspect_ratio=decrease[s$i];[f$i][s$i]overlay=(W-w)/2:(H-h)/2:format=auto,format=rgb24[v$i];"
+    else
+      filtro+="[$i:v]scale=$W:$H:force_original_aspect_ratio=decrease,pad=$W:$H:(ow-iw)/2:(oh-ih)/2,format=rgb24[v$i];"  # xstack pide un solo formato (rgba y rgb24 no casan)
+    fi
     capas+="[v$i]"; layout+="${layout:+|}$(( i % COLS * W ))_$(( i / COLS * H ))"
   done
-  if [ "$n" -eq 1 ]; then filtro+="[v0]null[o]"; else filtro+="${capas}xstack=inputs=$n:layout=$layout:fill=black[o]"; fi
+  if [ "$n" -eq 1 ]; then filtro+="[v0]null[o]"; else filtro+="${capas}xstack=inputs=$n:layout=$layout:fill=${FONDO:-black}[o]"; fi
   ffmpeg -v error -y "${entradas[@]}" -filter_complex "$filtro" -map '[o]' -frames:v 1 "$out"
   echo "hoja: $out"
   for ((i = 0; i < n; i++)); do echo "  $(( i + 1 )) ${trozo[i]#"$BANCO"/}"; done

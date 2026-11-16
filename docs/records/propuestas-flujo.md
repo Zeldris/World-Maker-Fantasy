@@ -93,3 +93,15 @@ Cosecha del 2026-11-02, tras `/gw-update` v0.2.0 → v0.4.3 (commit `f2e83984`; 
   arriba, `/gw-update` no debe reemplazarlo. Con v0.5.0 (`commitNext: true`) sigue propio porque el del flujo pide
   `Siguiente:` también fuera de Claude Code (usuaria, 2026-11-04); por eso `apply.py --check` sale 1 solo por él (P18).
 - Los textos en español de los comentarios y mensajes de los ganchos.
+
+## Actualización a v0.7.0 (2026-11-16)
+
+De v0.6.0 a v0.7.0 con `apply.py --update`. Arriba ya están P21 (`commit-msg` y `Findings:`/`Retries:` fuera del
+último párrafo) y P22 (el ledger no hace commits propios); P24 sigue pendiente arriba.
+
+| Archivo | Desvío en WMF | Arriba (v0.7.0) | Decisión |
+|---|---|---|---|
+| `.claude/skills/gw-opt-tokens/scripts/test_measure.py` | parche P24 (busca `config.py` y `schema/` también en `gw/`) | tests nuevos de `git config` en `measure`, sin P24 | la versión de arriba + P24 reaplicado; `apply.py --check` lo seguirá marcando hasta que P24 llegue arriba |
+| `AGENTS.md` | texto propio de WMF | `ci-status.py --failed` al mirar el CI; `pendingFile` en el encargo del revisor; firma del gancho Stop | los dos primeros, fusionados a mano; la firma no aplica (`agentSignatures` sin `false`) |
+| `CLAUDE.md` | texto propio de WMF | solo la línea de versión | la de WMF, con la línea de versión al día |
+| `.claude/gw.json` | — | `ci-local.py --validate` en `check` | aceptado, y `pendingFile: docs/records/pendientes-leves.md` (usuaria); `move-pending` pasó los 6 leves del PR de `QA-289` |

@@ -3267,7 +3267,7 @@ export interface AvistamientoInfo {
   sinMilicia?: string
 }
 /// `danados`: Ayuntamiento o Cuartel dañados (P284), que no defienden hasta repararlos.
-export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[] }> {
+export async function getDefensa(saveId: string): Promise<{ asentamientos: AsentamientoDefensa[]; avistados: AvistamientoInfo[]; danados?: { id: string; nombre: string }[]; asaltosRecientes?: { id: string; texto: string; cuando: string }[] }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/defensa`)
 }
 export async function postGuarnicion(saveId: string, subjectId: string, asentamientoId: string): Promise<{ ok: boolean }> {

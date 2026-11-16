@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { Pictograma } from './Pictograma'
+import { imagenInterfaz } from '../lib/imagenesInterfaz'
 import type { RollInfo, CombatExchangeSideInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
 import { gradoOf, formatMultiplier, difficultyLabelFor } from './CombatExchangeBadge'
@@ -110,7 +112,7 @@ export function DiceFace({
       <span className="max-w-[11rem] text-center text-2xs uppercase leading-tight tracking-wide text-wood-400 break-words">{label}</span>
       <span className="flex flex-wrap items-baseline justify-center gap-x-2">
         <span className="flex items-center gap-1">
-          <span aria-hidden="true">🎲</span>
+          <Pictograma src={imagenInterfaz('dado')} emoji="🎲" className="h-5 w-5" />
           <span
             className={`font-mono text-2xl font-bold tabular-nums ${landed ? `${GRADE_COLOR[grado]} ${GRADE_LAND_ANIM[grado]}` : 'text-wood-300'}`}
           >

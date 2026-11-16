@@ -1,6 +1,7 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.6.0",
+  "version": "0.7.0",
+  "pendingFile": "docs/records/pendientes-leves.md",
   "schemaVersion": 1,
   "language": "es",
   "visibleLanguages": [],
@@ -22,9 +23,11 @@
     "for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro \"$r\" > /dev/null || exit 1; done",
     "python3 tools/qa/difusion.py",
     "python3 tools/qa/inventario-suelto.py",
+    "python3 tools/qa/css-sin-uso.py",
     "bash tools/qa/bitacora-check.sh",
     "python3 tools/qa/skills-con-tests.py",
-    "cd tools/qa/tests && python3 -m unittest -q test_herramientas_con_test"
+    "cd tools/qa/tests && python3 -m unittest -q test_herramientas_con_test",
+    "python3 .claude/gw/scripts/ci-local.py --validate"
   ],
   "reviewMark": ".claude/revision-main.sha",
   "requireRetro": true,
@@ -52,7 +55,11 @@
   "staleRefs": [],
   "relatedTests": {
     "fast": [
-      "bash tools/qa/tests-vitest.sh unidad {files}"
+      "bash tools/qa/tests-vitest.sh unidad {files}",
+      {
+        "command": "out=$(python3 tools/qa/matriz-pruebas.py --comprobar) || { echo \"$out\"; exit 1; }",
+        "paths": "^(docs/records/(plan-comprobacion-.*|matriz-pruebas|.*hallazgos|checklist-pruebas-juego)\\.md|docs/producto/.*roadmap.*\\.md|tools/qa/(escenarios/|matriz-pruebas\\.py)|tools/roadmap/cobertura\\.py)"
+      }
     ],
     "slow": [
       "bash tools/qa/tests-vitest.sh integracion {files}"
@@ -73,5 +80,8 @@
     "AGENTS.md",
     ".github/workflows/ci.yml"
   ],
-  "ciNodeDirs": ["backend", "frontend"]
+  "ciNodeDirs": [
+    "backend",
+    "frontend"
+  ]
 }
