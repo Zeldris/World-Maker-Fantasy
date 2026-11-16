@@ -35,6 +35,11 @@ HEREDOC = re.compile(r"^([^\n]*)<<-?\s*(['\"]?)(\w+)\2([^\n]*)\n.*?^\s*\3\s*$", 
 ESCRIBE = re.compile(r'git\s+(commit|tag)|>|\btee\b')
 LECTOR = re.compile(r'(^|[\s(`])(cat|sed|head|tail|awk|grep|rg|less|more|nl|python3?|bash|sh)\b')
 TRAMOS = re.compile(r'&&|\|\||[;|\n]')
+# QA-366 (`/gw-opt-tokens` de UX-41): el diff de un roadmap entero (5,6k en un tramo, 325k arrastrados) en vez de la
+# entrada de cada tarea, como ya pedía QA-334. `--stat`, `--name-only`… dan poco y no avisan.
+DIFF_ROADMAP = re.compile(r'\bgit\s+(diff|show|log\s+-p)\b(?!.*--(stat|name-only|name-status|shortstat|numstat)).*roadmap[\w.-]*\.md')
+AVISO_ROADMAP = ('roadmap*.md: python3 .claude/gw/scripts/roadmap.py show <id> (la entrada de cada tarea tocada, '
+                 'no el diff del roadmap; QA-334, QA-366)')
 
 
 def heredocs_en_su_tramo(orden: str) -> str:
@@ -60,6 +65,8 @@ def avisos(evento: dict) -> list:
         # Por tramos (`;`, `&&`, `|`…): el tramo que lee y nombra el archivo, sin su herramienta en ese tramo. Por el
         # nombre del archivo, no la ruta, para pillar también `cd docs/records && cat traspaso.md`.
         for tramo in TRAMOS.split(heredocs_en_su_tramo(orden)):
+            if DIFF_ROADMAP.search(tramo) and AVISO_ROADMAP not in salida:
+                salida.append(AVISO_ROADMAP)
             if not LECTOR.search(tramo):
                 continue
             for ruta, (atajo, uso) in ARCHIVOS.items():
