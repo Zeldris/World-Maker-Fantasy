@@ -48,6 +48,25 @@ class CssSinUso(unittest.TestCase):
         r = correr(proyecto(css, '<div className="viva" />'))
         self.assertEqual(r.returncode, 0, r.stdout)
 
+    def test_uso_desde_index_html(self):
+        raiz = proyecto('.solo-html { x: 1 }', '<div />')
+        with open(os.path.join(raiz, 'frontend', 'index.html'), 'w', encoding='utf-8') as f:
+            f.write('<body class="solo-html">')
+        self.assertEqual(correr(raiz).returncode, 0)
+
+    def test_uso_desde_js_jsx_y_mdx(self):
+        for ext in ('js', 'jsx', 'mdx'):
+            raiz = proyecto('.solo-x { x: 1 }', '<div />')
+            with open(os.path.join(raiz, 'frontend', 'src', f'a.{ext}'), 'w', encoding='utf-8') as f:
+                f.write('<p className="solo-x" />')
+            r = correr(raiz)
+            self.assertEqual(r.returncode, 0, (ext, r.stdout))
+
+    def test_uso_desde_apply_de_otro_css(self):
+        raiz = proyecto('.base { x: 1 }\n.otra { @apply base p-2; }', '<div className="otra" />')
+        r = correr(raiz)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_prefijo_de_excepciones_no_sale(self):
         spec = importlib.util.spec_from_file_location('css_sin_uso', SCRIPT)
         mod = importlib.util.module_from_spec(spec)

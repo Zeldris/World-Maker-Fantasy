@@ -117,8 +117,39 @@ class Hoja(unittest.TestCase):
             hoja = f'{banco}/hojas/sueltas-f-1.png'
             crudo = subprocess.run(['ffmpeg', '-v', 'error', '-i', hoja, '-vf', 'crop=1:1:50:20', '-f', 'rawvideo',
                                     '-pix_fmt', 'rgb24', '-'], check=True, capture_output=True).stdout
-            for got, esp in zip(crudo, (0x3a, 0x28, 0x1a)):  # el paso a yuv redondea
-                self.assertLessEqual(abs(got - esp), 2, (nombre, tuple(crudo)))
+            self.assertEqual(tuple(crudo), (0x3a, 0x28, 0x1a), nombre)
+
+    def test_fondo_no_emborrona_el_detalle_fino(self):  # revisión: overlay en yuv420 submuestrea el color
+        banco, fuera = carpeta(), carpeta()
+        ruta = os.path.join(fuera, 'rayas.png')  # columnas de 1 px: rojo y azul alternas, opacas
+        subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',
+                        'color=c=red:s=40x40,format=rgba,geq=r=\'if(mod(X,2),0,255)\':g=0:b=\'if(mod(X,2),255,0)\':a=255',
+                        '-frames:v', '1', ruta], check=True)
+        r = self.correr(banco, '--archivos', 'r', ruta, FONDO='0x3a281a', ALTO='40', ANCHO='40')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        crudo = subprocess.run(['ffmpeg', '-v', 'error', '-i', f'{banco}/hojas/sueltas-r-1.png', '-vf', 'crop=2:1:10:20',
+                                '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], check=True, capture_output=True).stdout
+        self.assertEqual(tuple(crudo), (255, 0, 0, 0, 0, 255))
+
+    def test_fondo_rellena_las_casillas_vacias(self):
+        banco, fuera = carpeta(), carpeta()
+        rutas = []
+        for n in range(3):
+            rutas.append(os.path.join(fuera, f'{n}.png'))
+            png(rutas[-1], 20, 20)
+        r = self.correr(banco, '--archivos', 'v', *rutas, FONDO='0x3a281a', COLUMNAS='2', ANCHO='20')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        crudo = subprocess.run(['ffmpeg', '-v', 'error', '-i', f'{banco}/hojas/sueltas-v-1.png', '-vf', 'crop=1:1:30:30',
+                                '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], check=True, capture_output=True).stdout
+        self.assertEqual(tuple(crudo), (0x3a, 0x28, 0x1a))
+
+    def test_fondo_mal_escrito_aborta_con_su_motivo(self):
+        fuera = carpeta()
+        ruta = os.path.join(fuera, 'a.png')
+        png(ruta, 20, 20)
+        r = self.correr(carpeta(), '--archivos', 'm', ruta, FONDO='red,x=1')
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('FONDO «red,x=1» no vale', r.stdout)
 
     def test_archivo_que_no_existe_aborta(self):
         r = self.correr(carpeta(), '--archivos', 'gpt', '/no/esta.png')

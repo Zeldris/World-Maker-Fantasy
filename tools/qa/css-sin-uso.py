@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""QA-368: clases CSS definidas en frontend/src/**/*.css que ningún .ts/.tsx de frontend/src nombra.
+"""QA-368: clases CSS definidas en frontend/src/**/*.css que nada nombra: ni .ts/.tsx/.js/.jsx/.mdx de frontend/src, ni frontend/index.html, ni un `@apply` de otro CSS.
 
 Uso: python3 tools/qa/css-sin-uso.py [carpeta-raiz]   (por defecto, la del repo)
 Sale con 1 y la lista si hay alguna sin uso, 0 si no. Solo se leen los selectores: comentarios,
@@ -54,9 +54,17 @@ def sin_uso(raiz: str) -> list:
         with open(ruta, encoding='utf-8') as f:
             definidas |= clases_definidas(f.read())
     codigo = ''
-    for ruta in archivos(src, ('.ts', '.tsx')):
+    for ruta in archivos(src, ('.ts', '.tsx', '.js', '.jsx', '.mdx')):
         with open(ruta, encoding='utf-8') as f:
             codigo += f.read() + '\n'
+    index = os.path.join(raiz, 'frontend', 'index.html')
+    if os.path.isfile(index):
+        with open(index, encoding='utf-8') as f:
+            codigo += f.read() + '\n'
+    for ruta in archivos(src, ('.css',)):
+        with open(ruta, encoding='utf-8') as f:
+            for ap in re.findall(r'@apply\b([^;}]*)', sin_ruido(f.read())):
+                codigo += ' '.join('.' + t for t in ap.replace('!', ' ').split()) + '\n'  # @apply foo → uso de .foo
     pendientes = []
     for clase in sorted(definidas):
         if any(clase.startswith(p) for p in EXCEPCIONES):
@@ -69,7 +77,7 @@ def sin_uso(raiz: str) -> list:
 def main(argv) -> int:
     pendientes = sin_uso(os.path.abspath(argv[1]) if len(argv) > 1 else RAIZ)
     if pendientes:
-        print('Clases CSS sin uso en ningún .ts/.tsx (borra su regla o añade su prefijo a EXCEPCIONES con motivo):')
+        print('Clases CSS sin uso en ningún .ts/.tsx/.js/.jsx/.mdx, index.html ni @apply (borra su regla o añade su prefijo a EXCEPCIONES con motivo):')
         for c in pendientes:
             print(f'  .{c}')
         return 1

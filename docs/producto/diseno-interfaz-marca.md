@@ -71,7 +71,7 @@ Todos son adiciones o cambios de una propiedad; ninguno depende de las imágenes
 
 | Clase | Líneas hoy | Cambio |
 |---|---|---|
-| `.plank-panel` | l.167-184 | el borde (l.180, `border: 1px solid var(--color-iron-700);`) se queda; se añade `.plank-panel[data-active="true"], .plank-panel.is-active { border-color: var(--color-gold-900); }` para el panel activo (mundo elegido, modal en primer plano). Cuando llegue `02-tablon.png`, sustituye el `repeating-linear-gradient` + `linear-gradient(155deg, …)` por `url()` de la textura con `background-size: 512px` |
+| `.plank-panel` | l.167-184 | el borde (l.180, `border: 1px solid var(--color-iron-700);`) se queda; se añade `.plank-panel[data-active="true"] { border-color: var(--color-gold-900); }` para el panel activo (mundo elegido, modal en primer plano). Cuando llegue `02-tablon.png`, sustituye el `repeating-linear-gradient` + `linear-gradient(155deg, …)` por `url()` de la textura con `background-size: 512px` |
 | `.plank-panel-defense` | l.193 | sin cambio ahora; con `07-defensa.png`, igual que el anterior |
 | `.iron-band` | l.216-222 | añadir `box-shadow: inset 0 -1px 0 var(--color-gold-700);` (un filo de pátina abajo: el oro remata la banda). Con `05-banda.png`, la textura sustituye los dos `repeating-linear-gradient` y se mantiene el `linear-gradient(175deg, …)` debajo |
 | `.accent-hairline` | l.226-234 | se queda (es la firma del mundo activo). Se añade al lado `.gold-hairline { height: 1px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-gold-500) 80%, transparent) 50%, transparent); }` para los separadores de marca (Home, modales de título) |
@@ -79,7 +79,7 @@ Todos son adiciones o cambios de una propiedad; ninguno depende de las imágenes
 | `.gem2` | l.255 | igual, con `gold-900` en vez de `gold-700` |
 | `.crystal-sky` | l.269-286 | el degradado base (l.284, `linear-gradient(180deg, #0d2230 0%, … accent-600 34% …, iron-900 100%)`) pasa a `linear-gradient(180deg, var(--color-night-950) 0%, var(--color-night-900) 50%, var(--color-iron-900) 100%)`. Las estrellas (`radial-gradient` con `accent-300/400`) se quedan: son el polvo de estrellas del canon. Con `06-cielo.png`, la textura va encima del degradado |
 | `.iron-etched` | l.292 | sin cambio |
-| `.corner-bracket` | l.300-322 | se añade `.corner-bracket-gold` con el mismo dibujo y `border-color: var(--color-gold-700)`, para los paneles de marca (Home, ficha de mundo). Con `08-esquina-oro.png` / `08-esquina-acero.png`, las esquinas pasan a `background-image` en los cuatro pseudo-elementos |
+| `.corner-bracket` | l.300-322 | `.corner-bracket-gold` (mismo dibujo con `border-color: var(--color-gold-700)`) se borró en `QA-368` por no tener uso: ningún componente la aplicaba; la esquina de oro queda entre las piezas sin sitio de `UX-41`. Con `08-esquina-oro.png` / `08-esquina-acero.png`, las esquinas pasan a `background-image` en los cuatro pseudo-elementos |
 | `.rivet` | l.324-348 | sin cambio; con `09-estrella.png` (16 px), el remache central de los paneles de marca puede ser la estrella |
 | `.skill-slot` | l.369-388 | el borde (l.381, `color-mix(in srgb, var(--color-wood-400) 65%, var(--color-iron-900))`) pasa a `1px solid var(--color-gold-900)`; con `10-ranura.png`, `border-image: url(…) 8 fill / 8px stretch` |
 | `.skill-slot:hover:not(:disabled)` | l.393 | el `border-color: var(--color-accent-400)` se queda (el cristal es la respuesta del mundo); se añade `0 0 0 1px var(--color-gold-700)` como primera sombra |
@@ -142,7 +142,7 @@ en ese repo a partir del emblema elegido.
 | #5 | `entrega/ui/05-banda.png` | 1024×256, repetible en horizontal | `.iron-band` (l.216-222), `.iron-etched` (l.292) |
 | #6 | `entrega/ui/06-cielo.png` | 1536×640 | `.crystal-sky` (l.269-286): Home l.20 y `WorldCard.tsx` l.25 |
 | #7 | `entrega/ui/07-defensa.png` | 1024×1024, repetible | `.plank-panel-defense` (l.193) |
-| #8 | `entrega/ui/08-esquina-oro-alpha.png`, `08-esquina-acero-alpha.png` | 64×64 | `.corner-bracket` / `.corner-bracket-gold` (l.300-322) |
+| #8 | `entrega/ui/08-esquina-oro-alpha.png`, `08-esquina-acero-alpha.png` | 64×64 | `.corner-bracket` (l.300-322); la de oro, sin aplicar (pieza sin sitio de `UX-41`) |
 | #9 | `entrega/ui/09-separador-alpha.png`, `09-estrella-alpha.png` | 1024×128 y 16×16 | `.gold-hairline`; remache central (`.rivet`, l.324-348); E8 (separador vertical) es el mismo girado por CSS |
 | #10 | `entrega/ui/10-ranura-alpha.png` | 64×64 (`border-image`) | `.skill-slot` (l.369-388), `SkillBarHud.tsx` l.43-72 |
 | #11 | `entrega/ui/11-pestana-<nombre>-alpha.png` | 512×512 | pestañas de los modales (`ModalShell.tsx`) |
@@ -174,7 +174,7 @@ Lo que no está en la tabla no se ha previsto (cursor E15: descartado por ahora)
 
 1. Los tokens de la sección 2.
 2. Los cambios de clase de la sección 3 que no citan un PNG (bordes de oro, `.gold-hairline`, `.title-gold`, `.crystal-sky`
-   a noche, engaste de `.gem`, `.corner-bracket-gold`).
+   a noche, engaste de `.gem`; la esquina de oro quedó sin aplicar, `QA-368`).
 3. La tipografía de la sección 4 (peso 700 en titulares, `title-gold` y eyebrow en hueso en `Home.tsx`).
 4. `theme-color`, `og:title` y `og:description` en `index.html`.
 
@@ -191,7 +191,7 @@ arcilla `#E0703A` a oro `#b8862b`, y `docs/marca.md` l.3-4 deja de decir «pendi
 2. `.crystal-sky` a noche y `.gem` engastada: la Home cambia de cielo cristal a noche de marca; comprobar en Helek Sirik
    (`WorldCard.tsx` l.25) que la ficha sigue leyéndose.
 3. `.title-gold` + eyebrow en hueso + peso 700 en titulares: el único oro grande de la interfaz.
-4. Bordes: `.plank-panel` activo, `.iron-band`, `.skill-slot`, `.corner-bracket-gold`, `.gold-hairline`.
+4. Bordes: `.plank-panel` activo, `.iron-band`, `.skill-slot`, `.gold-hairline` (la esquina de oro, sin aplicar).
 5. Cuando lleguen las imágenes, por bloques y en este orden: favicon y logo; `#2`, `#3`, `#5`, `#6`, `#4`, `#7` (texturas);
    `#16`, `#10`, E6, E7; pictogramas (`#12`, `#13`, `#11`, `#14`, `#15`); `#8`, `#9`, `#17`, E9-E13, E5, E17.
 6. En cada paso: que el oro no pase del 10 % de la pantalla ni el brillo del 5 %, que no aparezca nada morado, y que el

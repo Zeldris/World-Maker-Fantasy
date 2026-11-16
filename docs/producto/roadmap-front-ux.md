@@ -391,8 +391,8 @@ vuelva más tarde. Eso exige estas reglas de experiencia:
 Diseño completo en [`diseno-interfaz-marca.md`](diseno-interfaz-marca.md) (de galivelop-image-generator,
 2026-11-10). Excepción a la pausa de pruebas (usuario, 2026-11-10).
 
-- ~~**UX-40 · La marca en la interfaz, sin imágenes**~~ ✅ 2026-11-10 (comprobado en pantalla: Home, ficha de Helek Sirik y hotbar; los separadores de la Home pasan a `.gold-hairline`; `.plank-panel` activo y `.corner-bracket-gold` quedan listos sin usar: el mundo elegido sigue con `card-selected`) — tokens de oro, piedra y noche en `index.css`; bordes de oro,
-  `.gold-hairline`, `.title-gold`, `.crystal-sky` a noche, `.gem` engastada, `.corner-bracket-gold`; tipografía de la
+- ~~**UX-40 · La marca en la interfaz, sin imágenes**~~ ✅ 2026-11-10 (comprobado en pantalla: Home, ficha de Helek Sirik y hotbar; los separadores de la Home pasan a `.gold-hairline`; `.plank-panel` activo y `.corner-bracket-gold` quedaron sin usar y se borraron en `QA-368`: el mundo elegido sigue con `card-selected`; `.plank-panel` activo se apoya solo en `[data-active="true"]`) — tokens de oro, piedra y noche en `index.css`; bordes de oro,
+  `.gold-hairline`, `.title-gold`, `.crystal-sky` a noche, `.gem` engastada; tipografía de la
   Home (titular en oro, eyebrow en hueso, peso 700 en titulares); `theme-color`, `og:title` y `og:description` en
   `index.html` (secciones 2-5 y 7 «Ahora» del diseño). **S**
 - **UX-41 · La marca en la interfaz, con imágenes** — texturas, esquinas, ranura, pictogramas, favicon y logo,
@@ -401,10 +401,13 @@ Diseño completo en [`diseno-interfaz-marca.md`](diseno-interfaz-marca.md) (de g
   fuera de git) se preparan con `tools/interfaz/preparar-imagenes.py` en 49 WebP de `assets/interfaz/` (740 KB);
   `imagenesInterfaz` + `Pictograma` (emoji de reserva). Aplicadas y vistas en pantalla: pestañas del rail, fases,
   HUD (energía, sed), dado, 13 categorías de objeto, estados (aviso, error, hecho, en curso), sello de misión, cielo
-  de Home, pantalla de carga, ranura y esquinas de oro. **Queda:** sin sitio aún `plantilla-captura` (no hay
+  de Home, pantalla de carga y ranura. **Queda:** sin sitio aún la esquina de oro (`esquina-oro.webp`, sin componente que
+  la aplique: se borró `.corner-bracket-gold` en `QA-368`), `plantilla-captura` (no hay
   compartir), `insignia` (no hay logros), `marco-retrato`/`marco-redondo` (miniaturas de 32 px) y barras `e07` (las
   de ahora miden h-1.5); sin imagen propia: pestaña Reputación, fase fin, 23 categorías y hambre; favicon, logo,
   `og:image` y hero, sin imagen todavía.
+  ✅ 2026-11-16: revisión de código y retro antes de main; pendiente: piezas sin sitio (esquina de oro, captura,
+  insignia, marcos de retrato y barras) y favicon, logo y hero.
 
 ---
 

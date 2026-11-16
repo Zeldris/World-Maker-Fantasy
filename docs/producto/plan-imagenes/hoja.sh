@@ -39,6 +39,7 @@ for ((k = 0; k < ${#imgs[@]}; k++)); do
 done
 H=${ALTO:-$(( W * h0 / w0 / 2 * 2 ))}
 [[ $H =~ ^[1-9][0-9]*$ ]] || { echo "ABORTO: ALTO «$H» no es un número de píxeles"; exit 2; }
+[[ -z ${FONDO:-} || $FONDO =~ ^[A-Za-z0-9#@.]+$ ]] || { echo "ABORTO: FONDO «$FONDO» no vale (color de ffmpeg: 0x3a281a, nombre…)"; exit 2; }
 mkdir -p "$BANCO/hojas"
 for f in "$BANCO/hojas/$PREFIJO"-*.png; do  # las de una pasada anterior parecerían de esta; solo <prefijo>-<n>.png
   n=${f##*/}; n=${n#"$PREFIJO"-}; [[ ${n%.png} =~ ^[0-9]+$ ]] && rm -f "$f"
@@ -49,13 +50,13 @@ for ((ini = 0, hoja = 1; ini < ${#imgs[@]}; ini += N, hoja++)); do
   for ((i = 0; i < n; i++)); do
     entradas+=(-i "${tent[i]}")
     if [ -n "${FONDO:-}" ]; then
-      filtro+="color=c=$FONDO:s=${W}x$H,format=rgba[f$i];[$i:v]format=rgba,scale=$W:$H:force_original_aspect_ratio=decrease[s$i];[f$i][s$i]overlay=(W-w)/2:(H-h)/2,format=rgb24[v$i];"
+      filtro+="color=c=$FONDO:s=${W}x$H,format=rgba[f$i];[$i:v]format=rgba,scale=$W:$H:force_original_aspect_ratio=decrease[s$i];[f$i][s$i]overlay=(W-w)/2:(H-h)/2:format=auto,format=rgb24[v$i];"
     else
       filtro+="[$i:v]scale=$W:$H:force_original_aspect_ratio=decrease,pad=$W:$H:(ow-iw)/2:(oh-ih)/2,format=rgb24[v$i];"  # xstack pide un solo formato (rgba y rgb24 no casan)
     fi
     capas+="[v$i]"; layout+="${layout:+|}$(( i % COLS * W ))_$(( i / COLS * H ))"
   done
-  if [ "$n" -eq 1 ]; then filtro+="[v0]null[o]"; else filtro+="${capas}xstack=inputs=$n:layout=$layout:fill=black[o]"; fi
+  if [ "$n" -eq 1 ]; then filtro+="[v0]null[o]"; else filtro+="${capas}xstack=inputs=$n:layout=$layout:fill=${FONDO:-black}[o]"; fi
   ffmpeg -v error -y "${entradas[@]}" -filter_complex "$filtro" -map '[o]' -frames:v 1 "$out"
   echo "hoja: $out"
   for ((i = 0; i < n; i++)); do echo "  $(( i + 1 )) ${trozo[i]#"$BANCO"/}"; done

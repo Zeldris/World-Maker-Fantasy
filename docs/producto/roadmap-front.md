@@ -91,7 +91,7 @@ roadmap general; la tabla de § 15 de este documento queda como referencia de pr
 | H5 | **Ninguna animación de salida**: modales, cajón, tooltips y combate desaparecen de golpe. | todos los overlays |
 | H6 | **Modales con cascarón propio sin Escape/foco/rol**: `DetailModal`, `DynamicModeModal`, `KingdomFoundingModal`, `ClaseModal`, `EspecializacionModal`, `MapZoomModal`; y **el cajón `PanelDrawer` tampoco cierra con Escape**. | ver lista |
 | H7 | **91 colores de Tailwind sueltos** (`red-400`, `emerald-300`, `amber-400`…) y **81 valores arbitrarios** junto a los tokens; los mensajes de éxito usan `emerald-300` en unos modales y `moss` en otros. | `*.tsx` |
-| H8 | **Clases CSS muertas**: `animate-edge-flash-amber`, `animate-stamp-in-equip`. | `index.css` |
+| H8 | ~~**Clases CSS muertas**: `animate-edge-flash-amber`, `animate-stamp-in-equip`.~~ ✅ 2026-11-16 (borradas por `QA-368`; `tools/qa/css-sin-uso.py` vigila que no vuelvan) | `index.css` |
 | H9 | **Iconografía 100 % emoji**, que cambia según el SO (ya hubo un ❌ en lugar de ⚔️, comentado en `GameView.tsx`). El 🎲 (un d6) representa también los d20 y d100. | `NavTabs.ts`, paneles, tiradas |
 | H10 | **Imágenes sin `loading="lazy"`, sin `decoding="async"` y sin fundido**: aparecen a saltos. | 13 `<img>` |
 | H11 | **Pantallas previas planas**: tarjetas sin imagen, el personaje es una "G" en un círculo, "Continuar" deshabilitado casi invisible. | `CharacterSelect`, `WorldSelect` |
