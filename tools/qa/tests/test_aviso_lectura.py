@@ -32,9 +32,9 @@ class AvisoLectura(unittest.TestCase):
         self.assertIn('marca-hallazgo.py', texto)
         self.assertIn('recover.py', texto)
 
-    def test_diff_de_un_roadmap_avisa_con_roadmap_py(self):
+    def test_diff_de_un_roadmap_avisa_con_ver_py(self):
         orden = 'git diff origin/main...origin/claude/x -- docs/producto/roadmap-front-ux.md | head -80'
-        self.assertIn('roadmap.py show', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
+        self.assertIn('tools/roadmap/ver.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))
 
     def test_diff_stat_de_un_roadmap_no_avisa(self):
         orden = 'git diff --stat origin/main -- docs/producto/21-roadmap.md'
