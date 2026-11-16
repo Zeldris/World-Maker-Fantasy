@@ -208,8 +208,7 @@ body {
     0 8px 24px -12px rgba(0, 0, 0, 0.7);
 }
 /* Panel activo (mundo elegido, modal en primer plano): filo de oro (UX-40) */
-.plank-panel[data-active="true"],
-.plank-panel.is-active {
+.plank-panel[data-active="true"] {
   border-color: var(--color-gold-900);
 }
 
@@ -372,25 +371,6 @@ body {
   bottom: 6px;
   right: 6px;
   border-width: 0 1.5px 1.5px 0;
-}
-/* Variante de marca (Home, ficha de mundo), UX-40: mismo dibujo, en oro */
-.corner-bracket-gold::before,
-.corner-bracket-gold::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 0;
-  background: url('./assets/interfaz/esquina-oro.webp') no-repeat center / contain;
-}
-.corner-bracket-gold::before {
-  top: 6px;
-  left: 6px;
-}
-.corner-bracket-gold::after {
-  bottom: 6px;
-  right: 6px;
-  transform: rotate(180deg);
 }
 
 .rivet {
@@ -810,9 +790,6 @@ body {
     opacity: 1;
   }
 }
-.animate-edge-flash-amber {
-  animation: edge-flash 0.5s ease-out 0.45s both;
-}
 .animate-edge-flash-accent {
   animation: edge-flash 0.5s ease-out both;
 }
@@ -836,11 +813,6 @@ body {
 }
 .animate-pop-once {
   animation: pop-once 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-/* Sello retrasado 0,2s — StatBadge al equipar: primero encaja el objeto, luego "suena" el bonus */
-.animate-stamp-in-equip {
-  animation: stamp-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
 }
 
 /* Barrido de luz de una sola pasada — subida de nivel, no el ambiental en bucle de thinking-sheen */
@@ -985,11 +957,9 @@ body {
   :root:not([data-motion='completas']) .animate-pulse-slow,
   :root:not([data-motion='completas']) .animate-stamp-in,
   :root:not([data-motion='completas']) .animate-shake-no,
-  :root:not([data-motion='completas']) .animate-edge-flash-amber,
   :root:not([data-motion='completas']) .animate-edge-flash-accent,
   :root:not([data-motion='completas']) .animate-edge-flash-red,
   :root:not([data-motion='completas']) .animate-pop-once,
-  :root:not([data-motion='completas']) .animate-stamp-in-equip,
   :root:not([data-motion='completas']) .animate-sheen-sweep-once,
   :root:not([data-motion='completas']) .animate-combat-enter,
   :root:not([data-motion='completas']) .animate-line-extend,
@@ -1036,16 +1006,12 @@ body {
 :root[data-motion='ninguna'] .animate-stamp-in,
 :root[data-motion='reducidas'] .animate-shake-no,
 :root[data-motion='ninguna'] .animate-shake-no,
-:root[data-motion='reducidas'] .animate-edge-flash-amber,
-:root[data-motion='ninguna'] .animate-edge-flash-amber,
 :root[data-motion='reducidas'] .animate-edge-flash-accent,
 :root[data-motion='ninguna'] .animate-edge-flash-accent,
 :root[data-motion='reducidas'] .animate-edge-flash-red,
 :root[data-motion='ninguna'] .animate-edge-flash-red,
 :root[data-motion='reducidas'] .animate-pop-once,
 :root[data-motion='ninguna'] .animate-pop-once,
-:root[data-motion='reducidas'] .animate-stamp-in-equip,
-:root[data-motion='ninguna'] .animate-stamp-in-equip,
 :root[data-motion='reducidas'] .animate-sheen-sweep-once,
 :root[data-motion='ninguna'] .animate-sheen-sweep-once,
 :root[data-motion='reducidas'] .animate-combat-enter,

@@ -23,8 +23,8 @@ def tamano(ruta: str) -> str:
 
 @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'sin ffmpeg')
 class Hoja(unittest.TestCase):
-    def correr(self, banco: str, *args: str) -> subprocess.CompletedProcess:
-        return subprocess.run(['bash', HOJA, *args], env={**os.environ, 'BANCO_DIR': banco, 'ANCHO': '100'},
+    def correr(self, banco: str, *args: str, **extra: str) -> subprocess.CompletedProcess:
+        return subprocess.run(['bash', HOJA, *args], env={**os.environ, 'BANCO_DIR': banco, 'ANCHO': '100', **extra},
                               capture_output=True, text=True)
 
     def test_hojas_de_seis_en_orden_con_leyenda(self):
@@ -93,6 +93,32 @@ class Hoja(unittest.TestCase):
             self.assertNotEqual(r.returncode, 0, args)
             self.assertIn(motivo, r.stdout, args)
         self.assertTrue(os.path.exists(vieja))
+
+    def test_archivos_de_tamano_y_formato_distintos_y_alto_fijo(self):  # QA-367
+        banco, fuera = carpeta(), carpeta()
+        a, b = os.path.join(fuera, 'a.png'), os.path.join(fuera, 'b.webp')
+        png(a, 200, 80)
+        png(b, 30, 90)
+        r = self.correr(banco, '--archivos', 'mix', a, b)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(tamano(f'{banco}/hojas/sueltas-mix-1.png'), '200,40')
+        r = self.correr(banco, '--archivos', 'mix', a, b, ALTO='60')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(tamano(f'{banco}/hojas/sueltas-mix-1.png'), '200,60')
+
+    def test_fondo_se_ve_tras_el_alfa(self):  # QA-367
+        banco, fuera = carpeta(), carpeta()
+        for nombre in ('p.png', 'p.webp'):
+            ruta = os.path.join(fuera, nombre)  # 40x40 transparente del todo
+            subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=red@0.0:s=40x40,format=rgba',
+                            '-frames:v', '1', ruta], check=True)
+            r = self.correr(banco, '--archivos', 'f', ruta, FONDO='0x3a281a', ALTO='40')
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            hoja = f'{banco}/hojas/sueltas-f-1.png'
+            crudo = subprocess.run(['ffmpeg', '-v', 'error', '-i', hoja, '-vf', 'crop=1:1:50:20', '-f', 'rawvideo',
+                                    '-pix_fmt', 'rgb24', '-'], check=True, capture_output=True).stdout
+            for got, esp in zip(crudo, (0x3a, 0x28, 0x1a)):  # el paso a yuv redondea
+                self.assertLessEqual(abs(got - esp), 2, (nombre, tuple(crudo)))
 
     def test_archivo_que_no_existe_aborta(self):
         r = self.correr(carpeta(), '--archivos', 'gpt', '/no/esta.png')

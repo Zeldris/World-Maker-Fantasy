@@ -22,6 +22,7 @@
     "for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro \"$r\" > /dev/null || exit 1; done",
     "python3 tools/qa/difusion.py",
     "python3 tools/qa/inventario-suelto.py",
+    "python3 tools/qa/css-sin-uso.py",
     "bash tools/qa/bitacora-check.sh",
     "python3 tools/qa/skills-con-tests.py",
     "cd tools/qa/tests && python3 -m unittest -q test_herramientas_con_test"
