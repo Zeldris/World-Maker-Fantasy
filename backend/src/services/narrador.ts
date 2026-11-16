@@ -1250,6 +1250,25 @@ export function abreConElNpc(narracion: string, npc: string, characterName: stri
   return delNpc >= 0 && (delJugador < 0 || delNpc < delJugador);
 }
 
+/// P474 (ronda local 2): el narrador pone en boca del jugador lo que dice el NPC: «Gorhorn se acerca a Ulkha… "La caída
+/// del Clan Maktor fue el resultado de su propia debilidad, Gorhorn"». Una frase citada que llama al jugador por su
+/// nombre (vocativo) no puede decirla él: si la oración que la abre empieza por el jugador, se atribuye mal.
+export function hasPlayerLineAddressedToPlayer(narration: string, characterName: string): boolean {
+  if (!characterName) return false;
+  const n = escapar(characterName);
+  const citas = narration.matchAll(/[«“"]([^»”"]+)[»”"]|(?<![\p{L}])'([^']{4,})'(?![\p{L}])/gu);
+  for (const m of citas) {
+    const cita = m[1] ?? m[2] ?? '';
+    const enCita = new RegExp(`(,\\s*${n}\\s*[.!?…]*\\s*$)|(^\\s*[¡¿]?${n}\\s*,)`, 'iu');
+    if (!enCita.test(cita.trim())) continue;
+    const antes = narration.slice(0, m.index);
+    const ini = Math.max(antes.lastIndexOf('. '), antes.lastIndexOf('! '), antes.lastIndexOf('? '), antes.lastIndexOf('»'), antes.lastIndexOf('”'), antes.lastIndexOf('"'), antes.lastIndexOf('\n')) + 1;
+    const oracion = antes.slice(ini).trim().replace(/^[.:;,\s'‘’]+/, '');
+    if (new RegExp(`^${n}(?![\\p{L}])`, 'iu').test(oracion)) return true;
+  }
+  return false;
+}
+
 /// P263 (ronda QA-289, 2026-11-03): Ulkha contesta «El mando sigue en manos de mi hermana, Ulkha Ketg… Yo, Ulkha Ketg,
 /// soy la que manda». Un posesivo a una o dos palabras de su propio nombre es hablar de sí como de otra persona;
 /// «mi nombre es Ulkha Ketg» no cuenta.
@@ -1271,6 +1290,13 @@ export function replicaDefectuosa(
   const texto = reply.replace(/^[\s«»“”"—-]+/, '');
   const nombres = [npc.name, npc.nombreVisible].filter((n): n is string => !!n);
   if (nombres.some((n) => new RegExp(`^${escapar(n)}(?![\\p{L}])(?![,:;])`, 'iu').test(texto))) return 'acotación sin frase hablada';
+  // P466 (ronda local 2): «Ulkha mira hacia Gorhorn, su rostro serio.» — sin ninguna comilla, abre con una parte del
+  // nombre del NPC o habla del jugador con una preposición («se inclina hacia Gorhorn»): acotación, no habla.
+  if (!/[«»“”"'‘’]/.test(reply)) {
+    const partes = nombres.flatMap((n) => n.split(/\s+/)).filter((t) => t.length >= 4);
+    if (partes.some((t) => new RegExp(`^${escapar(t)}(?![\\p{L}])(?![,:;])`, 'iu').test(texto))) return 'acotación sin frase hablada';
+    if (new RegExp(`(^|[^\\p{L}])(hacia|a|con|ante|sobre|mira|mirando)\\s+${escapar(characterName)}(?![\\p{L}])`, 'iu').test(reply)) return 'acotación sin frase hablada';
+  }
   for (const n of nombres) {
     const re = new RegExp(`(^|[^\\p{L}])${escapar(n)}(?![\\p{L}])`, 'giu');
     for (const m of reply.matchAll(re)) {
@@ -1973,6 +1999,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },
         { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
+        { check: () => hasPlayerLineAddressedToPlayer(parsed.narration, ctx.characterName ?? ''), reason: 'frase citada que llama al jugador por su nombre atribuida al propio jugador (es la réplica del NPC)' },
         { check: () => hasFalseCombatHit(narrationAndFacts, ctx.combatBothMissed), reason: 'narrar (en prosa o en newFacts) un golpe que no conectó (ataque_falla/parada_en_seco)' },
         {
           check: () => hasFalseCombatMiss(narrationAndFacts, ctx.combatRealHitLanded, ctx.nonExchangeAttackHitLanded),

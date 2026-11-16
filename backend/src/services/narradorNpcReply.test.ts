@@ -6,7 +6,7 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerateStream: vi.fn(),
 }));
 
-const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc, replicaDefectuosa } = await import('./narrador.js');
+const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc, replicaDefectuosa, hasPlayerLineAddressedToPlayer } = await import('./narrador.js');
 
 describe('generateNpcReply (fase 1 hacia main, P327)', () => {
   beforeEach(() => {
@@ -407,5 +407,23 @@ describe('réplica defectuosa del NPC (P466, P467, P469)', () => {
   it('un NPC que no conoce al jugador no lo llama por su nombre', async () => {
     ollamaGenerate.mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué quieres, Gorhorn?»' }) }).mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué quieres, forastero?»' }) });
     expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Hola, ¿cazas por aquí?', sessionFacts: [] })).toBe('«¿Qué quieres, forastero?»');
+  });
+});
+
+describe('réplica sin habla y cita del NPC en boca del jugador (P466, P474)', () => {
+  const npc = { name: 'Ulkha Ketg', role: 'cazadora', personality: '', bio: '' };
+  it('P466: acotación sin comillas que abre con una parte del nombre o habla del jugador se rechaza', () => {
+    expect(replicaDefectuosa('Ulkha mira hacia Gorhorn, su rostro serio.', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
+    expect(replicaDefectuosa('Se inclina hacia Gorhorn, su mirada fija y sin parpadear, mientras su voz baja resuena en la plaza.', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
+    expect(replicaDefectuosa('Los Maktor cayeron en la guerra, Gorhorn.', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('Ulkha, así me llaman: los Maktor cayeron por débiles.', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn.»', npc, 'Gorhorn', true)).toBeNull();
+  });
+  it('P474: una cita con el nombre del jugador en vocativo no puede abrirla el propio jugador', () => {
+    expect(hasPlayerLineAddressedToPlayer('Gorhorn se acerca a Ulkha… "La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn"', 'Gorhorn')).toBe(true);
+    expect(hasPlayerLineAddressedToPlayer('Ulkha Ketg lo mira. Gorhorn dice: «Gorhorn, ¿qué quieres?»', 'Gorhorn')).toBe(true);
+    expect(hasPlayerLineAddressedToPlayer('Ulkha Ketg responde: «La caída del Clan Maktor fue su debilidad, Gorhorn.»', 'Gorhorn')).toBe(false);
+    expect(hasPlayerLineAddressedToPlayer('Gorhorn se acerca a Ulkha. «¿Qué pasó con los Maktor, Ulkha?»', 'Gorhorn')).toBe(false);
+    expect(hasPlayerLineAddressedToPlayer('Gorhorn asiente. Ulkha Ketg lo mira: «Escucha, Gorhorn.»', 'Gorhorn')).toBe(false);
   });
 });
