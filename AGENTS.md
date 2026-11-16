@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.6.0 -->
+<!-- galivelop-workflow v0.7.0 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -47,7 +47,8 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
 - **Al cerrar cada tarea o PR** (y cada fase, y cada lote de una rama larga, `QA-305`), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
   en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
-- **Al cerrar cada bloque o fase, mira el CI de la última subida.** Uno que no arranca (sin cuota, sin runners) es
+- **Al cerrar cada bloque o fase, mira el CI de la última subida**, con `python3 .claude/gw/scripts/ci-status.py` (un
+  rojo se lee con `--failed`, no con el registro entero del job). Uno que no arranca (sin cuota, sin runners) es
   rojo: se dice a la usuaria, y el check local del mismo commit (`pre-push`, o `tools/qa/ci-local.sh`, `QA-215`) vale
   **solo si ella lo confirma**, apuntado como «comprobado solo en local»; uno que arrancó y falló, nunca.
 
@@ -90,7 +91,8 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check y de los tests.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.
 - El commit con los arreglos de una revisión lleva `Findings: <n hallazgos aceptados>` y el de un trabajo que tuvo que
-  subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`).
+  subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`), en el bloque final, junto a `Siguiente:` y sin
+  línea en blanco entre ellos.
 
 ## Ramas y `main`
 
@@ -122,7 +124,8 @@ líneas. Detalle en el
    se apunta como pendiente en la bitácora y no vuelve a revisarse en ese PR. Lo que casa con `content` de
    `.claude/gw.json` es contenido, no código. Tampoco se revisa lo copiado tal cual del flujo (`vendored`;
    `python3 .claude/gw/scripts/review-scope.py --workflow <repo del flujo>` lista lo que sí: uno editado en el proyecto
-   entra). Un diff trivial (`review-scope.py --trivial` sale en 0) se revisa en la sesión, sin subagente; los arreglos
+   entra). Un diff trivial (`review-scope.py --trivial` sale en 0) se revisa en la sesión, sin subagente. El encargo del revisor nombra `pendingFile`
+   de `.claude/gw.json` con «no informes de lo que ya está aquí». Los arreglos
    de la revisión van a un subagente `sonnet`, salvo ganchos, guardas, seguridad y los scripts que llaman (`opus`).
 2. **Entorno:** recomendar a la usuaria `/gw-opt-ai` si [`pendiente-opt-ai.md`](docs/records/pendiente-opt-ai.md)
    pasa su umbral (`QA-306`; lo lanza ella), `/gw-opt-tokens` y `/retro`, que revisa también
