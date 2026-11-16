@@ -310,8 +310,9 @@ body {
 }
 
 /* Cielo de Cristal (roadmap de rediseño visual, Fable 2026-07-20, Nivel 1): lavado disperso y
-   ESTÁTICO de micro-cristales (posiciones fijas, nunca aleatorio ni animado) — cero hexes nuevos,
-   deriva de --color-accent-300/400 vía color-mix. Canon: genesis.md Era 0, cinturón de
+   ESTÁTICO de micro-cristales (posiciones fijas, nunca aleatorio ni animado) (estrellas
+   derivadas de --color-accent-300/400 vía color-mix) sobre el cielo pintado cielo.webp (UX-41) y un degradado
+   de noche fijo (--color-night-950/900 e iron-900, sin luna). Canon: genesis.md Era 0, cinturón de
    micro-cristales que da brillo perlado nocturno — algo que ningún bando posee. */
 .crystal-sky {
   background-image:
@@ -456,7 +457,7 @@ body {
     inset 0 1px 2px rgba(0, 0, 0, 0.8),
     0 1px 0 rgba(255, 255, 255, 0.06);
   transition:
-    border-color 120ms ease-out,
+    filter 120ms ease-out,
     box-shadow 120ms ease-out;
 }
 .skill-slot span {
@@ -467,9 +468,10 @@ body {
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
     inset 0 1px 2px rgba(0, 0, 0, 0.8),
     /* Oro pegado al borde y el cristal por fuera: el cristal es la respuesta del mundo (UX-40) */
-    0 0 0 1px var(--color-gold-700),
-    0 0 0 2px color-mix(in srgb, var(--color-accent-500) 60%, transparent),
-    0 0 10px -2px var(--color-accent-500);
+    0 0 0 3px var(--color-gold-700),
+    0 0 0 4px color-mix(in srgb, var(--color-accent-500) 60%, transparent),
+    0 0 12px 1px var(--color-accent-500);
+  filter: brightness(1.25);
 }
 .skill-slot:disabled {
   cursor: not-allowed;
@@ -485,7 +487,8 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 1px 0 var(--color-gold-900);
+  /* drop-shadow y no text-shadow: con background-clip:text la sombra de texto taparía el degradado */
+  filter: drop-shadow(0 1px 0 var(--color-gold-900));
 }
 
 /* Composer enriquecido (enlaces de objeto/habilidad estilo WoW, insertados dentro del propio

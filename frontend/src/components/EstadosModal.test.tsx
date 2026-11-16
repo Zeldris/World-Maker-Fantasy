@@ -15,6 +15,7 @@ describe('MOD-2 — estados de modal', () => {
     expect(estado.getAttribute('aria-busy')).toBe('true')
     expect(estado.textContent).toContain('Buscando destinos...')
     expect(estado.querySelectorAll('.animate-pulse')).toHaveLength(4)
+    expect(estado.querySelectorAll('.animate-pulse[aria-hidden="true"]')).toHaveLength(4)
   })
 
   it('error de carga con «Reintentar»; sin handler no hay botón', () => {

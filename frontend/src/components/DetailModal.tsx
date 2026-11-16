@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { textoEnergiaHabilidad } from '../lib/energiaHabilidad'
 import type { EquipSlot, IngredientStatusInfo, InventoryItemInfo, SavedActionInfo } from '../types'
 import { statBonusLabels } from '../lib/dice'
-import { itemIcon } from '../lib/enciclopediaTargets'
+import { itemIcon, itemImagen } from '../lib/enciclopediaTargets'
 import {
   resolveImageUrl,
   type EnciclopediaImagePrompts,
@@ -234,6 +234,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
                 fuera de verdad ("Raciones de viaje" equipada salía con icono de arma). */}
             <MediaSlot
               icon={target.item.tipo === 'ESPECIAL' ? '✨' : itemIcon(target.item.category ?? '', target.item.name)}
+              iconImage={target.item.tipo === 'ESPECIAL' ? undefined : itemImagen(target.item.category ?? '', target.item.name)}
               variant="placeholder"
               imageUrl={resolveImageUrl(target.item.imageUrls?.banner ?? null)}
             />
@@ -526,6 +527,7 @@ export function DetailModal({ target, onClose, onUnequip, onEquip, onTirar, onSa
               <>
                 <MediaSlot
                   icon={target.icon}
+                  iconImage={target.imagen}
                   variant="placeholder"
                   // Bug real jugando en vivo (2026-09-06, "muchas locations en la preview del mapa
                   // no se ven aunque ya las descubrí y la imagen ya está añadida"): un asentamiento
