@@ -91,7 +91,8 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check y de los tests.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.
 - El commit con los arreglos de una revisión lleva `Findings: <n hallazgos aceptados>` y el de un trabajo que tuvo que
-  subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`).
+  subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`), en el bloque final, junto a `Siguiente:` y sin
+  línea en blanco entre ellos.
 
 ## Ramas y `main`
 

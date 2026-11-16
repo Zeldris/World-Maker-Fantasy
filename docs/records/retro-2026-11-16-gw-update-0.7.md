@@ -3,7 +3,9 @@
 Rama `claude/wonderful-volta-662qt8`. Incluye la pasada de `/gw-opt-tokens` (`measure.py --since b098334`: 68 llamadas,
 7,5 M de entrada, el 97 % leída de caché, contexto medio 110k, suelo 94k, techo 107k, 1 compactación).
 
-**Estado:** sin decidir; las propuestas esperan a la usuaria.
+**Estado:** aprobada entera por la usuaria (2026-11-16). Aplicadas: 1 y 2 (`QA-363`: suelo en `.claude/gw/gw-opt-tokens.md`,
+línea de `Findings:` en `AGENTS.md`), 3 apuntada como `QA-362` en `roadmap-front.md` (hito `0.3`), 4 enviada al flujo
+en «For Galivelop-workflow».
 
 ## Propuestas, de más a menos peso
 
