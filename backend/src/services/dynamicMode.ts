@@ -336,6 +336,16 @@ export const GISTERA_DESPEDIDA_EN_CONVERSACION =
 export const GISTERA_TEXTO_APERTURA =
   'Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo, con la respiración entrecortada y sin dejar de mirar hacia atrás — algo, o alguien, la persigue.';
 
+/// P464 (QA-356): forma corta de la escena de Gistera para el bloque «narración del turno anterior» del narrador. Con la
+/// apertura/presentación enteras ahí, el modelo las volvía a contar (rechazo «repetir casi verbatim»); se conservan quién
+/// es ella y la misión (el riesgo), no las frases. El guardia de repetición sigue comparando contra el texto completo.
+export const GISTERA_RESUMEN_APERTURA = '[Una orca de las llanuras llegó corriendo, huyendo de alguien.]';
+export const GISTERA_RESUMEN_PRESENTACION =
+  '[Gistera Koh, del Clan Serhu (ya sin clan), se presentó: la persigue un orco del clan que quiere matarla, y pide a Gorhorn que acabe con él antes de que sea tarde.]';
+export function acotarEscenasFijasGistera(texto: string): string {
+  return texto.split(GISTERA_TEXTO_PRESENTACION).join(GISTERA_RESUMEN_PRESENTACION).split(GISTERA_TEXTO_APERTURA).join(GISTERA_RESUMEN_APERTURA);
+}
+
 export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null, yaContado = false): GisteraTurnoOutput {
   if (vuelta === 1) {
     return {

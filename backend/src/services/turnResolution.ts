@@ -84,7 +84,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS, GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION } from './dynamicMode.js';
+import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS, GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION, acotarEscenasFijasGistera } from './dynamicMode.js';
 import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
@@ -3370,7 +3370,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
   if (lastNarration) {
     contextBlocks.push(
-      `TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${lastNarration.text}". Varía el vocabulario y las imágenes en este turno — evita reutilizar las mismas palabras o metáforas que acabas de usar ahí.`,
+      `TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${acotarEscenasFijasGistera(lastNarration.text)}". Varía el vocabulario y las imágenes en este turno — evita reutilizar las mismas palabras o metáforas que acabas de usar ahí.`,
     );
   }
 

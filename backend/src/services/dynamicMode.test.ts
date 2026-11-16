@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, nombresVisiblesDeNpcs, narrarAperturaCombateForzado, resumenModoDinamicoParaLog, narrarVueltaGistera } from './dynamicMode.js';
+import { aNombre, conIndefinido, decideOfertaModoDinamico, nombreOcultoPorRaza, nombresVisiblesDeNpcs, narrarAperturaCombateForzado, resumenModoDinamicoParaLog, narrarVueltaGistera, acotarEscenasFijasGistera, GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION } from './dynamicMode.js';
 
 describe('decideOfertaModoDinamico', () => {
   it('sin candidatos (NPC/FAUNA/RECURSO con cantidad > 0), nunca ofrece nada', () => {
@@ -237,5 +237,21 @@ describe('líneas fijas de Gistera sin el nombre del jugador (P465)', () => {
     expect(narrarVueltaGistera(2, 'aceptar').narration).not.toContain('Gorhorn');
     expect(narrarVueltaGistera(2, 'rechazar').narration).not.toContain('Gorhorn');
     expect(narrarVueltaGistera(2, 'preguntar', true).narration).not.toContain('Gorhorn');
+  });
+});
+
+describe('acotarEscenasFijasGistera (QA-356, P464)', () => {
+  it('la apertura y la presentación enteras no pasan al narrador, pero sí quién es Gistera y la misión', () => {
+    const texto = `${GISTERA_TEXTO_APERTURA}\n\n${GISTERA_TEXTO_PRESENTACION}`;
+    const corto = acotarEscenasFijasGistera(texto);
+    expect(corto).not.toContain(GISTERA_TEXTO_APERTURA);
+    expect(corto).not.toContain(GISTERA_TEXTO_PRESENTACION);
+    expect(corto).not.toContain('respiración entrecortada');
+    expect(corto).toContain('Gistera Koh');
+    expect(corto).toContain('acabe con él');
+    expect(corto.length).toBeLessThan(texto.length / 2);
+  });
+  it('una narración normal queda igual', () => {
+    expect(acotarEscenasFijasGistera('Gorhorn avanza por el barro.')).toBe('Gorhorn avanza por el barro.');
   });
 });
