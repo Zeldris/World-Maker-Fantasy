@@ -710,3 +710,13 @@ describe('P448: levantar la mano no es construir', () => {
     expect(detectsUnknownConstructionClaim('Levanto una Torre de Cristal')).toBe(true);
   });
 });
+
+describe('P475: levantarse (el NPC) no es construir', () => {
+  it('preguntar o pedir a un NPC que se levante/se siente no es una construcción desconocida', () => {
+    expect(detectsUnknownConstructionClaim('Le pregunto al Orco enfurecido si puede levantarse')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Le pido a Torgash que se levante')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Le digo al orco que se levante del suelo')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Le pido al orco que levante la mano')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Levanto una Torre de Cristal')).toBe(true);
+  });
+});

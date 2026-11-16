@@ -489,7 +489,9 @@ const STRICT_BUILD_VERB_REGEX = /\b(constru|levant|erig)\w*\b/i;
 export function detectsUnknownConstructionClaim(action: string): boolean {
   // P448: «levanto la mano», «me levanto», «levanto la vista» no son construir.
   const normalized = normalizeText(action)
-    .replace(/\bme levant\w*/g, ' ')
+    .replace(/\b(?:me|se|te|nos) levant\w*/g, ' ')
+    // P475: «si puede levantarse», «que vuelva a levantarse», «levántate»: el verbo reflexivo es de quien se levanta.
+    .replace(/\blevant\w*(?:se|me|te|nos)\b/g, ' ')
     .replace(/\blevant\w*\s+(?:(?:la|el|las|los|mi|mis|una|un|su|sus)\s+)?(?:mano|manos|brazo|brazos|vista|mirada|voz|punos?|cabeza|escudo|arma|ceja|cejas|ojos|dedo|copa|hacha|lanza|espada|garrote|antorcha|palma)\b/g, ' ');
   if (!STRICT_BUILD_VERB_REGEX.test(normalized)) return false;
   return !CONSTRUCTION_RECIPES.some((recipe) => recipe.nounRegex.test(normalized));
