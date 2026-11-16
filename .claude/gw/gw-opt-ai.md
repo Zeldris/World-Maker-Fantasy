@@ -115,3 +115,5 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 - Aprobadas el 2026-11-15, grupo 3 (no se vuelven a proponer): Ollama en su scope y vigilante de memoria en la ronda (`QA-353`),
   P475 como caso de `clasificar-eval` (`QA-354`), falso positivo del guard «jugador acertando» (`QA-355`), sin la apertura
   entera como turno anterior (`QA-356`) y turnos de exploración y combate por separado en `medir-ia.py` (`QA-357`).
+- Aprobadas el 2026-11-16, grupo 5 (no se vuelven a proponer): intento 2 con el mismo prefijo (`QA-501`), medir el corte del
+  prefijo entre turnos y conservar `logs/ollama.log` (`QA-502`), memoria de la caché de prompts de `llama-server` (`QA-503`).
