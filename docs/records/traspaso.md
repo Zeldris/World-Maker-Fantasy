@@ -163,4 +163,3 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md) 
 3. 2026-11-16 — QA-366: aviso-lectura.py avisa del diff de un roadmap y apunta a roadmap.py show
 4. 2026-11-16 — QA-365: el LEEME de tarkor-final, por grep (nota local)
 5. 2026-11-16 — QA-364: piezas y montajes de interfaz en hoja (hoja.sh --archivos), en skills-wmf.md
-6. 2026-11-16 — QA-363: `Findings:` en el bloque final (AGENTS.md) y suelo fijo de ~81k en gw-opt-tokens.md (retro de la v0.7.0 del flujo)
