@@ -417,7 +417,8 @@ describe('réplica sin habla y cita del NPC en boca del jugador (P466, P474)', (
     expect(replicaDefectuosa('Se inclina hacia Gorhorn, su mirada fija y sin parpadear, mientras su voz baja resuena en la plaza.', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
     expect(replicaDefectuosa('Los Maktor cayeron en la guerra, Gorhorn.', npc, 'Gorhorn', true)).toBeNull();
     expect(replicaDefectuosa('Ulkha, así me llaman: los Maktor cayeron por débiles.', npc, 'Gorhorn', true)).toBeNull();
-    expect(replicaDefectuosa('«La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn.»', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn.»', npc, 'Gorhorn', true)).toBeNull();    // Vocativo sin coma tras «mira»: es habla, no una acotación (revisión de P466).
+    expect(replicaDefectuosa('Mira Gorhorn, los Maktor cayeron por débiles.', npc, 'Gorhorn', true)).toBeNull();
   });
   it('P474: una cita con el nombre del jugador en vocativo no puede abrirla el propio jugador', () => {
     expect(hasPlayerLineAddressedToPlayer('Gorhorn se acerca a Ulkha… "La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn"', 'Gorhorn')).toBe(true);

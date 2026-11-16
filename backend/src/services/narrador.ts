@@ -1295,7 +1295,7 @@ export function replicaDefectuosa(
   if (!/[«»“”"'‘’]/.test(reply)) {
     const partes = nombres.flatMap((n) => n.split(/\s+/)).filter((t) => t.length >= 4);
     if (partes.some((t) => new RegExp(`^${escapar(t)}(?![\\p{L}])(?![,:;])`, 'iu').test(texto))) return 'acotación sin frase hablada';
-    if (new RegExp(`(^|[^\\p{L}])(hacia|a|con|ante|sobre|mira|mirando)\\s+${escapar(characterName)}(?![\\p{L}])`, 'iu').test(reply)) return 'acotación sin frase hablada';
+    if (new RegExp(`(^|[^\\p{L}])(hacia|a|con|ante|sobre)\\s+${escapar(characterName)}(?![\\p{L}])`, 'iu').test(reply)) return 'acotación sin frase hablada';
   }
   for (const n of nombres) {
     const re = new RegExp(`(^|[^\\p{L}])${escapar(n)}(?![\\p{L}])`, 'giu');
