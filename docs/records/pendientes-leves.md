@@ -64,3 +64,7 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 - Escapado de regex y normalización sin tildes repetidos (`escapar`, `contieneNombre`, `normalizar`…); usar `escapeForRegex` y `normalizeText`.
 - Altura: la «una voz por llamada» es una cadena de parches de regex sobre la narración; valorar el gesto del NPC como campo del JSON.
 - Si `generateNpcReply` lanza excepción, el `catch` sigue sin réplica de respaldo; `quitarFrasesRepetidas` une con espacio y pierde los párrafos si quita una frase.
+
+## Actualización del flujo a v0.7.0 (`claude/wonderful-volta-662qt8`, 2026-11-16)
+
+- `test_measure.py` (parche P24): `next(...)` sin valor por defecto lanza `StopIteration` si el archivo no está ni en la raíz ni en `gw/`; mejor un error que nombre la ruta.
