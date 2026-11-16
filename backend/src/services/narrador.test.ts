@@ -943,6 +943,27 @@ describe('hasFalseCombatAttacker', () => {
   });
 });
 
+describe('hasFalseCombatAttacker: QA-355 (P473), textos reales rechazados con el golpe bien atribuido al NPC', () => {
+  const pasan = [
+    'El orco desconocido carga con su maza orca y golpea a Gorhorn en el hombro. Gorhorn intenta esquivar el golpe, pero el orco desconocido es demasiado rápido y consigue conectar. Gorhorn se tambalea bajo el impacto.',
+    'El orco desconocido le asesta un golpe certero en la espalda a Gorhorn. El golpe se siente como un martillazo en su espalda y Gorhorn cae a un costado.',
+    'El orco desconocido carga con toda la fuerza, su maza orca descargando un golpe directo en el pecho de Gorhorn. Este último intenta resistir el golpe, pero su cuerpo no puede contener la fuerza de la maza orca; el impacto lo tumba al suelo, jadeando.',
+    'La maza orca del orco desconocido impacta con fuerza en el pecho de Gorhorn, haciéndolo tambalearse. Gorhorn intenta resistir el golpe, pero su cuerpo no puede contener la fuerza del impacto.',
+    'El orco desconocido le asesta un golpe fuerte en el hombro a Gorhorn, quien se mantiene firme pero vacila bajo el impacto. A su vez, Gorhorn intenta bloquear el ataque, pero el orco desconocido logra golpearlo en el brazo.',
+    'El orco desconocido le asesta un golpe certero en el hombro de Gorhorn con su maza orca. Gorhorn, sin desmayar, se coloca firmemente de puntas de pie, listo para recibir el impacto.',
+    'Gorhorn resiste el impacto de la maza orca, pero la fuerza del golpe lo hace tambalearse. El orco desconocido aprovecha la momentánea debilidad de Gorhorn para lanzarle un golpe de codo que lo hace caer de espaldas.',
+  ];
+  it.each(pasan.map((t, i) => [i + 1, t] as const))('texto %i del registro: el golpe es del NPC, no se rechaza', (_n, texto) => {
+    expect(hasFalseCombatAttacker(texto, 'Gorhorn', true)).toBe(false);
+  });
+
+  it('un golpe mal atribuido de verdad (el jugador acierta, el NPC no) se sigue rechazando', () => {
+    const mal = 'El orco desconocido avanza con su maza. Gorhorn le asesta un golpe certero en el hombro y el impacto lo hace retroceder.';
+    expect(hasFalseCombatAttacker(mal, 'Gorhorn', true)).toBe(true);
+    expect(hasFalseCombatAttacker('Gorhorn esquiva la maza y golpea al orco en el costado, que gruñe de dolor.', 'Gorhorn', true)).toBe(true);
+  });
+});
+
 describe('hasPrematureCombatResolution', () => {
   it('bug real jugando en vivo, confirmado en dos partidas (2026-07-31 y 2026-08-01): detecta un combate narrado como ya resuelto en el turno de aceptar ayudar a Gistera Koh, sin ningún intercambio mecánico', () => {
     const narration =

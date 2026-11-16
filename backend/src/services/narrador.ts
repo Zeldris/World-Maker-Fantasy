@@ -2643,11 +2643,17 @@ export function hasFalseCombatAttacker(narration: string, characterName?: string
   const normalizedName = normalizeText(characterName);
   const sentences = narration.split(SENTENCE_SPLIT_REGEX).map(normalizeText);
   return sentences.some((sentence, i) => {
-    if (!sentence.includes(normalizedName)) return false;
-    const window = [sentence, sentences[i + 1] ?? ''].join(' ');
+    const nameAt = sentence.indexOf(normalizedName);
+    if (nameAt < 0) return false;
+    // QA-355 (P473): solo cuenta el vocabulario de impacto que viene DESPUÉS del nombre (el jugador como sujeto);
+    // "el orco golpea a Gorhorn" lo tiene antes (víctima) y "bajo el impacto" es el sustantivo del golpe recibido.
+    const window = [sentence.slice(nameAt + normalizedName.length), sentences[i + 1] ?? ''].join(' ').replace(IMPACTO_SUSTANTIVO_REGEX, ' ');
     return COMBAT_HIT_LEAK_REGEX.test(window);
   });
 }
+
+// Sustantivo "impacto" (el golpe recibido), no el verbo "impactó" de COMBAT_HIT_LEAK_REGEX; ya sin tildes (normalizeText).
+const IMPACTO_SUSTANTIVO_REGEX = /\b(el|del|al|su|ese|este|tal|un)\s+impacto\b/gi;
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-02, bug real jugando en
 /// vivo, confirmado en DOS partidas seguidas — 2026-07-31 y 2026-08-01): el turno de aceptar ayudar
