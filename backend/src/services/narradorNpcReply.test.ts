@@ -465,3 +465,21 @@ describe('réplica sin habla y cita del NPC en boca del jugador (P466, P474)', (
     expect(hasPlayerLineAddressedToPlayer('Gorhorn asiente. Ulkha Ketg lo mira: «Escucha, Gorhorn.»', 'Gorhorn')).toBe(false);
   });
 });
+
+describe('turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => {
+  it('la línea fija cita lo que dice el jugador, o dice solo a quién se dirige', async () => {
+    const { lineaDialogoDelJugador } = await import('./narrador.js');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Le digo a Gistera Koh: ¿quién manda en el Clan Serhu?', 'Gistera Koh')).toBe('Gorhorn le pregunta a Gistera Koh: «¿Quién manda en el Clan Serhu?»');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Le digo a Ulkha: «Cuéntame qué pasó con los Maktor, Ulkha»', 'Ulkha Ketg')).toBe('Gorhorn le dice a Ulkha Ketg: «Cuéntame qué pasó con los Maktor, Ulkha.»');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Le pregunto qué opina de mí', 'el orco desconocido')).toBe('Gorhorn se vuelve hacia el orco desconocido y le pregunta.');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Saludo con la cabeza', 'el orco desconocido')).toBe('Gorhorn se dirige al orco desconocido.');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Saludo con la cabeza', 'la orca desconocida')).toBe('Gorhorn se dirige a la orca desconocida.');
+  });
+
+  it('la réplica lleva siempre su hablante, aunque la línea del jugador ya nombre al NPC', async () => {
+    const { unirReplica } = await import('./narrador.js');
+    const ulkha = { name: 'Ulkha Ketg', articulo: null, genero: 'F' };
+    expect(unirReplica('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?»', '«El hambre.»', ulkha, true)).toBe('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?» Ulkha Ketg responde: «El hambre.»');
+    expect(unirReplica('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?»', '«El hambre.»', ulkha)).toBe('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?» «El hambre.»');
+  });
+});

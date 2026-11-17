@@ -31,7 +31,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
 import { guardarPrefijoNarrador } from './calentarNarrador.js';
-import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, lineaDialogoDelJugador, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -4809,7 +4809,21 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ramas deterministas de abajo (combate múltiple/Gistera guionizada/saqueo/construcción/
   // cosecha/crafteo/curación explícita) nunca llaman a narrateAction, así que no hay ningún
   // prompt/respuesta real que capturar para el profesor cloud.
+  // P464(b), P466, P474, P476 (decisión de Álvaro, 2026-11-17): un saludo o una pregunta a un NPC, fuera de combate, sin
+  // viaje, sin escena fija y sin reputación hostil (que podría abrir combate), no pasa por el narrador: línea fija del
+  // jugador (`lineaDialogoDelJugador`) y la réplica de `dialogo_npc` detrás. Ahorra además la llamada a `narrar`.
+  const turnoDeDialogoPuro =
+    !!dialogueTarget &&
+    !enCombate &&
+    !travel &&
+    !combatExchangeDisplayFinal &&
+    !gisteraSePresentaEsteTurno &&
+    !pursuerRevealedThisTurn &&
+    detectsGreetingOrQuestion(action) &&
+    !npcsInScene.some((n) => reputacionHostil(n.faction, factionsStatus));
+
   const wasLlmNarrated = !(
+    turnoDeDialogoPuro ||
     combatEncounterMode ||
     gisteraSePresentaEsteTurno ||
     lootMode ||
@@ -4829,6 +4843,10 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // adelantarse a ningún guard de arriba que todavía pudiera descartar el turno entero.
   if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal.rivalNombre ?? null);
 
+  const quienEnDialogo = async (npc: NonNullable<typeof dialogueTarget>): Promise<string> => {
+    const visible = await nombreVisibleDeNpc(prisma, saveId, npc);
+    return visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, npc.articulo);
+  };
   const narration: NarrationResult = combatEncounterMode
     ? { narration: combatEncounterNarration, newFacts: [] }
     : gisteraSePresentaEsteTurno
@@ -4853,7 +4871,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                       narration: `${characterName} no está lo bastante cansado y no quiere volver a descansar todavía. ${pickFlavor(REST_COOLDOWN_FLAVOR)}`,
                       newFacts: [],
                     }
-                  : await narrateAction(narrationCtx);
+                  : turnoDeDialogoPuro && dialogueTarget
+                    ? { narration: lineaDialogoDelJugador(characterName, action, await quienEnDialogo(dialogueTarget)), newFacts: [] }
+                    : await narrateAction(narrationCtx);
   // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
@@ -5037,7 +5057,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
       }
-      {
+      if (turnoDeDialogoPuro) {
+        narration.narration = unirReplica(narration.narration, npcReply, dialogueTarget, true);
+      } else {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
         // P415-P417 (restos de habla sin cita) y P412 (abre con el NPC): el NPC habla solo en su réplica, al final.
         const nombreNpc = dialogueTarget.nombreVisible ?? dialogueTarget.name;
@@ -5047,6 +5069,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     } catch (err) {
       console.warn(`[turno] generateNpcReply falló, se omite la réplica de este turno (saveId=${saveId}):`, err);
+      // Sin narrador ni réplica, la pregunta no se queda sin respuesta: la de respaldo.
+      if (turnoDeDialogoPuro) narration.narration = unirReplica(narration.narration, '', dialogueTarget, true);
     }
   }
   // P410: un nombre conocido escrito casi bien («Ulka Ketg») se corrige al de la ficha.

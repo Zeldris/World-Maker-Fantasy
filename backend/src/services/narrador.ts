@@ -1199,16 +1199,35 @@ export function unirReplica(
   narracion: string,
   reply: string,
   npc: { name: string; nombreVisible?: string; articulo: string | null; genero: string | null },
+  // Turno de diálogo puro: la línea del jugador ya nombra al NPC y acaba en su propia cita, así que quien responde
+  // se dice siempre (si no, la réplica se leería como la continuación de lo que dice el jugador).
+  conHablante = false,
 ): string {
   // P425: «-La situación…»: un guion suelto al abrir no es la raya de diálogo.
   const sinGuion = (reply.trim() === '' ? REPLICA_DE_RESPALDO : reply).replace(/^([«“"]?)\s*-+\s*/, '$1');
   const cita = /^[«“"—]/.test(sinGuion) ? sinGuion : `«${sinGuion.replace(/^'+|'+$/g, '')}»`;
-  if (narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
+  if (!conHablante && narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
   const visible = npc.nombreVisible ?? npc.name;
-  if (contieneNombre(frases(narracion).at(-1) ?? '', visible)) return `${narracion} ${cita}`.trim();
+  if (!conHablante && contieneNombre(frases(narracion).at(-1) ?? '', visible)) return `${narracion} ${cita}`.trim();
   const articulo = npc.nombreVisible ? (npc.genero === 'F' ? 'la' : 'el') : npc.articulo;
   const quien = articulo ? `${articulo[0]!.toUpperCase()}${articulo.slice(1)} ${visible.toLowerCase()}` : visible;
   return `${narracion} ${quien} responde: ${cita}`.trim();
+}
+
+/// P464(b), P466, P474, P476 (decisión de Álvaro, 2026-11-17): en un turno de diálogo puro (saludo o pregunta a un NPC,
+/// sin combate ni escena fija) no se llama al narrador, que hablaba o gesticulaba por el jugador y le atribuía la
+/// réplica del NPC. Va esta línea fija y, detrás, la réplica de `dialogo_npc` (`unirReplica` con hablante). Si la
+/// acción trae lo que dice entre comillas o tras dos puntos, se cita; si no («Le pregunto a Ulkha qué la trae»), solo
+/// a quién se dirige. `quien` es el nombre en frase («la orca desconocida», «Ulkha Ketg»).
+export function lineaDialogoDelJugador(characterName: string, action: string, quien: string): string {
+  const a = quien.replace(/^el\s/i, 'al ').replace(/^(?!al\s)/, 'a ');
+  const cita = (/[«“"]([^»”"]{2,})[»”"]/.exec(action)?.[1] ?? /:\s*(.{2,})$/.exec(action)?.[1] ?? '').trim().replace(/[\s,;:]+$/, '');
+  if (cita) {
+    const conMayuscula = cita.replace(/^([¿¡]?)(\p{Ll})/u, (_, signo: string, letra: string) => signo + letra.toUpperCase());
+    const final = /[.!?…]$/.test(conMayuscula) ? conMayuscula : `${conMayuscula}.`;
+    return `${characterName} le ${/\?/.test(cita) ? 'pregunta' : 'dice'} ${a}: «${final}»`;
+  }
+  return /pregunt|[¿?]/i.test(action) ? `${characterName} se vuelve hacia ${quien} y le pregunta.` : `${characterName} se dirige ${a}.`;
 }
 
 function contieneNombre(texto: string, nombre: string): boolean {
