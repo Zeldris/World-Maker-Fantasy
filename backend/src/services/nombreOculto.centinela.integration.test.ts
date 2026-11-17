@@ -225,12 +225,17 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
     const app = await buildApp();
     const hecho = await turno(app, saveId, 'Saludo al orco desconocido.');
     expect(hecho.type).toBe('done');
-    // Prueba de que el camino se ha recorrido: hubo clasificación, narración y la réplica dedicada del NPC.
+    // Prueba de que el camino se ha recorrido: hubo clasificación y la réplica dedicada del NPC. Un saludo es un turno
+    // de diálogo puro (P464b-P476): sin narrador, con la línea fija del jugador, que `sinFugas` revisa en el diario.
     expect(promptsDesde(desde, 'clasificar').length).toBeGreaterThan(0);
-    expect(promptsDesde(desde, 'narrar').length).toBeGreaterThan(0);
+    expect(promptsDesde(desde, 'narrar').length).toBe(0);
     const replicas = promptsDesde(desde, 'dialogo_npc');
     expect(replicas.length).toBeGreaterThan(0);
     expect(replicas[0]!.texto).toContain('PERSONAJE QUE ERES: Orco desconocido');
+    // Una acción que no es saludo ni pregunta sí pasa por el narrador: su prompt tampoco lo nombra.
+    const convencer = await turno(app, saveId, 'Intento convencer al orco desconocido de que me deje pasar.');
+    expect(convencer.type).toBe('done');
+    expect(promptsDesde(desde, 'narrar').length).toBeGreaterThan(0);
     await diario(saveId);
     await detalle(app, saveId);
     sinFugas(desde);
