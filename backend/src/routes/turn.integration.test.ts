@@ -2097,6 +2097,20 @@ describe('Turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => 
     expect(texto).toContain('responde:');
   }, 30_000);
 
+  it('P479: con Ulkha y Torgash en escena, «Le digo a Torgash que quiero saber qué opina de él.» es diálogo puro con Torgash', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    for (const slug of ['ulkha-ketg', 'torgash-ketg']) {
+      const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug } });
+      await prisma.npcState.upsert({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: "" } }, create: { saveId, npcId: npc.id, scope: '', condicionFisica: 'ILESO' }, update: {} });
+      const loc = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
+      await prisma.zonePoint.create({ data: { locationId: loc.currentLocationId!, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: slug, cantidad: 1, activo: true } });
+    }
+    const texto = await turno('Le digo a Torgash que quiero saber qué opina de él.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(texto).toContain('responde:');
+  }, 30_000);
+
   it('«Intento convencer a Ulkha Ketg de que me deje pasar» (no es saludo ni pregunta) sí pasa por narrateAction', async () => {
     await turno('Intento convencer a Ulkha Ketg de que me deje pasar');
     expect(narrateAction).toHaveBeenCalledTimes(1);

@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -167,5 +167,23 @@ describe('prefijoComun (QA-502)', () => {
     const o = JSON.parse(lineaRegistro({ operation: 'text_completion', promptChars: 100, prefijoComunChars: 40 }, 'deck'));
     expect(o['app.prompt_chars']).toBe(100);
     expect(o['app.prefijo_comun_chars']).toBe(40);
+  });
+});
+
+describe('prefijoBloque (QA-507)', () => {
+  const b = (...t: string[]) => t.map((texto, i) => ({ nombre: `b${i}`, texto }));
+
+  it('da el primer bloque que difiere de la última lista del mismo modelo', () => {
+    expect(prefijoBloque('qa507-a', b('x', 'y', 'z'))).toBe('inicio');
+    expect(prefijoBloque('qa507-b', b('x', 'q'))).toBe('inicio');
+    expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2'))).toBe('b1');
+    expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2'))).toBe('ninguno');
+    expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2', 'extra'))).toBe('b3');
+    expect(prefijoBloque('qa507-a', b('x2'))).toBe('b0');
+  });
+
+  it('va al registro como app.prefijo_bloque y sin bloques no se escribe', () => {
+    expect(JSON.parse(lineaRegistro({ operation: 'text_completion', prefijoBloque: 'hechos' }, 'deck'))['app.prefijo_bloque']).toBe('hechos');
+    expect('app.prefijo_bloque' in JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))).toBe(false);
   });
 });

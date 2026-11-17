@@ -378,7 +378,14 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
   it('el valor sale de la mecánica: nadie, el jugador, el rival o los dos', async () => {
     const { resultadoDelGolpe } = await import('./narrador.js');
     expect(resultadoDelGolpe({ ...base, combatBothMissed: true })).toBe('Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.');
-    expect(resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true })).toBe('Orco enfurecido no logra alcanzar a Gorhorn, que se cubre.');
+    // QA-504 (P481): defendiéndose, el golpe se pierde (sin «impacto» que absorber ni resistir): en positivo y sin cubrirse.
+    const defensa = resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true });
+    expect(defensa).toMatch(/^(El golpe de Orco enfurecido se pierde en el aire: Gorhorn lo esquiva y no le toca\.|Orco enfurecido lanza su golpe y Gorhorn lo desv[ií]a: pasa de largo sin tocarle\.|El ataque de Orco enfurecido falla: Gorhorn se aparta a tiempo y el golpe pasa de largo, sin tocarle\.)$/);
+    expect(defensa).not.toMatch(/impacto|absorb|resist|encaj|se cubre/i);
+    // Determinista por turno, y varía según la acción.
+    expect(resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true })).toBe(defensa);
+    const distintas = new Set(['Me defiendo', 'Me cubro', 'Paro el golpe', 'Levanto el escudo'].map((action) => resultadoDelGolpe({ ...base, action, combatBothMissed: true, playerActedAsDefenderThisExchange: true })));
+    expect(distintas.size).toBeGreaterThan(1);
     expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true })).toBe('Gorhorn acierta y golpea a Orco enfurecido; Orco enfurecido no le acierta.');
     expect(resultadoDelGolpe({ ...base, jugadorRecibeGolpeEsteTurno: true })).toBe('Orco enfurecido acierta y golpea a Gorhorn; Gorhorn no le acierta.');
     expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true, jugadorRecibeGolpeEsteTurno: true })).toMatch(/^Los dos aciertan/);
@@ -403,6 +410,19 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
     // Rechazado el 1.º (jugador acertando), el reintento lleva el hecho entre los HECHOS.
     expect(prompts.length).toBeGreaterThan(1);
     expect(prompts[1]).toContain(`Resultado del intercambio (ya decidido): ${frase}`);
+  });
+
+  it('QA-504: tras rechazar un golpe falso defendiéndose, el reintento dice en positivo que el golpe no le toca', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'Gorhorn clava el hacha en el orco y el golpe del orco le alcanza.', newFacts: [] }) })
+      .mockResolvedValue({ text: JSON.stringify({ narration: 'El orco lanza su golpe y Gorhorn lo esquiva.', newFacts: [] }) });
+    await narrateAction({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true } as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts.length).toBeGreaterThan(1);
+    expect(prompts[0]).not.toContain('TU RESPUESTA ANTERIOR');
+    expect(prompts[1]).toContain('Cuéntalo así: el golpe de Orco enfurecido falla, se pierde en el aire o Gorhorn lo esquiva o lo desvía, y no le toca.');
   });
 
   it('narrateAction lo pide primero, obligatorio y con un único valor, y no lo devuelve', async () => {

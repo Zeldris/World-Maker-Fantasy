@@ -1295,6 +1295,15 @@ describe('detectsGreetingOrQuestion (P306)', () => {
     expect(detectsGreetingOrQuestion('¡Ataco al orco con el hacha!')).toBe(false);
     expect(detectsGreetingOrQuestion('Le amenazo: «¡dame el oro!»')).toBe(false);
   });
+
+  it('P479: un imperativo de habla con vocativo es diálogo; uno de movimiento o de acción, no', () => {
+    expect(detectsGreetingOrQuestion('Cuéntame qué pasó con los Maktor, Ulkha.')).toBe(true);
+    expect(detectsGreetingOrQuestion('Dime, Torgash, qué opinas del clan.')).toBe(true);
+    expect(detectsGreetingOrQuestion('Explícame cómo funciona el drogh.')).toBe(true);
+    expect(detectsGreetingOrQuestion('Sígueme, Ulkha.')).toBe(false);
+    expect(detectsGreetingOrQuestion('Dame el hacha, Ulkha.')).toBe(false);
+    expect(detectsGreetingOrQuestion('Cuéntame una amenaza: te mato, Ulkha.')).toBe(false);
+  });
 });
 
 describe('sinNombreReal (revisión P327)', () => {

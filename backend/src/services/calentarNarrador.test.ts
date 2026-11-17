@@ -25,6 +25,12 @@ const CTX = {
 };
 
 describe('QA-339: prefijo estable del narrador', () => {
+  it('QA-507: los bloques con nombre suman el prompt', () => {
+    const { prompt, bloques } = buildNarrationPrompt(CTX);
+    expect(bloques.map((x) => x.texto).join('')).toBe(prompt);
+    expect(bloques.map((x) => x.nombre)).toEqual(expect.arrayContaining(['personaje', 'hechos', 'estado_partida', 'accion']));
+  });
+
   it('es el principio del prompt y acaba en los hechos estables, sin estado, hechos del turno ni acción', () => {
     const { prompt, prefijoEstable } = buildNarrationPrompt(CTX);
     expect(prompt.startsWith(prefijoEstable)).toBe(true);

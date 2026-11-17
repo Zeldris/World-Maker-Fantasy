@@ -714,6 +714,12 @@ export async function detectNpcsInScene(params: {
     const slugsCompaneros = new Set(companeros.map((c) => c.sourceSlug));
     for (const npc of sinCasar) if (slugsCompaneros.has(npc.slug) && nombraPorPalabraDelNombre(params.action, npc.name)) matchedIds.add(npc.id);
   }
+  // P479: a quien ya se ha tratado en esta partida (tiene `NpcState`) y está aquí se le llama por el nombre de pila
+  // («Le digo a Torgash que…», «…, Ulkha.»), como al compañero; a un desconocido, no (ya filtrado en los candidatos).
+  // Solo el nombre de pila: el apellido de clan («Ketg») casaría con «Hogar Ketg» y metería en escena a todo el clan.
+  for (const npc of candidateNpcs) {
+    if (!matchedIds.has(npc.id) && npc.kind === 'PRINCIPAL' && encounteredIds.has(npc.id) && nombraPorPalabraDelNombre(params.action, npc.name.split(/\s+/)[0] ?? '')) matchedIds.add(npc.id);
+  }
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
   const matchedPorNombre = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
@@ -1197,8 +1203,9 @@ export function detectsInventoryReviewIntent(action: string): boolean {
 /// instantáneo (fixedInstructions en narrador.ts) — esto es la red de seguridad determinista,
 /// mismo patrón que ya usa `detectsAttackIntent` más arriba (turn.ts fuerza banda "instantanea" si
 /// el clasificador se equivoca). Signos de interrogación/exclamación, comillas de diálogo directo,
-/// o verbos de habla explícitos — cualquiera de los tres basta.
-const DIALOGUE_INTENT_REGEX = /[?¿!¡]|["“”«»]|\bdigo\b|\bpregunt|\bcontest|\brespond|\bhablo\b|\bhablar\b|\bsusurr|\bgrito\b|\bgrita\b|\bsaludo\b|me presento/;
+/// o verbos de habla explícitos — cualquiera de los tres basta. P479: también el imperativo de habla con pronombre
+/// («Cuéntame qué pasó, Ulkha.», «Dime…»); uno de movimiento o de acción («Sígueme», «Dame el hacha») no es diálogo.
+const DIALOGUE_INTENT_REGEX = /[?¿!¡]|["“”«»]|\bdigo\b|\bpregunt|\bcontest|\brespond|\bhablo\b|\bhablar\b|\bsusurr|\bgrito\b|\bgrita\b|\bsaludo\b|me presento|\b(cuentame|cuentanos|cuentamelo|dime|dimelo|dinos|explicame|explicanos|hablame|respondeme|contestame|informame)\b/;
 
 export function detectsDialogueIntent(action: string): boolean {
   return DIALOGUE_INTENT_REGEX.test(normalizeText(action));

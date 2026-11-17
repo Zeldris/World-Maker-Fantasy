@@ -1,5 +1,5 @@
 import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
-import { registrarLlamada } from '../lib/iaRegistro.js';
+import { registrarLlamada, type BloquePrompt } from '../lib/iaRegistro.js';
 import { sinComillasSueltas } from './accionCitada.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
@@ -1115,14 +1115,24 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
 /// único valor posible (`enum`), así el modelo lo escribe tal cual antes de narrar. `null` sin intercambio resuelto.
 export const CLAVE_RESULTADO_GOLPE = 'resultadoDelGolpe';
 export function resultadoDelGolpe(
-  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRivalNarrado' | 'combatBothMissed' | 'playerActedAsDefenderThisExchange' | 'jugadorConectaEsteTurno' | 'jugadorRecibeGolpeEsteTurno'>,
+  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRivalNarrado' | 'combatBothMissed' | 'playerActedAsDefenderThisExchange' | 'jugadorConectaEsteTurno' | 'action' | 'jugadorRecibeGolpeEsteTurno'>,
 ): string | null {
   const jugador = ctx.characterName;
   const rival = ctx.combatRivalNarrado;
   if (!ctx.enCombate || !jugador || !rival) return null;
   const Rival = rival[0]!.toUpperCase() + rival.slice(1);
   // Si el jugador solo se defendió, no «golpea y falla»: el rival no le alcanza.
-  if (ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange) return `${Rival} no logra alcanzar a ${jugador}, que se cubre.`;
+  // QA-504 (P481): «no logra alcanzar, que se cubre» llevaba al modelo a narrar que Gorhorn «se planta y absorbe el impacto»,
+  // y la guarda de golpe falso lo rechazaba. En positivo: el golpe se pierde, sin impacto que resistir. Variante fija por
+  // turno (el valor va en el esquema y en el reintento), según el rival y la acción, para que no sea siempre la misma frase.
+  if (ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange) {
+    const variantes = [
+      `El golpe de ${Rival} se pierde en el aire: ${jugador} lo esquiva y no le toca.`,
+      `${Rival} lanza su golpe y ${jugador} lo desvía: pasa de largo sin tocarle.`,
+      `El ataque de ${Rival} falla: ${jugador} se aparta a tiempo y el golpe pasa de largo, sin tocarle.`,
+    ];
+    return variantes[[...`${rival}${ctx.action ?? ''}`].reduce((a, c) => a + c.charCodeAt(0), 0) % variantes.length]!;
+  }
   if (ctx.combatBothMissed) return `Nadie acierta: ni ${jugador} ni ${rival} conectan su golpe.`;
   if (ctx.jugadorConectaEsteTurno && ctx.jugadorRecibeGolpeEsteTurno) return `Los dos aciertan: ${jugador} golpea a ${rival} y ${rival} golpea a ${jugador}.`;
   if (ctx.jugadorConectaEsteTurno) return `${jugador} acierta y golpea a ${rival}; ${rival} no le acierta.`;
@@ -1535,6 +1545,8 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   narracionAnterior: string;
   /// Principio de `prompt` hasta los hechos estables de la escena (QA-339): se guarda para calentar la caché al abrir.
   prefijoEstable: string;
+  /// QA-507: el prompt por bloques con nombre, en orden (su concatenación es `prompt`).
+  bloques: BloquePrompt[];
 } {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
@@ -1723,15 +1735,11 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
       ? ''
       : `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. Si hay otros personajes, salen después y en una frase breve.${campoAccion}\n`;
 
-  const cabecera = `${GOOD_NARRATION_EXAMPLE}
-
-${fixedInstructions}
-
-PERSONAJE:
-${identidad}
-
-HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
-`;
+  const cabeceraEjemplo = `${GOOD_NARRATION_EXAMPLE}\n\n`;
+  const cabeceraInstrucciones = `${fixedInstructions}\n\n`;
+  const cabeceraPersonaje = `PERSONAJE:\n${identidad}\n\n`;
+  const cabeceraHechos = `HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):\n`;
+  const cabecera = cabeceraEjemplo + cabeceraInstrucciones + cabeceraPersonaje + cabeceraHechos;
   // QA-339: lo que el siguiente turno en la misma zona comparte con este, para calentarlo al abrir la partida.
   // QA-348 (`/gw-opt-ai`, 2026-11-15): en combate, todos los hechos. Dos rondas seguidas comparten también los no
   // estables hasta el bloque de la ronda (al final de los hechos, QA-307); con solo los estables, el 1.er turno tras
@@ -1739,19 +1747,23 @@ HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mi
   const prefijoEstable = ctx.enCombate
     ? cabecera + hechosBlock
     : cabecera + hechosOrdenados.filter((f) => rangoEstable(f) < HECHOS_ESTABLES.length).map((f) => `- ${f}`).join('\n');
-  const prompt = `${cabecera}${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
-${groundingBlock}
-
-${rollBlock}
-
-${combatBlock}
-
-${lengthGuidance}
-
-ACCIÓN DEL JUGADOR:
-"${ctx.action}"
-${focoBlock}
-Responde solo con el JSON pedido, nada más.`;
+  // QA-507: el prompt como lista de bloques con nombre (su concatenación ES el prompt); el registro de la IA apunta
+  // el primer bloque que cambia respecto al prompt anterior (`app.prefijo_bloque`).
+  const bloques: BloquePrompt[] = [
+    { nombre: 'ejemplo', texto: cabeceraEjemplo },
+    { nombre: 'instrucciones', texto: cabeceraInstrucciones },
+    { nombre: 'personaje', texto: cabeceraPersonaje },
+    { nombre: 'hechos', texto: cabeceraHechos + hechosBlock },
+    { nombre: 'estado_partida', texto: estadoPartida },
+    { nombre: 'narracion_anterior', texto: narracionAnterior },
+    { nombre: 'lore_fondo', texto: backgroundLoreBlock },
+    { nombre: 'grounding', texto: `\n${groundingBlock}\n\n` },
+    { nombre: 'tirada', texto: `${rollBlock}\n\n` },
+    { nombre: 'combate', texto: `${combatBlock}\n\n` },
+    { nombre: 'longitud', texto: `${lengthGuidance}\n\n` },
+    { nombre: 'accion', texto: `ACCIÓN DEL JUGADOR:\n"${ctx.action}"\n${focoBlock}\nResponde solo con el JSON pedido, nada más.` },
+  ];
+  const prompt = bloques.map((b) => b.texto).join('');
 
   // QA-340: el resultado del golpe, ya decidido (`golpe`, arriba), va primero y es obligatorio (ver `resultadoDelGolpe`).
   const format = {
@@ -1841,7 +1853,7 @@ Responde solo con el JSON pedido, nada más.`;
     required: [...(golpe ? [CLAVE_RESULTADO_GOLPE] : []), ...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
   };
 
-  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, prefijoEstable };
+  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, prefijoEstable, bloques };
 }
 
 /// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce
@@ -1857,7 +1869,7 @@ export function allAttemptsRejectedForSameReason(reasons: string[], totalAttempt
 }
 
 export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
-  const { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior } = buildNarrationPrompt(ctx);
+  const { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, bloques } = buildNarrationPrompt(ctx);
 
   // Tres intentos en cascada. Visto en pruebas reales (2026-07-18): una acción concreta colgó
   // 4 de 4 veces con el modelo grande, incluso reduciendo hechos y relajando la regla de "no
@@ -1884,6 +1896,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     const generateOptions = {
       model: env.ollamaModelNarrador,
       prompt,
+      bloques,
       format,
       // QA-163: 220 → 300. Solo cuesta si el modelo los usa (p50 de salida ~150); con 220, 1 de cada ~40
       // intentos 1 se cortaba a mitad del JSON y pasaba al intento 2.
@@ -1941,12 +1954,24 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // fallo técnico (timeout, JSON cortado); tras un rechazo de la guarda, el mismo prompt con el motivo al final.
   // El respaldo (intento 3, otro modelo y `num_ctx` 8192, QA-166) va siempre recortado.
   let ultimoFueRechazo = false;
-  const promptDeReintento = (recortar: boolean) => {
+  const promptDeReintento = (recortar: boolean): { prompt: string; bloques?: BloquePrompt[] } => {
     const base = recortar ? retryPrompt : prompt;
     const motivo = rejectionReasons[rejectionReasons.length - 1] ?? '';
-    const sinAnterior = REPETICION.has(motivo) && narracionAnterior ? base.replace(narracionAnterior, '') : base;
-    if (recortar) return sinAnterior;
-    return `${sinAnterior}\n\nTU RESPUESTA ANTERIOR SE DESCARTÓ POR: ${motivo}. Escríbela de nuevo sin ese error.${golpeDecidido ? ` Resultado del intercambio (ya decidido): ${golpeDecidido}` : ''}`;
+    const quitaAnterior = REPETICION.has(motivo) && !!narracionAnterior;
+    const sinAnterior = quitaAnterior ? base.replace(narracionAnterior, '') : base;
+    if (recortar) return { prompt: sinAnterior };
+    // QA-504 (P481): tras rechazar un golpe falso cuando Gorhorn solo se defendió, la corrección dice en positivo lo que
+    // pasó (el golpe se pierde, no toca) en vez de dejar al modelo con el «error» a secas, que lo llevaba a «absorbe el impacto».
+    const rival = ctx.combatRivalNarrado ? ctx.combatRivalNarrado[0]!.toUpperCase() + ctx.combatRivalNarrado.slice(1) : 'El rival';
+    const enPositivo =
+      ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange && motivo.includes('ataque_falla')
+        ? ` Cuéntalo así: el golpe de ${rival} falla, se pierde en el aire o ${ctx.characterName ?? 'el jugador'} lo esquiva o lo desvía, y no le toca.`
+        : '';
+    const sufijo = `\n\nTU RESPUESTA ANTERIOR SE DESCARTÓ POR: ${motivo}. Escríbela de nuevo sin ese error.${golpeDecidido ? ` Resultado del intercambio (ya decidido): ${golpeDecidido}` : ''}${enPositivo}`;
+    return {
+      prompt: sinAnterior + sufijo,
+      bloques: [...bloques.map((b) => (quitaAnterior && b.nombre === 'narracion_anterior' ? { ...b, texto: '' } : b)), { nombre: 'reintento', texto: sufijo }],
+    };
   };
 
   const attempt2 = () => {
@@ -1956,7 +1981,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     // sin dejarlo sin límite del todo.
     return ollamaGenerate({
       model: env.ollamaModelNarrador,
-      prompt: promptDeReintento(!ultimoFueRechazo),
+      ...promptDeReintento(!ultimoFueRechazo),
       format,
       maxTokens: 400,
       timeoutMs: 240_000,
@@ -1974,7 +1999,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   const attempt3 = () =>
     ollamaGenerate({
       model: env.ollamaModelCronista,
-      prompt: promptDeReintento(true),
+      ...promptDeReintento(true),
       format,
       numCtx: CTX_CRONISTA,
       maxTokens: 220,

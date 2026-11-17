@@ -211,6 +211,35 @@ describe('detectsAbsentSceneNpcClaim', () => {
     }
   });
 
+  // P480: Ulkha acababa de nombrar a Gogorath (en el catálogo, no en escena) y la pregunta por él cortaba el turno.
+  describe('P480: el ausente dentro de lo dicho a un presente es el tema', () => {
+    beforeEach(() => {
+      findManyNpc.mockReset().mockResolvedValue([
+        { slug: 'ulkha-ketg', name: 'Ulkha Ketg', aliases: ['ulkha ketg'] },
+        { slug: 'gogorath', name: 'Gogorath', aliases: [] },
+      ]);
+    });
+
+    it('no dispara tras «:», entre comillas, dentro de ¿…? ni tras «quién es/era»', async () => {
+      for (const accion of [
+        'Le pregunto a Ulkha Ketg: ¿Quién era Gogorath?',
+        'Le digo a Ulkha Ketg: Háblame de Gogorath.',
+        'Le digo a Ulkha Ketg «cuéntame algo de Gogorath».',
+        'Le digo a Ulkha Ketg "háblame de Gogorath".',
+        'Le pregunto a Ulkha Ketg ¿qué fue de Gogorath?',
+        'Le pregunto a Ulkha Ketg quién era Gogorath.',
+      ]) {
+        expect(await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']), accion).toBeNull();
+      }
+    });
+
+    it('sigue disparando si el ausente es el destinatario o el objetivo de la acción', async () => {
+      for (const accion of ['Ataco a Gogorath.', 'Le pregunto a Gogorath: ¿Quién eres?', 'Le pregunto a Gogorath: ¿Y tú, Ulkha Ketg?', 'Le digo a Gogorath que ataco.']) {
+        expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']))?.name, accion).toBe('Gogorath');
+      }
+    });
+  });
+
   it('sin la misión del Orco ACTIVA: el mismo texto SÍ se bloquea (el Orco no está disponible sin la quest)', async () => {
     findFirstQuest.mockResolvedValueOnce(null);
     const result = await detectsAbsentSceneNpcClaim(

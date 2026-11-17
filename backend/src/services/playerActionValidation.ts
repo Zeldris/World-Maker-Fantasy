@@ -196,11 +196,30 @@ const VERBO_DE_PREGUNTAR = /\b(pregunt\w*|cuent\w*|inform\w*|dime|dimelo|averigu
 /// hace del nombre el destinatario de otra acción, no el tema.
 const OTRA_ACCION_ANTES_DEL_NOMBRE = /[.;:,]|\b(y|e|luego|despues|entonces|tras|hablo|hablar|saludo|saludar|digo|decir|me acerco|voy|vamos|llamo|llamar|atacar?|ataco)\b/;
 
-function esTemaDeLaPregunta(action: string, nombres: string[]): boolean {
+/// P480: «quién es/era/fue Gogorath» (con artículo opcional): el nombre es el tema de la pregunta.
+const QUIEN_ES_ANTES_DEL_NOMBRE = /\bquien(?:es)?\s+(?:es|era|fue|son|eran|fueron)\s+(?:(?:el|la|los|las|ese|esa|aquel|aquella)\s+)?$/;
+
+/// P480: el nombre cae dentro de lo que dice el jugador («Le pregunto a Ulkha Ketg: ¿Quién era Gogorath?», «Le digo a
+/// Ulkha «… Gogorath …»»): tras los dos puntos que siguen al nombre de alguien presente, entre comillas o dentro de ¿…?.
+function dentroDeLoDicho(texto: string, posNombre: number, finPresente: number): boolean {
+  const prefijo = texto.slice(0, posNombre);
+  const cuenta = (c: string) => prefijo.split(c).length - 1;
+  return prefijo.indexOf(':', finPresente) >= 0 || cuenta('«') > cuenta('»') || cuenta('"') % 2 === 1 || cuenta('“') > cuenta('”') || cuenta('¿') > cuenta('?');
+}
+
+function esTemaDeLaPregunta(action: string, nombres: string[], presentes: string[] = []): boolean {
   const texto = normalizeText(action);
   const posiciones = nombres.map((n) => texto.indexOf(normalizeText(n))).filter((i) => i >= 0);
   if (posiciones.length === 0) return false;
-  const prefijo = texto.slice(0, Math.min(...posiciones));
+  const posNombre = Math.min(...posiciones);
+  if (QUIEN_ES_ANTES_DEL_NOMBRE.test(texto.slice(0, posNombre))) return true;
+  // Un presente nombrado antes (a quien se habla) y el ausente dentro de lo dicho: el ausente es el tema, no el destinatario.
+  const finPresente = presentes
+    .map((n) => ({ i: texto.indexOf(normalizeText(n)), n: normalizeText(n) }))
+    .filter((p) => p.n.length > 0 && p.i >= 0 && p.i < posNombre)
+    .map((p) => p.i + p.n.length);
+  if (finPresente.length > 0 && dentroDeLoDicho(texto, posNombre, Math.min(...finPresente))) return true;
+  const prefijo = texto.slice(0, posNombre);
   return [...prefijo.matchAll(TEMA_DE_PREGUNTA_REGEX)].some((m) => {
     const marcador = m[1]!;
     const necesitaVerbo = marcador === 'por' || marcador === 'sobre' || marcador === 'acerca de';
@@ -229,7 +248,7 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
   }
   const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
   if (!absent) return null;
-  if (effectiveSceneSlugs.length > 0 && esTemaDeLaPregunta(action, [absent.name, ...absent.aliases])) return null;
+  if (effectiveSceneSlugs.length > 0 && esTemaDeLaPregunta(action, [absent.name, ...absent.aliases], allNpcs.filter((n) => effectiveSceneSlugs.includes(n.slug)).flatMap((n) => [n.name, ...n.aliases]))) return null;
   // La ficha se busca con el tipo que le toca (`entityTypeDeSerVivo`, REVIEW.md): una fauna y un NPC con el mismo slug no se confunden.
   const entityType = entityTypeDeSerVivo(absent.slug, FUENTES_DE_CATALOGO);
   const vista = await prisma.discoveredEntity.findFirst({

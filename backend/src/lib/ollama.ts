@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
-import { calcularTruncated, nsToMs, prefijoComun, registrarCaso, registrarLlamada } from './iaRegistro.js';
+import { calcularTruncated, nsToMs, prefijoComun, prefijoBloque, type BloquePrompt, registrarCaso, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -49,6 +49,8 @@ export interface OllamaGenerateOptions {
   numCtx?: number;
   /// Intento de la cascada del narrador (1, 2 o 3), solo para el registro (`app.intento`, QA-162).
   intento?: number;
+  /// QA-507: el prompt por bloques con nombre (su concatenación es `prompt`), solo para el registro (`app.prefijo_bloque`).
+  bloques?: BloquePrompt[];
   /// Muestreo extra de Ollama (`options`), p. ej. el del narrador (QA-289). Sin él, manda el Modelfile.
   muestreo?: { min_p?: number; repeat_penalty?: number; repeat_last_n?: number };
 }
@@ -185,6 +187,7 @@ function registrarGenerate(
     decodeMs: nsToMs(r.eval_duration),
     ttftMs: extra.ttftMs,
     ...(env.iaRegistro ? prefijoComun(options.model, `${options.system ?? ''}\n${options.prompt}`) : {}),
+    ...(env.iaRegistro && options.bloques ? { prefijoBloque: prefijoBloque(options.model, options.bloques) } : {}),
     // Una llamada fallida no dice si se recortó: sin esto contaba en recortado_pct por el largo del prompt.
     truncated: extra.error ? undefined : calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
     error: extra.error,

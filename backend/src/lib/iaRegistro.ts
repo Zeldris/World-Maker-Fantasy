@@ -36,6 +36,8 @@ export interface RegistroLlamada {
   /// QA-502: caracteres de `system` + `prompt` y cuántos comparte con la llamada anterior al mismo modelo (`prefijoComun`).
   promptChars?: number;
   prefijoComunChars?: number;
+  /// QA-507: nombre del primer bloque del prompt que difiere del anterior del mismo modelo (solo con bloques con nombre).
+  prefijoBloque?: string;
   truncated?: boolean;
   error?: string;
   ragQuery?: string;
@@ -106,6 +108,25 @@ export function prefijoComun(modelo: string, texto: string): { promptChars: numb
   return { promptChars: texto.length, prefijoComunChars: i };
 }
 
+/// QA-507: `prefijoComun` dice cuántos caracteres; esto, en qué bloque del prompt se corta. Compara con la última lista
+/// de bloques del mismo modelo: el nombre del primero distinto, `ninguno` si son iguales y `inicio` si es la primera
+/// (o si hay más o menos bloques, el primero que sobra o falta). Solo para prompts armados por bloques con nombre.
+export interface BloquePrompt {
+  nombre: string;
+  texto: string;
+}
+const ultimosBloquesPorModelo = new Map<string, BloquePrompt[]>();
+export function prefijoBloque(modelo: string, bloques: BloquePrompt[]): string {
+  const anterior = ultimosBloquesPorModelo.get(modelo);
+  ultimosBloquesPorModelo.set(modelo, bloques);
+  if (!anterior) return 'inicio';
+  const n = Math.max(anterior.length, bloques.length);
+  for (let i = 0; i < n; i++) {
+    if (anterior[i]?.nombre !== bloques[i]?.nombre || anterior[i]?.texto !== bloques[i]?.texto) return (bloques[i] ?? anterior[i]!).nombre;
+  }
+  return 'ninguno';
+}
+
 export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Date()): string {
   const campos: Record<string, unknown> = {
     ts: ahora.toISOString(),
@@ -133,6 +154,7 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.ttft_ms': r.ttftMs,
     'app.prompt_chars': r.promptChars,
     'app.prefijo_comun_chars': r.prefijoComunChars,
+    'app.prefijo_bloque': r.prefijoBloque,
     'app.truncated': r.truncated,
     'app.error': r.error,
     'app.rag.query': r.ragQuery,
