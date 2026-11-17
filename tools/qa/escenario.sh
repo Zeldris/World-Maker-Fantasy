@@ -94,6 +94,19 @@ relanzar_juego() {
   bash tools/playwright-e2e/arrancar-juego.sh
 }
 
+# P478: con el narrador real cargado (~5 GB), `cargar` bajaba la memoria disponible a ~1.260 MiB más de 30 s y el
+# vigilante (QA-353) paraba la ronda. Antes de restaurar se descargan los modelos de Ollama (`keep_alive: 0`); el
+# juego vuelve a cargar el narrador al abrir la partida (QA-339). Sin Ollama escuchando, no hace nada.
+descargar_ollama() {
+  local url="${OLLAMA_BASE_URL:-http://localhost:11434}" ps m
+  ps="$(curl -sf --max-time 5 "$url/api/ps" 2>/dev/null)" || return 0
+  for m in $(printf '%s' "$ps" | python3 -c 'import json,sys
+for m in json.load(sys.stdin).get("models", []): print(m["name"])' 2>/dev/null); do
+    curl -sf --max-time 60 "$url/api/generate" -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null &&
+      echo "Ollama: descargado $m antes de restaurar (P478)" || echo "AVISO: no pude descargar $m de Ollama"
+  done
+}
+
 recargar_pagina() {
   [ -s tools/playwright-e2e/driver.token ] || return 0
   [ -z "${ESCENARIO_URL:-}" ] || return 0
@@ -156,6 +169,7 @@ case "${1:-}" in
     nombre="${2:?falta el nombre}"
     [ -f "$DIR/$nombre.dump" ] || { echo "No existe $DIR/$nombre.dump (escenario.sh lista)"; exit 1; }
     bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
+    descargar_ollama
     psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)" -c "CREATE DATABASE $BASE"
     # pg_restore sale con 1 por avisos que no rompen nada (p. ej. el comentario de la extensión `vector`): se
     # enseñan y se sigue, para que el juego se arranque siempre.

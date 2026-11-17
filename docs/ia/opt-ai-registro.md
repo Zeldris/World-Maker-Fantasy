@@ -28,6 +28,8 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `app.prefill_ms` | número | Lectura del prompt |
 | `app.decode_ms` | número | Generación |
 | `app.ttft_ms` | número | Primera palabra (solo en streaming) |
+| `app.prompt_chars` | número | Caracteres de `system` + `prompt` (QA-502) |
+| `app.prefijo_comun_chars` | número | Caracteres iniciales que comparte con la llamada anterior al mismo modelo: dónde se corta el prefijo reaprovechable (QA-502) |
 | `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` o caracteres del prompt / 4 > `num_ctx` (el prompt se recortó; Ollama cuenta los tokens ya recortados) |
 | `app.error` | texto | Mensaje si la llamada falló |
 | `app.rag.query` | texto | Consulta del RAG (solo `retrieval`) |

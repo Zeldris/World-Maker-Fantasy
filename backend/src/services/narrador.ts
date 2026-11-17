@@ -1917,8 +1917,18 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // P414 (bench 19, QA-289): con la narración anterior en el prompt, el modelo la copió en los 3 intentos y el turno cayó
   // al respaldo. Tras un rechazo por repetirla, el reintento va sin ella; el guard sigue comparando con `lastNarrationText`.
   const rejectionReasons: string[] = [];
-  const promptDeReintento = () =>
-    REPETICION.has(rejectionReasons[rejectionReasons.length - 1] ?? '') && narracionAnterior ? retryPrompt.replace(narracionAnterior, '') : retryPrompt;
+  // QA-501 (`/gw-opt-ai` del grupo 5): el recorte cambia el bloque que va justo tras la cabecera, y Ollama volvía a
+  // procesar ~3.000 tokens (prefill del intento 2 de 24-36 s, frente a 6-8 s con el prefijo). Solo se recorta tras un
+  // fallo técnico (timeout, JSON cortado); tras un rechazo de la guarda, el mismo prompt con el motivo al final.
+  // El respaldo (intento 3, otro modelo y `num_ctx` 8192, QA-166) va siempre recortado.
+  let ultimoFueRechazo = false;
+  const promptDeReintento = (recortar: boolean) => {
+    const base = recortar ? retryPrompt : prompt;
+    const motivo = rejectionReasons[rejectionReasons.length - 1] ?? '';
+    const sinAnterior = REPETICION.has(motivo) && narracionAnterior ? base.replace(narracionAnterior, '') : base;
+    if (recortar) return sinAnterior;
+    return `${sinAnterior}\n\nTU RESPUESTA ANTERIOR SE DESCARTÓ POR: ${motivo}. Escríbela de nuevo sin ese error.${golpeDecidido ? ` Resultado del intercambio (ya decidido): ${golpeDecidido}` : ''}`;
+  };
 
   const attempt2 = () => {
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
@@ -1927,7 +1937,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     // sin dejarlo sin límite del todo.
     return ollamaGenerate({
       model: env.ollamaModelNarrador,
-      prompt: promptDeReintento(),
+      prompt: promptDeReintento(!ultimoFueRechazo),
       format,
       maxTokens: 400,
       timeoutMs: 240_000,
@@ -1945,7 +1955,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   const attempt3 = () =>
     ollamaGenerate({
       model: env.ollamaModelCronista,
-      prompt: promptDeReintento(),
+      prompt: promptDeReintento(true),
       format,
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
@@ -2162,6 +2172,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         rejectionReasons.push(rejection.reason);
+        ultimoFueRechazo = true;
         continue;
       }
       return posprocesarNarracion(parsed, ctx);
@@ -2172,6 +2183,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       // silencioso que este proyecto ya se ha propuesto cazar (ver P0.2/P0.4 del roadmap).
       console.warn(`[narrador] intento ${idx + 1}/3 falló: ${err instanceof Error ? err.message : err}`);
       if (idx === 0) ctx.onNarrationReset?.();
+      ultimoFueRechazo = false;
       continue;
     }
   }
@@ -2638,8 +2650,10 @@ export function hasCombatVocabulary(narration: string): boolean {
 // con todas sus fuerzas, pero NO LOGRA CONECTAR con su objetivo" — negación directa de impacto que
 // ninguna de las frases de arriba cubría (no es "esquiva"/"se aparta", es la negación explícita del
 // verbo "conectar" que el propio resumen mecánico usa para narrar el ÉXITO — "el golpe conecta").
+// P477 (ronda local 2, grupo 5 tanda C): con el golpe «de lleno», «se hunde en la arcilla… a escasos centímetros de su
+// cabeza» (el arma en el suelo, no en el rival) y, con el jugador a GRAVE, «soporta el impacto… apenas conmovido».
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar)\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|sin inmutarse|(ni|no) se inmuta)\b/i;
 
 export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean, nonExchangeAttackHitLanded?: boolean): boolean {
   if (!combatRealHitLanded && !nonExchangeAttackHitLanded) return false;

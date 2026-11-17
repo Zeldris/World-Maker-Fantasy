@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, registrarCaso, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -153,5 +153,19 @@ describe('registrarCaso (QA-176)', () => {
     registrarCaso({ ...caso, format: { type: 'object' } });
     const o = JSON.parse((appendFile.mock.calls[0] as [string, string])[1]);
     expect(o.opciones.format).toEqual({ type: 'object' });
+  });
+});
+
+describe('prefijoComun (QA-502)', () => {
+  it('cuenta los caracteres que comparte con la llamada anterior del mismo modelo, no de otro', () => {
+    expect(prefijoComun('qa502-a', 'CABECERA hechos 1')).toEqual({ promptChars: 17, prefijoComunChars: 0 });
+    expect(prefijoComun('qa502-b', 'CABECERA otra cosa')).toEqual({ promptChars: 18, prefijoComunChars: 0 });
+    expect(prefijoComun('qa502-a', 'CABECERA hechos 2 y más')).toEqual({ promptChars: 23, prefijoComunChars: 16 });
+  });
+
+  it('va al registro como app.prompt_chars y app.prefijo_comun_chars', () => {
+    const o = JSON.parse(lineaRegistro({ operation: 'text_completion', promptChars: 100, prefijoComunChars: 40 }, 'deck'));
+    expect(o['app.prompt_chars']).toBe(100);
+    expect(o['app.prefijo_comun_chars']).toBe(40);
   });
 });

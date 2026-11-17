@@ -7,12 +7,16 @@
 # Variables (los tests usan valores diminutos): MEMINFO (/proc/meminfo), UMBRAL_MIB (1500), VENTANA_S (30),
 # INTERVALO_S (2), MAX_VUELTAS (0 = sin tope), PARAR_TANDA (la orden que para la ronda: `ia-ronda.sh parar`).
 # Sale con 0 al acabar MAX_VUELTAS y con 3 tras parar la tanda.
+# QA-503: cada MUESTRA_S segundos (60; 0 lo apaga) apunta también el RSS de `llama-server` (suma de sus procesos,
+# RSS_ORDEN: `ps -C llama-server -o rss=`), para ver si la caché de prompts en RAM («size limit: 8192 MiB») crece.
 . "$(dirname "$0")/_raiz.sh"
 MEMINFO="${MEMINFO:-/proc/meminfo}"
 UMBRAL_MIB="${UMBRAL_MIB:-1500}"
 VENTANA_S="${VENTANA_S:-30}"
 INTERVALO_S="${INTERVALO_S:-2}"
 MAX_VUELTAS="${MAX_VUELTAS:-0}"
+MUESTRA_S="${MUESTRA_S:-60}"
+RSS_ORDEN="${RSS_ORDEN:-ps -C llama-server -o rss=}"
 # Por defecto para la ronda entera (juego, Ollama y este vigilante): bajar solo el juego deja el Ollama con el modelo
 # cargado y la memoria baja.
 PARAR_TANDA="${PARAR_TANDA:-bash $DECK/ia-ronda.sh parar}"
@@ -26,6 +30,12 @@ disponible_mib() {
   echo $((kb / 1024))
 }
 
+# RSS de llama-server en MiB (suma de todos sus procesos); «-» si no hay ninguno.
+rss_llama_mib() {
+  $RSS_ORDEN 2>/dev/null | awk '$1 ~ /^[0-9]+$/ {s += $1; n++} END {if (n) print int(s / 1024); else print "-"}'
+}
+
+ultima_muestra=""
 desde=""  # segundo (SECONDS) en que empezó la racha por debajo del umbral
 avisado_ilegible=0
 vueltas=0
@@ -33,10 +43,14 @@ log "vigilante de memoria: umbral ${UMBRAL_MIB} MiB, ventana ${VENTANA_S} s (Mem
 while :; do
   if mib="$(disponible_mib)"; then
     avisado_ilegible=0
+    if [ "$MUESTRA_S" -gt 0 ] && { [ -z "$ultima_muestra" ] || [ $((SECONDS - ultima_muestra)) -ge "$MUESTRA_S" ]; }; then
+      log "muestra: disponible ${mib} MiB · llama-server $(rss_llama_mib) MiB"
+      ultima_muestra=$SECONDS
+    fi
     if [ "$mib" -lt "$UMBRAL_MIB" ]; then
       [ -z "$desde" ] && desde=$SECONDS
       if [ $((SECONDS - desde)) -ge "$VENTANA_S" ]; then
-        log "ALERTA: memoria disponible ${mib} MiB, por debajo de ${UMBRAL_MIB} MiB desde hace $((SECONDS - desde)) s: se para la ronda para evitar el OOM." | tee /dev/stderr
+        log "ALERTA: memoria disponible ${mib} MiB (llama-server $(rss_llama_mib) MiB), por debajo de ${UMBRAL_MIB} MiB desde hace $((SECONDS - desde)) s: se para la ronda para evitar el OOM." | tee /dev/stderr
         DESDE_VIGILANTE=1 $PARAR_TANDA || log "Aviso: no se pudo parar la tanda ($PARAR_TANDA)."
         exit 3
       fi

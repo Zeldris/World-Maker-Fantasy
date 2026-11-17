@@ -72,6 +72,9 @@ case "${1:-}" in
       echo ":11434 está ocupado y no es Ollama (¿el simulado?): bash tools/qa/deck/juego.sh --parar y repite."; exit 1
     fi
     mkdir -p "$RAIZ/logs"
+    # QA-502: el registro de la ronda anterior (con el «cached n_tokens» de cada llamada) se perdía al relanzar: se
+    # guarda con la hora en que se apartó, y el nuevo empieza limpio (la comprobación de la iGPU mira solo este).
+    [ -s "$RAIZ/logs/ollama.log" ] && mv "$RAIZ/logs/ollama.log" "$RAIZ/logs/ollama-$(date +%Y%m%d-%H%M%S).log"
     mapfile -t pre < <(lanzador)
     OLLAMA_IGPU_ENABLE=1 OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 \
       nohup "${pre[@]}" "$OLLAMA" serve > "$RAIZ/logs/ollama.log" 2>&1 < /dev/null &

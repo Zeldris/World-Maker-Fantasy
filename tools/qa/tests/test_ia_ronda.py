@@ -141,6 +141,32 @@ class IaRonda(unittest.TestCase):
         self.correr(d, 'arrancar', extra)  # repetir no lo duplica
         self.assertEqual(int(leer(pidf)), pid)
 
+    def test_arrancar_guarda_el_registro_de_ollama_anterior(self):
+        """QA-502: relanzar sobrescribía logs/ollama.log y se perdía el de la ronda."""
+        import socket
+        d = self.repo()
+        os.makedirs(os.path.join(d, 'tools', 'playwright-e2e'))
+        shutil.copy(os.path.join(QA, '..', 'playwright-e2e', 'ia-comprobaciones.sh'), os.path.join(d, 'tools', 'playwright-e2e'))
+        escribir(os.path.join(d, 'logs', 'ollama.log'), 'cached n_tokens = 6300\n')
+        s = socket.socket()
+        s.bind(('127.0.0.1', 0))
+        puerto = s.getsockname()[1]
+        s.close()
+        falso = os.path.join(d, 'ollama-falso')
+        escribir(falso, f"""#!/bin/bash
+echo "arranque nuevo"
+exec python3 -c "import socket,time; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(('127.0.0.1', {puerto})); s.listen(); time.sleep(20)"
+""")
+        os.chmod(falso, 0o755)
+        r = self.correr(d, 'arrancar', {'OLLAMA_BIN': falso, 'PUERTO_OLLAMA': str(puerto), 'SCOPE': '0', 'INHIBIR': '0', 'VIGILANTE': '0'})
+        pid = int(leer(os.path.join(d, 'logs', 'ia-ronda.pid')))
+        self.addCleanup(lambda: os.path.exists(f'/proc/{pid}') and os.kill(pid, 15))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        guardados = [n for n in os.listdir(os.path.join(d, 'logs')) if n.startswith('ollama-') and n.endswith('.log')]
+        self.assertEqual(len(guardados), 1, os.listdir(os.path.join(d, 'logs')))
+        self.assertIn('cached n_tokens = 6300', leer(os.path.join(d, 'logs', guardados[0])))
+        self.assertNotIn('cached n_tokens', leer(os.path.join(d, 'logs', 'ollama.log')))
+
 
 class VigilanteMemoria(unittest.TestCase):
     def vigilar(self, meminfo, **extra):
@@ -200,6 +226,15 @@ class VigilanteMemoria(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn('no se lee MemAvailable', r.stdout)
         self.assertFalse(os.path.exists(os.path.join(d, 'tanda-parada')))
+
+    def test_muestrea_el_rss_de_llama_server(self):
+        # QA-503: dos procesos de 1.000 MiB → 2000 MiB en la muestra; sin procesos, «-».
+        d, r = self.vigilar('MemAvailable:   1024000 kB\n', MAX_VUELTAS='2', MUESTRA_S='1',
+                            RSS_ORDEN='printf 1024000\\n1024000\\n')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('muestra: disponible 1000 MiB · llama-server 2000 MiB', r.stdout)
+        d, r = self.vigilar('MemAvailable:   1024000 kB\n', MAX_VUELTAS='1', MUESTRA_S='1', RSS_ORDEN='true')
+        self.assertIn('llama-server - MiB', r.stdout)
 
 
 if __name__ == '__main__':

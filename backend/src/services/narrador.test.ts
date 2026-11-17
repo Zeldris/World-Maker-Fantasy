@@ -789,6 +789,20 @@ describe('hasFalseCombatMiss', () => {
     expect(hasFalseCombatMiss(narration, false, false)).toBe(false);
   });
 
+  it('P477: el arma que se hunde en el suelo a escasos centímetros del rival, con el golpe de lleno', () => {
+    const narration =
+      'La hacha de guerra rota de Gorhorn se hunde en la arcilla endurecida del suelo al lado del orco desconocido, a escasos centímetros de su cabeza.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+
+  it('P477: el golpe de lleno recibido como si nada («apenas conmovido»)', () => {
+    expect(hasFalseCombatMiss('Gorhorn soporta el impacto en pleno pecho, apenas conmovido.', true)).toBe(true);
+  });
+
+  it('P477: no dispara con la hoja que se clava en la carne del rival', () => {
+    expect(hasFalseCombatMiss('La hoja se clava en la carne del orco, que ruge de dolor.', true)).toBe(false);
+  });
+
   it('no dispara fuera del sistema de intercambios sin ninguna señal (ambos parámetros ausentes)', () => {
     expect(hasFalseCombatMiss('El Quio evita el golpe ágilmente.', undefined, undefined)).toBe(false);
   });

@@ -33,6 +33,9 @@ export interface RegistroLlamada {
   prefillMs?: number;
   decodeMs?: number;
   ttftMs?: number;
+  /// QA-502: caracteres de `system` + `prompt` y cuántos comparte con la llamada anterior al mismo modelo (`prefijoComun`).
+  promptChars?: number;
+  prefijoComunChars?: number;
   truncated?: boolean;
   error?: string;
   ragQuery?: string;
@@ -90,6 +93,19 @@ export function seguirTurnoIa(saveId: string): void {
   fijarTurno(id);
 }
 
+/// QA-502: en la exploración cada turno pagaba 26-34 s de prefill sobre ~6.300 tokens; para ver dónde se corta el
+/// prefijo que Ollama puede reaprovechar, cada llamada apunta cuántos caracteres comparte con la anterior del mismo
+/// modelo (la caché de `llama-server` es por modelo cargado). La primera de cada modelo da 0.
+const ultimoPromptPorModelo = new Map<string, string>();
+export function prefijoComun(modelo: string, texto: string): { promptChars: number; prefijoComunChars: number } {
+  const anterior = ultimoPromptPorModelo.get(modelo) ?? '';
+  ultimoPromptPorModelo.set(modelo, texto);
+  const tope = Math.min(anterior.length, texto.length);
+  let i = 0;
+  while (i < tope && anterior.charCodeAt(i) === texto.charCodeAt(i)) i++;
+  return { promptChars: texto.length, prefijoComunChars: i };
+}
+
 export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Date()): string {
   const campos: Record<string, unknown> = {
     ts: ahora.toISOString(),
@@ -115,6 +131,8 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.prefill_ms': r.prefillMs,
     'app.decode_ms': r.decodeMs,
     'app.ttft_ms': r.ttftMs,
+    'app.prompt_chars': r.promptChars,
+    'app.prefijo_comun_chars': r.prefijoComunChars,
     'app.truncated': r.truncated,
     'app.error': r.error,
     'app.rag.query': r.ragQuery,

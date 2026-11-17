@@ -29,7 +29,8 @@ class Probar(unittest.TestCase):
         os.makedirs(os.path.join(d, 'bin'))
         # `probar` aplica las migraciones desde backend/ con npx (falso: solo lo registra).
         os.makedirs(os.path.join(d, 'backend'))
-        for nombre in ('psql', 'pg_restore', 'pg_dump', 'npx'):
+        # curl falso también: ningún test debe hablar con el Ollama de verdad (P478, `cargar` lo descargaría).
+        for nombre in ('psql', 'pg_restore', 'pg_dump', 'npx', 'curl'):
             ruta = os.path.join(d, 'bin', nombre)
             escribir(ruta, f'#!/bin/bash\necho "{nombre} $*" >> "{d}/llamadas.log"\n')
             os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
@@ -163,6 +164,24 @@ class Cargar(unittest.TestCase):
     def correr(self, d: str, *args: str):
         env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
         return subprocess.run(['bash', 'tools/qa/escenario.sh', *args], cwd=d, env=env, capture_output=True, text=True)
+
+    def test_cargar_descarga_los_modelos_de_ollama_antes_de_restaurar(self):
+        """P478: con el narrador cargado, restaurar bajaba la memoria y el vigilante paraba la ronda."""
+        d = self.driver_falso()
+        ruta = os.path.join(d, 'bin', 'curl')
+        escribir(ruta, f'''#!/bin/bash
+echo "curl $*" >> "{d}/llamadas.log"
+case "$*" in *api/ps*) echo '{{"models":[{{"name":"narrador:latest"}},{{"name":"cronista:1b"}}]}}' ;; esac
+''')
+        os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
+        r = self.correr(d, 'cargar', 'uno')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        llamadas = leer(os.path.join(d, 'llamadas.log')).splitlines()
+        descargas = [i for i, l in enumerate(llamadas) if l.startswith('curl') and '"keep_alive":0' in l]
+        self.assertEqual(len(descargas), 2, llamadas)
+        self.assertIn('"model":"narrador:latest"', llamadas[descargas[0]])
+        restaurar = next(i for i, l in enumerate(llamadas) if l.startswith('pg_restore'))
+        self.assertLess(descargas[-1], restaurar)
 
     def test_cargar_y_avanzar_relanzan_con_el_perfil_y_el_registro_del_ultimo_arranque(self):
         """QA-310: sin IA_PERFIL/IA_REGISTRO el relanzamiento dejaba la tanda sin escribir en logs/ia/."""

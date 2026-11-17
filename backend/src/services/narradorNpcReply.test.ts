@@ -176,6 +176,43 @@ describe('narrateAction tras repetir el turno anterior (QA-289, P414)', () => {
   });
 });
 
+describe('narrateAction: el intento 2 conserva el prefijo tras un rechazo (QA-501)', () => {
+  const ctx = {
+    worldFacts: ['Hecho A de la escena.', 'Hecho B de la escena.', 'Hecho C de la escena.'],
+    characterSummary: 'Gorhorn, orco del Clan Maktor.',
+    characterName: 'Gorhorn',
+    action: 'Miro el paso',
+    criticalFactsCount: 1,
+    backgroundLore: ['Lore de fondo del paso.'],
+  };
+  const buena = JSON.stringify({ narration: 'Gorhorn otea el paso rocoso con calma.', newFacts: [] });
+
+  it('tras un rechazo de la guarda, el mismo prompt entero y el motivo al final', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'Gorhorn mira the river con calma.', newFacts: [] }) })
+      .mockResolvedValue({ text: buena });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction(ctx as unknown as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[1]!.startsWith(prompts[0]!)).toBe(true);
+    expect(prompts[1]).toContain('Hecho C de la escena.');
+    expect(prompts[1]!.slice(prompts[0]!.length)).toMatch(/SE DESCARTÓ POR: fuga de inglés/);
+  });
+
+  it('tras un fallo técnico (JSON cortado), el prompt recortado', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValueOnce({ text: '{"narration": "Gorhorn mi' }).mockResolvedValue({ text: buena });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction(ctx as unknown as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toContain('Hecho C de la escena.');
+    expect(prompts[1]).not.toContain('Hecho C de la escena.');
+    expect(prompts[1]).not.toContain('Lore de fondo del paso.');
+    expect(prompts[1]).not.toMatch(/SE DESCARTÓ/);
+  });
+});
+
 describe('narrateAction con todos los intentos rechazados por motivos distintos (QA-289)', () => {
   it('el último resultado también pasa por el posproceso: sin el campo de la acción y con ella delante', async () => {
     const anterior = 'Ulkha Ketg mira a Gorhorn con una expresión de sorpresa mientras él bebe del odre junto a la hoguera del paso.';
