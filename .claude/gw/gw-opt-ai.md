@@ -117,3 +117,5 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
   entera como turno anterior (`QA-356`) y turnos de exploración y combate por separado en `medir-ia.py` (`QA-357`).
 - Aprobadas el 2026-11-16, grupo 5 (no se vuelven a proponer): intento 2 con el mismo prefijo (`QA-501`), medir el corte del
   prefijo entre turnos y conservar `logs/ollama.log` (`QA-502`), memoria de la caché de prompts de `llama-server` (`QA-503`).
+- Aprobadas el 2026-11-17, comprobación del grupo 5 (no se vuelven a proponer): pista en positivo en defensa sin acierto (`QA-504`),
+  impacto anticipado en la guarda (`QA-505`, medido tras `QA-504`), P479 en `clasificar-eval` (`QA-506`) y primer bloque que cambia del prompt (`QA-507`).
