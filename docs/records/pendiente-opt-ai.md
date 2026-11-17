@@ -12,6 +12,9 @@ las filas analizadas pasan a «Analizadas» con la fecha y el informe.
 
 | Fecha | Modelo | Máquina y registro | Turnos / llamadas | Qué se probó | Incoherencias y hallazgos |
 |---|---|---|---|---|---|
+| 2026-11-17 (ronda local 2, comprobación del grupo 5, bench) | narrador (`tarkor-narrador-llama31`) | Deck, `backend/ia/registro-bench-27-qa501.jsonl`, `logs/bench-27-qa501.json` | bench de 8 turnos (7 narrados, 1 bloqueado) | `QA-501` frente a `bench-26-qa348` | Turno p50 27,7 s (−1,7), p95 47,8 s (+2,5); reaprovechado 69 % (+16); 0 intento 2 y 0 respaldo: el bench no ejercita el intento 2 |
+| 2026-11-17 (ronda local 2, comprobación del grupo 5, tanda de diálogos) | narrador (`tarkor-narrador-llama31`) | Deck, `logs/ia/2026-11-17.jsonl` | ~14 turnos de diálogo con Gistera, Ulkha y Torgash (4 `narrar`, todos intento 1; el resto, `dialogo_npc`) | P464, P466, P474, P476 (diálogo puro sin narrador) en `local-gistera-raciones` y `t13b2-ketg` | P464, P474, P476 ✅; P466 parcial; nuevos P479 (imperativo con vocativo y forma indirecta van al narrador) y P480 (línea fija por Gorhorn al preguntar por un nombre recién dicho) |
+| 2026-11-17 (ronda local 2, comprobación del grupo 5, tanda de combate) | narrador (`tarkor-narrador-llama31`) | Deck, `logs/ia/2026-11-17.jsonl` y `logs/vigilante-memoria.log` | 7 turnos de combate 1v1 (12 `narrar`: 7 intento 1 con ttft 10-33 s, 5 intento 2 con prefill 1,4-1,6 s; 3 turnos al texto del motor) | P477, P478, `QA-501`…`QA-503` en `mv-hondonada-hostiles` | P477 y P478 ✅ (mínimo 3.604 MiB al cargar). `QA-501`: el intento 2 reusa el prompt entero (prefill 1,4 s, antes 24-36 s), pero 3 de 7 turnos caen al respaldo tras dos rechazos en defensa (P481). `QA-502`: entre turnos distintos solo se comparten 6-14k de ~17k caracteres. `QA-503`: RSS de `llama-server` 174-405 MiB, sin crecer turno a turno |
 
 ## Analizadas
 
