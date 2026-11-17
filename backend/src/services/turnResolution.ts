@@ -5016,11 +5016,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Réplica de NPC en su propia llamada dedicada (ver comentario de `generateNpcReply` en
   // narrador.ts) — `dialogueTarget` ya viene resuelto de más arriba (detectsDialogueIntent +
   // primer NPC real, sin fauna, detectado en escena). Nunca dispara en el mismo turno que la
-  // presentación de fase 2 (antes de presentarse no está en `npcsInScene` todavía, así que
-  // `dialoguePartners` sale vacío) — evita una doble réplica del mismo personaje en un turno.
+  // presentación de fase 2 (P464: si la acción nombra a Gistera, `dialogueTarget` sale con ella, así que
+  // se excluye con `gisteraSePresentaEsteTurno`) — evita pisar el discurso fijo con una réplica del LLM.
   // Nunca lanza si falla: perder la réplica de un turno es mucho mejor que perder el turno entero
   // por un timeout de esta llamada extra.
-  if (dialogueTarget) {
+  if (dialogueTarget && !gisteraSePresentaEsteTurno) {
     // P266: si el jugador le dice su nombre, queda como hecho que presenció; su réplica ve solo lo que vio.
     if (presentaNombreEnAccion(characterName, action)) {
       narration.newFacts = [...narration.newFacts, `${characterName} le dice su nombre a ${dialogueTarget.name}.`];

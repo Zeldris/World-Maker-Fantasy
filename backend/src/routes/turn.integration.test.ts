@@ -48,6 +48,8 @@ const narrateAction = vi.fn(async (ctx: { onNarrationChunk?: (d: string) => void
 // classifyAction/narrateAction: sin mockear, `generateQuestResponseNarration` llamaría a Ollama
 // real dentro de un test de integración. Texto fijo predecible, distinto del texto legado (el test
 // de abajo asume EXACTAMENTE el texto legado "acepta la misión" — se actualiza junto con esto).
+// P464: espía de `generateNpcReply` (sigue llamando a la real); el turno de presentación de Gistera no debe pedirla.
+const generateNpcReplyEspia = vi.fn();
 const generateQuestResponseNarration = vi.fn(async (ctx: { characterName: string; questTitle: string; accepted: boolean }) => {
   return `${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} la misión: ${ctx.questTitle}.`;
 });
@@ -63,6 +65,10 @@ vi.mock('../services/narrador.js', async (importOriginal) => {
     classifyAction: (...args: unknown[]) => classifyAction(...args),
     narrateAction: (ctx: Parameters<typeof narrateAction>[0]) => narrateAction(ctx),
     generateQuestResponseNarration: (ctx: Parameters<typeof generateQuestResponseNarration>[0]) => generateQuestResponseNarration(ctx),
+    generateNpcReply: (ctx: Parameters<typeof actual.generateNpcReply>[0]) => {
+      generateNpcReplyEspia(ctx);
+      return actual.generateNpcReply(ctx);
+    },
   };
 });
 
@@ -1974,6 +1980,64 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
       payload: { saveId, action, classification, roll, enCombate: true },
     });
     expect(lastNdjsonLine(narrateRes.payload).newQuestInfo).toBeNull();
+  }, 30_000);
+});
+
+// P464 (a): si la acción de la primera conversación con Gistera la NOMBRA, `dialogueTarget` también sale con
+// ella, y la réplica del LLM pisaba el discurso fijo de presentación (sin presentación ni misión).
+describe('P464: la presentación de Gistera Koh no la pisa la réplica del LLM aunque la acción la nombre', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba P464',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        zonaPosX: 220,
+        zonaPosY: 500,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('«Le digo a Gistera Koh: ¿quién manda...?» narra «Soy Gistera Koh» y la misión, sin pedir dialogo_npc', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const app = await buildApp();
+    // Turno de relleno (mismo motivo que en el test de newQuestOfferInfo de arriba: evitar la acción Nº1).
+    const filler = 'Miro alrededor con calma';
+    const fillerClassify = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: filler, enCombate: true } })).json();
+    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action: filler, classification: fillerClassify.classification, roll: fillerClassify.roll, enCombate: true } });
+
+    generateNpcReplyEspia.mockClear();
+    const action = 'Le digo a Gistera Koh: ¿quién manda en el Clan Serhu?';
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification: classifyRes.classification, roll: classifyRes.roll, enCombate: true },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const { text: texto } = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } });
+    expect(texto).toContain('Soy Gistera Koh');
+    expect(texto).toContain('Empieza por el que me persigue');
+    expect(generateNpcReplyEspia).not.toHaveBeenCalled();
   }, 30_000);
 });
 
