@@ -2041,6 +2041,68 @@ describe('P464: la presentación de Gistera Koh no la pisa la réplica del LLM a
   }, 30_000);
 });
 
+// P464 (b), P466, P474, P476: un saludo o una pregunta a un NPC (no Gistera), fuera de combate y sin reputación
+// hostil, no pasa por el narrador: línea fija del jugador y la réplica de `dialogo_npc` detrás.
+describe('Turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba P464b',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  async function turno(action: string) {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const app = await buildApp();
+    narrateAction.mockClear();
+    generateNpcReplyEspia.mockClear();
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification: classifyRes.classification, roll: classifyRes.roll },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const { text } = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } });
+    return text;
+  }
+
+  it('«Le digo a Ulkha Ketg: ¿qué te trae por aquí?» no llama a narrateAction y sí una vez a generateNpcReply', async () => {
+    const texto = await turno('Le digo a Ulkha Ketg: ¿qué te trae por aquí?');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(texto.startsWith('Gorhorn de prueba P464b le pregunta a')).toBe(true);
+    expect(texto).toContain('responde:');
+  }, 30_000);
+
+  it('«Intento convencer a Ulkha Ketg de que me deje pasar» (no es saludo ni pregunta) sí pasa por narrateAction', async () => {
+    await turno('Intento convencer a Ulkha Ketg de que me deje pasar');
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+  }, 30_000);
+});
+
 // Botones Aceptar/Cancelar (2026-08-26, petición explícita: "en vez de depender de que la jugadora
 // escriba texto libre para aceptar... que 'Aceptar' genere una narración determinista de
 // aceptación") — el camino GENÉRICO de `narration.newQuest` (a diferencia del determinista de
