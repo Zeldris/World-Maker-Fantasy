@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Pictograma } from './Pictograma'
+import { imagenInterfaz } from '../lib/imagenesInterfaz'
 import type { GatheringRollInfo } from '../types'
 import { attributeLabels, attributeColorClasses } from '../lib/dice'
 import { cancelarTirada, duracionTirada, retardosTirada, saltarTiradas, temporizadorTirada } from '../lib/duracionTirada'
@@ -19,7 +21,7 @@ const GRADO_LABEL = { claro: 'Éxito', con_coste: 'Éxito parcial', fallo: 'Fall
 function SingleDie({ value, landed, discarded }: { value: number | null; landed: boolean; discarded: boolean }) {
   return (
     <span className="flex items-center gap-1">
-      <span aria-hidden="true">🎲</span>
+      <Pictograma src={imagenInterfaz('dado')} emoji="🎲" className="h-5 w-5" />
       <span
         className={`font-mono text-2xl font-bold tabular-nums ${
           !landed ? 'text-wood-300' : discarded ? 'text-wood-700 line-through' : 'text-moss-400 animate-stamp-in'

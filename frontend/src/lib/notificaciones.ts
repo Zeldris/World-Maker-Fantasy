@@ -1,4 +1,5 @@
 import type { LogEntry } from '../types'
+import { imagenInterfaz } from './imagenesInterfaz'
 
 // HUD-6 (hito 0.2, roadmap-front.md) — notificaciones (toasts): pila arriba a la derecha con el
 // borde por tipo. Aquí la parte pura: qué avisos salen de una entrada del registro y cómo se
@@ -11,6 +12,8 @@ export type TipoNotificacion = 'quest' | 'moss' | 'danger' | 'accent' | 'accent2
 export interface NuevaNotificacion {
   tipo: TipoNotificacion
   icono: string
+  /// UX-41: pictograma de la marca; si falta, se pinta `icono`.
+  imagen?: string
   texto: string
   /// UX-36: un enlace del aviso (p. ej. «Ver en Leyendas» desde un suceso).
   enlace?: { label: string; alPulsar: () => void }
@@ -38,7 +41,7 @@ export function agregarNotificacion(lista: Notificacion[], nueva: NuevaNotificac
 /// Avisos que merece una entrada nueva del registro del personaje.
 export function notificacionesDeEntrada(e: LogEntry): NuevaNotificacion[] {
   const avisos: NuevaNotificacion[] = []
-  if (e.newQuest) avisos.push({ tipo: 'quest', icono: '🎯', texto: `Misión aceptada: ${e.newQuest.title}` })
+  if (e.newQuest) avisos.push({ tipo: 'quest', icono: '🎯', imagen: imagenInterfaz('sello'), texto: `Misión aceptada: ${e.newQuest.title}` })
   if (e.questCompleted) avisos.push({ tipo: 'quest', icono: '🏆', texto: `Misión completada: ${e.questCompleted.title}` })
   if (e.factionRepChange && e.factionRepChange.delta !== 0) {
     const sube = e.factionRepChange.delta > 0

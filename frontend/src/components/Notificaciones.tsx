@@ -1,3 +1,4 @@
+import { Pictograma } from './Pictograma'
 import type { Notificacion, TipoNotificacion } from '../lib/notificaciones'
 
 const BORDE: Record<TipoNotificacion, string> = {
@@ -21,7 +22,7 @@ export function Notificaciones({ notificaciones, onDescartar }: { notificaciones
           role="status"
           className={`plank-panel ${n.saliendo ? 'animate-toast-out pointer-events-none' : 'animate-entry-in pointer-events-auto'} flex items-start gap-2 rounded-lg border-l-4 px-3 py-2 text-xs text-wood-100 shadow-lg ${BORDE[n.tipo]}`}
         >
-          <span aria-hidden="true">{n.icono}</span>
+          <Pictograma src={n.imagen} emoji={n.icono} className="h-6 w-6" />
           <p className="min-w-0 flex-1">
             {n.texto}
             {n.veces > 1 && <span className="ml-1.5 font-mono text-2xs text-wood-400">×{n.veces}</span>}

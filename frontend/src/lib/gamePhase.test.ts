@@ -72,7 +72,7 @@ describe('UX-2 — canDo', () => {
 describe('UX-8 — etiquetaDeFase', () => {
   it('nada en libre; icono y texto en el resto', () => {
     expect(etiquetaDeFase('libre')).toBeNull()
-    expect(etiquetaDeFase('pensando')).toEqual({ icono: '✒️', texto: 'El narrador escribe' })
+    expect(etiquetaDeFase('pensando')).toMatchObject({ icono: '✒️', texto: 'El narrador escribe' })
     expect(etiquetaDeFase('combate')?.texto).toBe('En combate')
   })
 })

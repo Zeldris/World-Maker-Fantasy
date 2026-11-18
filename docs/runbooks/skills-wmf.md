@@ -9,6 +9,9 @@ Lo propio de WMF que las skills genéricas no dicen (todo en español):
   que se pueda, y la ronda acaba con las fuentes enlazadas. Si una pregunta pide decidir números o reglas que sobre
   el papel no se sienten, `prototype` con el enlace en esa pregunta. **Toda duda** que se lleve a la usuaria, también
   las `QUESTIONS` de una tanda de pruebas, va contrastada igual, con las fuentes (usuaria, 2026-10-26).
+- **Diseño de interfaz con imágenes** (`QA-364`): las piezas y los montajes de prueba (pieza sobre madera, ranura…)
+  se miran en hoja, `bash docs/producto/plan-imagenes/hoja.sh --archivos <nombre> <png>…`, no uno a uno; las piezas
+  de `tarkor-final/`, por `grep` a su `LEEME.md` (`QA-365`).
 - **`prototype`:** el HTML de lógica se queda en `docs/prototipos/<tarea>-<tema>.html` (no hay rama aparte); el
   veredicto, en la entrada de la tarea en su roadmap con el enlace.
 - **`domain-modeling`:** `GLOSSARY.md` es el vocabulario del motor y del producto; el lore canónico vive en
