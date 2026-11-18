@@ -276,3 +276,9 @@ desde el panel vive en tablas que siembran.
 - **IMG-13 · Interfaz del generador en el admin** [A] (usuaria, 2026-10-25): pestaña Generador del prototipo en el
   admin React (`servidor.py` pasa a API, D6), con ideas de Leonardo y similares: galería, vista ampliada, revisión
   rápida con teclado y filtros. Hecho cuando se revisan 20 intentos solo con teclado. Fase 6. **L**
+- **IMG-59 · Probar MOSS-Image-SFT en la Deck frente a Qwen-Image 2.1** [A] (usuaria, 2026-11-17; excepción a la pausa
+  de pruebas): único candidato de la [investigación de noviembre](plan-imagenes/investigacion-modelos-2026-11.md) que
+  cabe en 16 GB (DiT 5B + Qwen3.5-9B Q4_K_M + VAE FLUX.2, ~9 GB estimados). En local: confirmar en Hugging Face la
+  licencia y los GGUF de `leejet/MOSS-Image-SFT-GGUF`, comprobar que el `sd-cli` de la Deck trae `moss_image` (si no,
+  binario nuevo) y generar 3 prompts fijos (criatura, paisaje, banner 1920x768) con la misma semilla que Qwen-Image 2.1;
+  la usuaria puntúa. Se apunta en `banco/resultados.md`. Depende de que la Deck tenga Hugging Face. **S**

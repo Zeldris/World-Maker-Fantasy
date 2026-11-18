@@ -1,6 +1,6 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "pendingFile": "docs/records/pendientes-leves.md",
   "schemaVersion": 1,
   "language": "es",
@@ -83,5 +83,8 @@
   "ciNodeDirs": [
     "backend",
     "frontend"
-  ]
+  ],
+  "taskRecord": {
+    "enabled": true
+  }
 }

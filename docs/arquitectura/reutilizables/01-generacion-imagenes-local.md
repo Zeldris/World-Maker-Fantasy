@@ -1,5 +1,8 @@
 # Generación de imágenes en local (Steam Deck) para juegos
 
+> **Desfasada** (2026-11-18, `QA-511`): la versión vigente del flujo de imágenes (`sd-cli`, banco y resultados) está en la
+> rama `claude/imagenes-por-fases` hasta que se fusione; léela allí (con un subagente) antes de seguir esta guía.
+
 Documento reutilizable (fuera del roadmap): análisis del prompt de la usuaria del 2026-10-13 y plan
 para generar los assets visuales de Tarkor —y de cualquier juego o aplicación futura— sin depender
 de los límites de ChatGPT. Comprobado contra fuentes el 2026-10-13 y **revisado el 2026-10-24** (ver
