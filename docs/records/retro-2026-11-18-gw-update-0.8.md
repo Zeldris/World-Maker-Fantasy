@@ -2,7 +2,8 @@
 
 Fecha: 2026-11-18. Fase 2 antes del PR a `main`: `/gw-opt-tokens` y `/retro` de la tarea (desde `b55cdf0`, 2026-11-16).
 
-**Estado:** sin decidir; la decisión de la usuaria se escribe aquí antes de `reviewed.sh`.
+**Estado:** aprobada entera por la usuaria (2026-11-18) y aplicada como `QA-511`: P1, P3 y P4 en el proyecto; P2
+queda para Galivelop-workflow en «For Galivelop-workflow».
 
 ## Medición (`measure.py --since b55cdf0`)
 

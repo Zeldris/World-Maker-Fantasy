@@ -4,6 +4,10 @@
 
 Lo propio de WMF que las skills genéricas no dicen (todo en español):
 
+- **Otra rama se lee como otro repo** (`QA-511`): sus docs (`git show <rama>:…`, barridos con `grep`) los lee un
+  subagente barato que devuelve un resumen con rutas y citas literales de lo que decide, no la sesión principal
+  (la investigación de imágenes de la v0.8.0 arrastró ~0,6 M así).
+
 - **Diseño** (`grilling`, `gw-selector`; usuaria, 2026-10-07): toda ronda, también las de detalle, se contrasta con los
   `designReferences` de `.claude/gw.json` buscando cómo lo resuelven (`WebSearch`); **X4 marca el camino** siempre
   que se pueda, y la ronda acaba con las fuentes enlazadas. Si una pregunta pide decidir números o reglas que sobre
