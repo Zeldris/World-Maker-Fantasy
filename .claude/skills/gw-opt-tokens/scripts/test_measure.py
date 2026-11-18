@@ -386,7 +386,12 @@ class Measure(unittest.TestCase):
             write(os.path.join(repo, '.claude', 'gw.json'), config)
             for rel in ('scripts/config.py', 'schema/gw.schema.json'):
                 os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
-                shutil.copy(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel))
+                # WMF (P24): the workflow's files live in .claude/gw/ once installed, at the root in the workflow repo.
+                cands = (os.path.join(HERE, '..', '..', '..', rel), os.path.join(HERE, '..', '..', '..', 'gw', rel))
+                src = next((c for c in cands if os.path.exists(c)), None)
+                if src is None:
+                    raise FileNotFoundError(f'{rel} not found in: {", ".join(os.path.normpath(c) for c in cands)}')
+                shutil.copy(src, os.path.join(repo, rel))
         env = {**os.environ, 'HOME': home, 'CLAUDE_CODE_REMOTE': 'true'}
         return subprocess.run(['python3', MEASURE, *args], capture_output=True, text=True, cwd=repo, env=env)
 
@@ -454,7 +459,12 @@ class Measure(unittest.TestCase):
             write(os.path.join(repo, '.claude', 'gw.json'), config)
             for rel in ('scripts/config.py', 'schema/gw.schema.json'):
                 os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
-                shutil.copy(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel))
+                # WMF (P24): the workflow's files live in .claude/gw/ once installed, at the root in the workflow repo.
+                cands = (os.path.join(HERE, '..', '..', '..', rel), os.path.join(HERE, '..', '..', '..', 'gw', rel))
+                src = next((c for c in cands if os.path.exists(c)), None)
+                if src is None:
+                    raise FileNotFoundError(f'{rel} not found in: {", ".join(os.path.normpath(c) for c in cands)}')
+                shutil.copy(src, os.path.join(repo, rel))
         return mod.chars_per_token(repo)
 
     def test_chars_per_token_comes_from_the_context_guard_config(self):
@@ -476,7 +486,12 @@ class Measure(unittest.TestCase):
             write(os.path.join(repo, '.claude', 'gw.json'), config)
             for rel in ('scripts/config.py', 'schema/gw.schema.json'):
                 os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
-                shutil.copy(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel))
+                # WMF (P24): the workflow's files live in .claude/gw/ once installed, at the root in the workflow repo.
+                cands = (os.path.join(HERE, '..', '..', '..', rel), os.path.join(HERE, '..', '..', '..', 'gw', rel))
+                src = next((c for c in cands if os.path.exists(c)), None)
+                if src is None:
+                    raise FileNotFoundError(f'{rel} not found in: {", ".join(os.path.normpath(c) for c in cands)}')
+                shutil.copy(src, os.path.join(repo, rel))
         return mod.measure_value(repo, name, default, integer)
 
     def test_a13_measure_constants_default_set_and_bad_values(self):

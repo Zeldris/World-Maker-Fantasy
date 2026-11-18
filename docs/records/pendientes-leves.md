@@ -67,4 +67,4 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 
 ## Actualización del flujo a v0.7.0 (`claude/wonderful-volta-662qt8`, 2026-11-16)
 
-- `test_measure.py` (parche P24): `next(...)` sin valor por defecto lanza `StopIteration` si el archivo no está ni en la raíz ni en `gw/`; mejor un error que nombre la ruta.
+- ~~`test_measure.py` (parche P24): `StopIteration` sin ruta~~ ✅ 2026-11-18 (`QA-511`): ahora `FileNotFoundError` con las rutas buscadas.
