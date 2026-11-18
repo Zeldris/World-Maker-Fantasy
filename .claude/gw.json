@@ -32,7 +32,7 @@
   "reviewMark": ".claude/revision-main.sha",
   "requireRetro": true,
   "content": [
-    "^docs/(rpgtarkor|records|producto)/",
+    "^docs/(rpgtarkor|records|producto|metrics)/",
     "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$",
     "^\\.claude/skills/.*\\.md$"
   ],
