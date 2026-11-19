@@ -2685,19 +2685,21 @@ const GOLPE_EN_ESCUDO_REGEX = /\bgolpe(?:a|ó|ando)\s+(?:\w+\s+){0,2}?en\s+(?:el
 
 const DANO_EXTRA_REGEX = /\b(hiri[eé]ndo\w*|hiri[oó]|hiere|atraviesa\w*|atraves[oó])\b/i;
 
+function conDano(text: string): boolean {
+  const sinNegacion = text.replace(IMPACTO_NEGACION_REGEX, ' ');
+  return IMPACTO_DANO_REGEX.test(sinNegacion) || DANO_EXTRA_REGEX.test(sinNegacion);
+}
+
 function stripFalloIntentado(text: string): string {
   return text
     .split(/(?<=[.!?\n])/)
     .map((sentence) => {
       let out = sentence;
       const pero = FALLO_TRAS_PERO_REGEX.exec(out);
-      if (pero) {
-        const after = out.slice(pero.index);
-        if (!IMPACTO_DANO_REGEX.test(after.replace(IMPACTO_NEGACION_REGEX, ' '))) out = after;
-      }
+      // El daño puede ir antes o después del «pero» («le abre una herida, pero bloquea el siguiente»): con daño en la oración, cuenta entera.
+      if (pero && !conDano(out)) out = out.slice(pero.index);
       return out.replace(GOLPE_EN_ESCUDO_REGEX, (m, offset: number) => {
-        const rest = out.slice(offset + m.length).replace(IMPACTO_NEGACION_REGEX, ' ');
-        return IMPACTO_DANO_REGEX.test(rest) || DANO_EXTRA_REGEX.test(rest) ? m : ' ';
+        return conDano(out.slice(offset + m.length)) ? m : ' ';
       });
     })
     .join('');

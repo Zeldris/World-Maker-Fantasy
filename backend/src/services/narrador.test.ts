@@ -671,6 +671,8 @@ describe('hasFalseCombatHit', () => {
       'Gorhorn golpea el escudo y lo atraviesa hiriéndole el brazo.',
       'Gorhorn lanza un golpe directo, pero el orco esquiva tarde y sangra.',
       'Gorhorn golpea en el escudo del orco, hiriéndole el brazo.',
+      // Daño ANTES del «pero»: el golpe conectó aunque luego bloquee otro.
+      'Gorhorn golpea al orco y le abre una herida en el brazo, pero el orco bloquea el siguiente golpe.',
     ]) {
       expect(hasFalseCombatHit(n, true), n).toBe(true);
     }
