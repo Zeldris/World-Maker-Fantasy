@@ -125,3 +125,5 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 - Aprobadas el 2026-11-19, ronda local 2 L1-L3 (no se vuelven a proponer): falsos positivos de la guarda de objeto sin camino
   (`QA-512`, con `QA-505`), P272 por la palabra propia del título en `titulosPorEntidad` (`QA-513`) y recalentar el prefijo
   del narrador tras `dialogo_npc` (`QA-514`, tras `QA-509`). Descartado por memoria en la Deck: `OLLAMA_NUM_PARALLEL=2`.
+- Aprobadas el 2026-11-19, tanda L4 (no se vuelven a proponer): falsos positivos de las guardas de combate P488/P489 (`QA-517`),
+  lore de la entidad nombrada en `dialogo_npc` (`QA-518`, la última) y la medida del corte en `hechos` en `QA-509`.
