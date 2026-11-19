@@ -105,4 +105,21 @@ describe('titulosPorEntidad', () => {
     expect(titulosPorEntidad(titulos, ['¿Quién manda aquí?', 'Ulkha Ketg'])).toEqual(["Terk'ikar Ulkha Ketg, del Clan Serhu"]);
     expect(titulosPorEntidad(titulos, ['Miro a mi alrededor.'])).toEqual([]);
   });
+
+  // QA-513 (P272): «los Maktor» sin «Clan» trae «Clan Maktor»; una palabra corta de un nombre mayor no trae nada.
+  it('la palabra propia suelta con mayúscula casa una cabeza «Clan X»; detrás de los nombres enteros', () => {
+    const t = [...titulos, 'Casa Ketg', 'El Signeran — el duelo de honor orco'];
+    expect(titulosPorEntidad(t, ['Le pregunto a Ulkha Ketg qué pasó con los Maktor'])).toEqual([
+      "Terk'ikar Ulkha Ketg, del Clan Serhu",
+      'Clan Maktor (el clan de Gorhorn) — aniquilado dos veces',
+    ]);
+  });
+
+  it('«Ketg» dentro de «Ulkha Ketg» no trae «Casa Ketg»; sin mayúscula o solo con la genérica tampoco', () => {
+    const t = [...titulos, 'Casa Ketg', 'Las Llanuras'];
+    expect(titulosPorEntidad(t, ['Le pregunto a Ulkha Ketg'])).toEqual(["Terk'ikar Ulkha Ketg, del Clan Serhu"]);
+    expect(titulosPorEntidad(t, ['hablo de los maktor'])).toEqual([]);
+    expect(titulosPorEntidad(t, ['Hablo con la Casa de Piedra'])).toEqual([]);
+    expect(titulosPorEntidad(t, ['Pienso en Ketg'])).toEqual(['Casa Ketg']);
+  });
 });

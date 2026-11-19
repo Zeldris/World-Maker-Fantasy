@@ -146,19 +146,31 @@ const cabeza = (titulo: string) => titulo.split(/ \(| —|, | y /)[0].trim();
 const nombresPropios = (texto: string) =>
   [...texto.matchAll(/\p{Lu}[\p{L}']+(?:\s+(?:de|del|la|las|los)?\s*\p{Lu}[\p{L}']+)+/gu)].map((m) => normalizar(m[0]));
 
+/// QA-513: palabras con mayúscula sueltas (no parte de un nombre de dos o más palabras, que ya cubre el rango 1):
+/// «los Maktor» sí, «Ulkha Ketg» no trae «Ketg» (una palabra corta suelta casaría con títulos que no tocan).
+const palabrasSueltas = (texto: string) =>
+  [...texto.replace(/\p{Lu}[\p{L}']+(?:\s+(?:de|del|la|las|los)?\s*\p{Lu}[\p{L}']+)+/gu, ' ').matchAll(/\p{Lu}[\p{L}']{3,}/gu)].map((m) => normalizar(m[0]));
+
+/// Primera palabra genérica de una cabeza de dos palabras («Clan Maktor», «El Signeran»): lo propio es la segunda.
+const GENERICAS = new Set(['clan', 'casa', 'casta', 'tribu', 'linaje', 'el', 'la', 'los', 'las']);
+
 /// QA-289: títulos cuya entidad nombra el texto. Primero los que el texto nombra enteros (cabeza de dos o
 /// más palabras: «Gorhorn» solo saldría en casi cada turno); detrás, los que son ese nombre con un título
 /// delante («Terk'ikar Ulkha Ketg» con «Ulkha Ketg»), nunca un sitio que solo lo lleva («Campamento del Clan Serhu»).
 export function titulosPorEntidad(titulos: string[], textos: string[]): string[] {
   const textosN = textos.map(normalizar);
   const nombres = textos.flatMap(nombresPropios);
+  const sueltas = textos.flatMap(palabrasSueltas);
   const contiene = (t: string, n: string) => ` ${t} `.includes(` ${n} `);
   const rango = (titulo: string) => {
     const c = normalizar(cabeza(titulo));
     const palabras = c.split(' ').length;
     if (palabras < 2) return -1;
     if (textosN.some((t) => contiene(t, c))) return 0;
-    return nombres.some((n) => contiene(c, n) && palabras - n.split(' ').length <= 1) ? 1 : -1;
+    if (nombres.some((n) => contiene(c, n) && palabras - n.split(' ').length <= 1)) return 1;
+    // QA-513: «los Maktor» → «Clan Maktor»: la palabra propia de una cabeza de dos palabras con genérica delante.
+    const [primera, propia] = c.split(' ');
+    return palabras === 2 && GENERICAS.has(primera) && sueltas.includes(propia) ? 2 : -1;
   };
   return titulos
     .map((t) => ({ t, r: rango(t) }))
