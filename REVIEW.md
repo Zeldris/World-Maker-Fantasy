@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.7.0 -->
+<!-- galivelop-workflow v0.8.0 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`) comprueba en cada diff, además de los fallos de siempre. Son los
@@ -20,6 +20,11 @@ mecánica marcada `(criterio)` pide su check.
   de ese archivo salen los encargos de los arreglos y los leves que se apuntan en la bitácora. (criterio)
 - Un dato que caduca (una versión, un precio, una cuota, un límite de un servicio externo) escrito en el diff lleva su
   fecha y su fuente; si no, es un hallazgo. (criterio)
+- Cada hallazgo cita su **ancla**: una regla de `REVIEW.md` o de `AGENTS.md`, un criterio de aceptación de la ficha
+  de la tarea (`docs/tasks/<id>.md`), una línea del plan o un fallo demostrado. Formato:
+  `ruta:línea | severidad | ancla | problema. arreglo.` (criterio)
+- Lo que no tiene ancla no es un hallazgo: va aparte, en una sección «Observaciones», sin severidad, y no bloquea el
+  veredicto. (criterio)
 - La revisión acaba con un veredicto, uno de tres: `SHIP` (nada que arreglar), `SHIP WITH FIXES` (hay arreglos, ninguno
   bloquea) o `DO NOT SHIP` (algo grave o que rompe). (criterio)
 
@@ -108,6 +113,12 @@ Retro de `QA-27` (2026-10-12, `QA-40`): tres de los diez fallos de la revisión 
   traer el campo. Lo que se lee de ahí va con `?.` y un camino para cuando falta, sin `!`; con más
   razón en una ruta que pinta la partida entera. `motivoNoEntregable` tumbaba `GET /saves` con
   `h.objeto!.nombre` en una misión sin objeto. (criterio)
+
+## Invariantes
+
+- Un cambio que toca una invariante (un dato en un solo sitio, como en «Un dato, un sitio»; un orden de pasos; un
+  estado que no puede darse) se revisa buscando **los demás sitios que la sostienen**: el cambio no debe romper
+  ninguno. (criterio)
 
 ## Un fallo que vuelve
 
@@ -207,6 +218,18 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
 - Una orden con `npx` en `check` pasa por `tools/qa/host.sh` (sandbox Flatpak de la Deck, `QA-180`). (check: `tools/qa/tests/test_host.py`; ponerla en `check`, criterio)
 - Un cambio en `.claude/gw.json` (sobre todo `check`, `relatedTests`, `protectedPaths` o `reviewMark`) o en
   `.githooks/` lleva su caso en `tools/qa/tests/` (`test_pre_commit.py`, `test_prepush_ramas.py`). (criterio)
+
+## Navegadores
+
+- Lo que se mira en varios navegadores y en el móvil: APIs que no están en Safari, `100vh` (barra del navegador
+  móvil), foco y teclado. (criterio)
+
+## Ficha de tarea
+
+- El gancho `commit-msg` comprueba la forma de la ficha y de las entradas del decision log; aquí se lee la calidad: el
+  `Why` es la razón real (no repite el cambio), las `Alternatives` son reales (opciones que se sopesaron, no relleno),
+  el `Change log` de la ficha coincide con el diff y cada casilla de `Acceptance` nombra un test que de verdad la
+  comprueba (se lee el test, no solo el nombre). (criterio)
 
 ## Tests
 

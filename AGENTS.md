@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.7.0 -->
+<!-- galivelop-workflow v0.8.0 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -11,8 +11,8 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 1. Lee la bitácora, [`docs/records/traspaso.md`](docs/records/traspaso.md): rama, tarea en curso, qué falta y
    siguiente paso. Tu fila y los últimos commits, con `python3 .claude/gw/scripts/recover.py --state`; el archivo
    entero, solo si falta algo (`QA-261`).
-2. `git fetch origin <rama>`: el último commit coincide con la bitácora, y el check está en verde antes de tocar nada
-   (`python3 .claude/gw/scripts/config.py get check`).
+2. `git fetch origin <rama>`: `recover.py --state` dice en «Remote» si vas al día con `origin/<rama>`, el último commit
+   coincide con la bitácora, y el check está en verde antes de tocar nada (`python3 .claude/gw/scripts/config.py get check`).
 3. Sigue por el **siguiente paso** de la bitácora, salvo que la usuaria pida otra cosa.
 4. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día:
    `git fetch origin main` y, si trae commits, `git merge origin/main` (merge, nunca rebase: las ramas están subidas).
@@ -39,12 +39,14 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - **Ninguna tarea sin hito** (usuaria, 2026-10-02): su número, con `python3 tools/roadmap/siguiente-id.py <serie>`
   (mira las ramas remotas, `QA-290`); toda tarea nueva entra en una fase de su roadmap o en una fila de
   «Qué entra en cada hito» (`21-roadmap.md`); `python3 tools/roadmap/cobertura.py` tiene que dar «SIN HITO: 0».
-- Commit + push (`git push -u origin <rama>`, en segundo plano; por red, reintentos a 2, 4, 8 y 16 s) en cada punto
-  estable: **nunca más de 30-45 minutos sin subir**, y **la bitácora en el mismo commit** que el trabajo. Algo a
+- Commit + push (`bash .claude/gw/scripts/push.sh <rama>`, en segundo plano: reintenta si falla por red y da por
+  subido solo lo que `git ls-remote` confirma) en cada punto estable: **nunca más de 30-45 minutos sin subir**, y **la bitácora en el mismo commit** que el trabajo. Algo a
   medias o en rojo se sube igual, con `WIP:` delante y en la bitácora qué falla y por qué.
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`): el cambio
   puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
+- **Las preguntas a la usuaria**: lista numerada, cada una con su recomendación (`questions.py add`; un subagente las
+  devuelve a la sesión principal); responde por número y `questions.py answer "5. a, 6. ok"` lo apunta.
 - **Al cerrar cada tarea o PR** (y cada fase, y cada lote de una rama larga, `QA-305`), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
   en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida**, con `python3 .claude/gw/scripts/ci-status.py` (un
@@ -87,7 +89,11 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 
 ## Mensajes de commit
 
-- Primera línea en español: qué cambia, con los identificadores de las tareas tocadas.
+- Primera línea en español: qué cambia, con los identificadores de las tareas tocadas. Un commit que cambia código
+  empieza por `feat: `, `fix: ` o `hotfix: ` y lleva `Refs: <id>` en el bloque final: el `commit-msg` le pide la
+  ficha de la tarea (`docs/tasks/<id>.md`, con `python3 .claude/gw/scripts/task.py new <id>`) y una entrada nueva
+  de su decision log (`task.py log <id> --agent <skill|sesión>`); los de docs, bitácora y métricas siguen sin prefijo
+  (`taskRecord`, usuaria, 2026-11-18).
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check y de los tests.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.
 - El commit con los arreglos de una revisión lleva `Findings: <n hallazgos aceptados>` y el de un trabajo que tuvo que

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.7.0 -->
+<!-- galivelop-workflow v0.8.0 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la usuaria aprueba un cambio. El flujo
@@ -113,6 +113,9 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   970k arrastrados, y el `LEEME.md` entero, 197k).
 - **Aviso de diff de roadmap** (`QA-366`): `tools/qa/aviso-lectura.py` avisa de `git diff|show` de un `roadmap*.md`
   y apunta a `roadmap.py show <id>` (en `UX-41`, un diff de 5,6k arrastró 325k pese a `QA-334`).
+
+- **Una tarea en el mapa de roadmaps**: `python3 tools/roadmap/cobertura.py --fila <ID>` (y su entrada, `python3 .claude/gw/scripts/roadmap.py show <ID>`), no `git diff`/lectura de
+  `docs/producto/21-roadmap.md` (un `git diff … | head -60` costó 6,7k y arrastró 128k en la v0.8.0, `QA-511`).
 
 ## Costes conocidos
 
