@@ -750,8 +750,13 @@ export async function detectNpcsInScene(params: {
   // P479: a quien ya se ha tratado en esta partida (tiene `NpcState`) y está aquí se le llama por el nombre de pila
   // («Le digo a Torgash que…», «…, Ulkha.»), como al compañero; a un desconocido, no (ya filtrado en los candidatos).
   // Solo el nombre de pila: el apellido de clan («Ketg») casaría con «Hogar Ketg» y metería en escena a todo el clan.
-  for (const npc of candidateNpcs) {
-    if (!matchedIds.has(npc.id) && npc.kind === 'PRINCIPAL' && encounteredIds.has(npc.id) && nombraPorPalabraDelNombre(params.action, npc.name.split(/\s+/)[0] ?? '')) matchedIds.add(npc.id);
+  // P479/P482 (reabiertos, 2026-11-19): hablar no crea `NpcState`, así que «ya tratado» es también conocido (descubierto
+  // o compañero, `slugsConocidos`): en t13b2-ketg Ulkha y Torgash no tenían `NpcState`, «…, Ulkha.» no la metía en
+  // escena y contestaba el primero de la escena (Torgash) o el turno iba al narrador.
+  const principalesSinCasar = candidateNpcs.filter((npc) => !matchedIds.has(npc.id) && npc.kind === 'PRINCIPAL');
+  const conocidos = await slugsConocidos(prisma, params.saveId, principalesSinCasar.filter((npc) => !encounteredIds.has(npc.id)).map((npc) => npc.slug));
+  for (const npc of principalesSinCasar) {
+    if ((encounteredIds.has(npc.id) || conocidos.has(npc.slug)) && nombraPorPalabraDelNombre(params.action, npc.name.split(/\s+/)[0] ?? '')) matchedIds.add(npc.id);
   }
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).

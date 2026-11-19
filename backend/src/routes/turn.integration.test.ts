@@ -2043,6 +2043,53 @@ describe('P464: la presentación de Gistera Koh no la pisa la réplica del LLM a
 
 // P464 (b), P466, P474, P476: un saludo o una pregunta a un NPC (no Gistera), fuera de combate y sin reputación
 // hostil, no pasa por el narrador: línea fija del jugador y la réplica de `dialogo_npc` detrás.
+describe('P479/P482: a un PRINCIPAL conocido sin NpcState se le habla por su nombre de pila', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu' } });
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn de prueba P482', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id },
+    })).id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Como en t13b2-ketg: hablar con ellos los descubre, pero no crea `NpcState`.
+    for (const slug of ['ulkha-ketg', 'torgash-ketg']) {
+      await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: slug } });
+      await prisma.zonePoint.create({ data: { locationId: location.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: slug, cantidad: 1, activo: true } });
+    }
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  async function turno(action: string) {
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    narrateAction.mockClear();
+    generateNpcReplyEspia.mockClear();
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: classifyRes.classification, roll: classifyRes.roll } });
+    expect(narrateRes.statusCode).toBe(200);
+  }
+
+  it('tras hablar con Torgash, «Ulkha, ¿quién es Gistera?» lo contesta Ulkha (P482)', async () => {
+    await turno('Le pregunto a Torgash Ketg: ¿qué opinas de los Serhu?');
+    await turno('Ulkha, ¿quién es Gistera?');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(generateNpcReplyEspia.mock.calls[0]![0].npc.name).toBe('Ulkha Ketg');
+  }, 60_000);
+
+  it('«Cuéntame qué pasó con los Maktor, Ulkha.» va sin narrador y lo contesta Ulkha (P479)', async () => {
+    await turno('Cuéntame qué pasó con los Maktor, Ulkha.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(generateNpcReplyEspia.mock.calls[0]![0].npc.name).toBe('Ulkha Ketg');
+  }, 30_000);
+});
+
 describe('Turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => {
   let saveId: string;
 
