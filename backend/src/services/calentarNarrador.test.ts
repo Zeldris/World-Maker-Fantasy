@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const ollamaGenerate = vi.fn();
+let ultimoPromptNarrador: string | undefined;
 vi.mock('../lib/ollama.js', () => ({
   ollamaGenerate: (...args: unknown[]) => ollamaGenerate(...args),
+  cacheEmpiezaPor: (_model: string, prefijo: string) => ultimoPromptNarrador?.startsWith(prefijo) ?? false,
 }));
 const filas = new Map<string, string>();
 vi.mock('../lib/prisma.js', () => ({
@@ -14,7 +16,7 @@ vi.mock('../lib/prisma.js', () => ({
   },
 }));
 
-const { guardarPrefijoNarrador, calentarNarradorDePartida, olvidarPrefijoEnCacheParaTests, tocaCalentar, INTERVALO_CALENTAR_MS } = await import('./calentarNarrador.js');
+const { guardarPrefijoNarrador, calentarNarradorDePartida, olvidarPrefijoEnCacheParaTests, tocaCalentar, INTERVALO_CALENTAR_MS, recalentarSiDesalojado, cancelarRecalentado } = await import('./calentarNarrador.js');
 const { claimTurnInFlight, releaseTurnInFlight } = await import('./turnLock.js');
 const { buildNarrationPrompt } = await import('./narrador.js');
 
@@ -112,5 +114,64 @@ describe('QA-339: calentar el narrador al abrir la partida', () => {
     ollamaGenerate.mockRejectedValueOnce(new Error('Ollama caído'));
     await expect(calentarNarradorDePartida('s1')).rejects.toThrow('Ollama caído');
     expect(await calentarNarradorDePartida('s1')).toBe(true);
+  });
+});
+
+describe('QA-514: recalentar el prefijo tras otra tarea del modelo del narrador', () => {
+  beforeEach(() => {
+    ollamaGenerate.mockReset().mockResolvedValue({ text: '', raw: {} });
+    filas.clear();
+    olvidarPrefijoEnCacheParaTests();
+    ultimoPromptNarrador = undefined;
+  });
+
+  it('tras un dialogo_npc que pisó la caché, manda el prefijo de la partida con num_predict 1', async () => {
+    await guardarPrefijoNarrador('s1', 'PREFIJO-S1');
+    ultimoPromptNarrador = 'Eres Ulkha. Solo esto sabes…';
+    expect(await recalentarSiDesalojado('s1')).toBe(true);
+    expect(ollamaGenerate.mock.calls[0][0]).toMatchObject({ prompt: 'PREFIJO-S1', maxTokens: 1, keepAlive: '1h', tarea: 'recalentar' });
+  });
+
+  it('si la última petición al narrador ya empezaba por el prefijo (turno narrado), no llama a Ollama', async () => {
+    await guardarPrefijoNarrador('s1', 'PREFIJO-S1');
+    ultimoPromptNarrador = 'PREFIJO-S1\n- un hecho del turno\nACCIÓN: miro';
+    expect(await recalentarSiDesalojado('s1')).toBe(false);
+    expect(ollamaGenerate).not.toHaveBeenCalled();
+  });
+
+  it('sin el prefijo en memoria lo lee de la base, y sin ninguno no llama', async () => {
+    filas.set('s1', 'PREFIJO-S1');
+    expect(await recalentarSiDesalojado('s1')).toBe(true);
+    expect(await recalentarSiDesalojado('nueva')).toBe(false);
+    expect(ollamaGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it('con un turno en curso de la partida no recalienta', async () => {
+    await guardarPrefijoNarrador('s1', 'PREFIJO-S1');
+    expect(claimTurnInFlight('s1')).toBe(true);
+    try {
+      expect(await recalentarSiDesalojado('s1')).toBe(false);
+    } finally {
+      releaseTurnInFlight('s1');
+    }
+    expect(ollamaGenerate).not.toHaveBeenCalled();
+  });
+
+  it('el turno siguiente lo cancela: la señal de la llamada se dispara y no lanza ni avisa', async () => {
+    await guardarPrefijoNarrador('s1', 'PREFIJO-S1');
+    ollamaGenerate.mockImplementation(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('Llamada a Ollama cancelada (recalentar)')))),
+    );
+    const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const enCurso = recalentarSiDesalojado('s1');
+    await vi.waitFor(() => expect(ollamaGenerate).toHaveBeenCalled());
+    // Un segundo intento mientras el primero sigue no manda otro.
+    expect(await recalentarSiDesalojado('s1')).toBe(false);
+    cancelarRecalentado('s1');
+    expect(await enCurso).toBe(false);
+    expect(ollamaGenerate.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(aviso).not.toHaveBeenCalled();
+    aviso.mockRestore();
   });
 });
