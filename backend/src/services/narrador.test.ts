@@ -654,6 +654,25 @@ describe('hasFalseCombatHit', () => {
     expect(hasFalseCombatHit(narration, true)).toBe(false);
   });
 
+  it('QA-505: el sustantivo «impacto» anticipado o sin daño no cuenta como golpe', () => {
+    for (const n of [
+      'Gorhorn se planta, listo para absorber el impacto.',
+      'Gorhorn se prepara para cualquier otro impacto.',
+      'Gorhorn aguanta el impacto sin derrumbarse.',
+      'El impacto hace que el suelo se estremezca bajo sus pies.',
+      'Gorhorn aguanta el impacto, impidiendo que el golpe le haga daño.',
+    ]) {
+      expect(hasFalseCombatHit(n, true), n).toBe(false);
+    }
+  });
+
+  it('QA-505: el verbo «impactando» y el sustantivo «impacto» con daño siguen contando', () => {
+    expect(hasFalseCombatHit('El hacha, impactando en el pecho del orco, lo hace retroceder.', true)).toBe(true);
+    expect(hasFalseCombatHit('El impacto le parte el brazo al orco.', true)).toBe(true);
+    expect(hasFalseCombatHit('El impacto lo hace retroceder, sangrando.', true)).toBe(true);
+    expect(hasFalseCombatHit('Gorhorn aguanta el impacto. El orco se desploma.', true)).toBe(true);
+  });
+
   it('no dispara fuera de combate (combatBothMissed undefined)', () => {
     expect(hasFalseCombatHit('Gorhorn golpea la puerta con el puño, impaciente.', undefined)).toBe(false);
   });
@@ -1764,6 +1783,23 @@ describe('hasFalsePassiveHarvestClaim', () => {
   it('no dispara si el modelo SÍ rellenó newItem (lo cubre hasFalseNewItemClaim en su lugar)', () => {
     const narration = 'Gorhorn recoge un par de hojas duraderas y las añade a sus raciones para el viaje.';
     expect(hasFalsePassiveHarvestClaim(narration, 'Hojas duraderas', false)).toBe(false);
+  });
+
+  it('QA-512: no dispara con «encuentra a/su…» (golpe que conecta) ni con «no consigue»/«consigue» + infinitivo', () => {
+    for (const n of [
+      'Un golpe certero de la hacha de Gorhorn encuentra a el orco en el estómago.',
+      'Gorhorn no consigue encontrar un punto débil.',
+      'Gorhorn consigue encontrar un hueco entre las defensas.',
+      'El hacha encuentra al orco en el costado.',
+    ]) {
+      expect(hasFalsePassiveHarvestClaim(n, null, false), n).toBe(false);
+    }
+  });
+
+  it('QA-512: sigue disparando con obtenciones reales', () => {
+    expect(hasFalsePassiveHarvestClaim('Encontrado un par de hojas duraderas, las añade a sus raciones.', null, false)).toBe(true);
+    expect(hasFalsePassiveHarvestClaim('Gorhorn consigue un trozo de carne.', null, false)).toBe(true);
+    expect(hasFalsePassiveHarvestClaim('Gorhorn encuentra un trozo de carne.', null, false)).toBe(true);
   });
 
   it('no dispara sin vocabulario de obtención en la narración', () => {

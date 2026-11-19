@@ -2650,9 +2650,25 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 const COMBAT_HIT_LEAK_REGEX =
   /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|(?<!sin\s)(?<!sin\s\w+\s)(?<!ni\suna\s)(?<!ninguna\s)(?<!no\sle\s(?:causa|hace|provoca|produce)\s(?:una\s)?)herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
 
+// QA-505 (P481): el sustantivo «impacto» sin daño (anticipado o resistido: «listo para absorber el impacto», «cualquier otro
+// impacto», «aguanta el impacto sin derrumbarse», «el impacto hace que el suelo se estremezca») no es un golpe que conecta.
+// Solo cuenta si el resto de la frase trae daño o efecto sobre alguien («el impacto le parte…»); lo que sigue a una negación
+// («sin…», «impidiendo que…daño») no cuenta. El verbo «impactando/impactó» no pasa por aquí: sigue contando.
+const IMPACTO_NOUN_REGEX = /\bimpacto\b/gi;
+const IMPACTO_NEGACION_REGEX = /\b(sin|no|ni|impidiendo|evitando|evita|impide)\b[^.!?\n]*/gi;
+const IMPACTO_DANO_REGEX = /\b(le|lo|la|les|los)\s+(parte|part[eií]\w*|rompe|romp\w*|hiere|abre|desgarr\w*|hunde|destroz\w*|lastim\w*|tumba|derrib\w*|lanza|arroja|aplast\w*|quiebr\w*|fractur\w*|perfor\w*|cort\w*|atraviesa|hace\s+(sangrar|retroceder|caer|tambalear\w*))|sangr\w*|herid\w*|da[ñn]o|\bcae\b|retroced\w*|derrumb\w*/i;
+
+function stripImpactoSinDano(text: string): string {
+  return text.replace(IMPACTO_NOUN_REGEX, (match, offset: number) => {
+    const rest = text.slice(offset + match.length);
+    const clause = (rest.split(/[.!?\n]/)[0] ?? '').replace(IMPACTO_NEGACION_REGEX, ' ');
+    return IMPACTO_DANO_REGEX.test(clause) ? match : ' ';
+  });
+}
+
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
-  return COMBAT_HIT_LEAK_REGEX.test(narration);
+  return COMBAT_HIT_LEAK_REGEX.test(stripImpactoSinDano(narration));
 }
 
 /// Mismo vocabulario que `COMBAT_HIT_LEAK_REGEX`, sin condicionar a ningún contexto de combate ya
@@ -2960,11 +2976,12 @@ export function hasFalseNewItemClaim(narration: string, newItemName: string | nu
 /// "picar" madera o "talar" piedra) — no se amplía su vocabulario aquí; en vez de eso, se veta
 /// cualquier prosa que prometa una obtención SIN ningún camino mecánico activo este turno, sin
 /// importar qué palabras use para prometerlo. Vocabulario de obtención (encontrar/recoger/
-/// conseguir/añadir a la mochila) — mismo criterio conservador que el resto de la familia: si
+/// conseguir/añadir a la mochila; QA-512: no cuenta «encuentra a/al/su…» —un golpe que conecta con alguien—, ni «no consigue»,
+/// ni «consigue» + infinitivo) — mismo criterio conservador que el resto de la familia: si
 /// ya hay un camino mecánico real este turno (recolección/saqueo/construcción/crafteo), la
 /// obtención es legítima y el guard no se evalúa.
 const ITEM_OBTAINED_CLAIM_REGEX =
-  /\b(encuentr\w*|recog\w*|recolect\w*|consigu\w*|obtien\w*|hall[ao]\w*)\b|añade a (su|sus) (inventario|raciones|mochila|bolsa|zurr[oó]n)/i;
+  /\b(encuentr\w*\b(?!\s+(?:a|al|su|sus)\b)|recog\w*|recolect\w*|(?<!\bno\s)consigu\w*\b(?!\s+\w+(?:ar|er|ir)\b)|obtien\w*|hall[ao]\w*)\b|añade a (su|sus) (inventario|raciones|mochila|bolsa|zurr[oó]n)/i;
 
 export function hasFalsePassiveHarvestClaim(narration: string, newItemName: string | null | undefined, harvestOrLootActiveThisTurn?: boolean): boolean {
   if (harvestOrLootActiveThisTurn || newItemName) return false;
