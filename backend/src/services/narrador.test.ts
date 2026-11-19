@@ -654,6 +654,28 @@ describe('hasFalseCombatHit', () => {
     expect(hasFalseCombatHit(narration, true)).toBe(false);
   });
 
+  it('QA-517 (P488): un golpe intentado que se esquiva/para («pero… esquiva») o da en el escudo sin daño no es un golpe que conecte', () => {
+    for (const n of [
+      'Gorhorn ataca a la Guerrera serhu con un golpe directo de su hacha de guerra rota, pero la Guerrera es rápida y esquiva el golpe.',
+      'Gorhorn se acerca a la Guerrera serhu con un golpe directo, pero ella se esquiva a tiempo.',
+      'La Guerrera serhu se protege con su escudo de BERSERKER, pero la maza pesada de Gorhorn la golpea suavemente en el escudo.',
+    ]) {
+      expect(hasFalseCombatHit(n, true), n).toBe(false);
+    }
+  });
+
+  it('QA-517 (P488): lo que sí conecta se sigue rechazando aunque lleve «pero» o el escudo', () => {
+    for (const n of [
+      'Gorhorn golpea al orco en el hombro, que esquiva tarde y sangra.',
+      'El golpe directo le alcanza de lleno, pero el orco sigue en pie.',
+      'Gorhorn golpea el escudo y lo atraviesa hiriéndole el brazo.',
+      'Gorhorn lanza un golpe directo, pero el orco esquiva tarde y sangra.',
+      'Gorhorn golpea en el escudo del orco, hiriéndole el brazo.',
+    ]) {
+      expect(hasFalseCombatHit(n, true), n).toBe(true);
+    }
+  });
+
   it('QA-505: el sustantivo «impacto» anticipado o sin daño no cuenta como golpe', () => {
     for (const n of [
       'Gorhorn se planta, listo para absorber el impacto.',
@@ -996,6 +1018,15 @@ describe('hasFalseCombatAttacker: QA-355 (P473), textos reales rechazados con el
   ];
   it.each(pasan.map((t, i) => [i + 1, t] as const))('texto %i del registro: el golpe es del NPC, no se rechaza', (_n, texto) => {
     expect(hasFalseCombatAttacker(texto, 'Gorhorn', true)).toBe(false);
+  });
+
+  it('QA-517 (P489): «le da a Gorhorn un golpe certero» es el NPC golpeando al jugador; «Gorhorn se desploma» no es que acierte', () => {
+    expect(hasFalseCombatAttacker('La Guerrera serhu le da a Gorhorn un golpe certero en el hombro, mientras que Gorhorn se desploma al suelo con un gruñido.', 'Gorhorn', true)).toBe(false);
+  });
+
+  it('QA-517 (P489): sigue rechazando al jugador como sujeto del golpe', () => {
+    expect(hasFalseCombatAttacker('Gorhorn le da a la Guerrera un golpe certero en el hombro.', 'Gorhorn', true)).toBe(true);
+    expect(hasFalseCombatAttacker('La Guerrera ataca a Gorhorn. Gorhorn le da a la Guerrera un golpe certero en el hombro.', 'Gorhorn', true)).toBe(true);
   });
 
   it('un golpe mal atribuido de verdad (el jugador acierta, el NPC no) se sigue rechazando', () => {

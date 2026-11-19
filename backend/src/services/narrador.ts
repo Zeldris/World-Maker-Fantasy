@@ -2675,9 +2675,37 @@ function stripImpactoSinDano(text: string): string {
   });
 }
 
+// QA-517 (P488): un golpe INTENTADO y resuelto en la misma oración con «pero/aunque… esquiva/bloquea/desvía/falla…» es un fallo
+// («ataca con un golpe directo, pero la Guerrera esquiva el golpe»): lo que va antes del «pero» no cuenta, lo de después sí
+// (sigue pasando por el regex) y, si trae daño («pero esquiva tarde y sangra»), la oración entera cuenta.
+const FALLO_TRAS_PERO_REGEX =
+  /\b(pero|aunque|sin\s+embargo)\b(?=[^.!?\n]*\b(esquiv\w*|se\s+aparta\w*|se\s+protege\w*|bloque\w*|desv[ií]\w*|deten\w*|fall[aóo]\w*|no\s+(?:le\s+)?(?:alcanza|logra|consigue|llega)\w*|lo\s+par[aó]|la\s+par[aó]|par[aó]\s+el\s+golpe))/i;
+// QA-517 (P488): un golpe que da «en el escudo» sin daño lo para el escudo: no es un golpe que conecte con el cuerpo.
+const GOLPE_EN_ESCUDO_REGEX = /\bgolpe(?:a|ó|ando)\s+(?:\w+\s+){0,2}?en\s+(?:el|su|un)\s+escudo\b/gi;
+
+const DANO_EXTRA_REGEX = /\b(hiri[eé]ndo\w*|hiri[oó]|hiere|atraviesa\w*|atraves[oó])\b/i;
+
+function stripFalloIntentado(text: string): string {
+  return text
+    .split(/(?<=[.!?\n])/)
+    .map((sentence) => {
+      let out = sentence;
+      const pero = FALLO_TRAS_PERO_REGEX.exec(out);
+      if (pero) {
+        const after = out.slice(pero.index);
+        if (!IMPACTO_DANO_REGEX.test(after.replace(IMPACTO_NEGACION_REGEX, ' '))) out = after;
+      }
+      return out.replace(GOLPE_EN_ESCUDO_REGEX, (m, offset: number) => {
+        const rest = out.slice(offset + m.length).replace(IMPACTO_NEGACION_REGEX, ' ');
+        return IMPACTO_DANO_REGEX.test(rest) || DANO_EXTRA_REGEX.test(rest) ? m : ' ';
+      });
+    })
+    .join('');
+}
+
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
-  return COMBAT_HIT_LEAK_REGEX.test(stripImpactoSinDano(narration));
+  return COMBAT_HIT_LEAK_REGEX.test(stripFalloIntentado(stripImpactoSinDano(narration)));
 }
 
 /// Mismo vocabulario que `COMBAT_HIT_LEAK_REGEX`, sin condicionar a ningún contexto de combate ya
@@ -2759,15 +2787,26 @@ export function hasFalseCombatAttacker(narration: string, characterName?: string
   const normalizedName = normalizeText(characterName);
   const sentences = narration.split(SENTENCE_SPLIT_REGEX).map(normalizeText);
   return sentences.some((sentence, i) => {
-    const nameAt = sentence.indexOf(normalizedName);
-    if (nameAt < 0) return false;
-    // QA-355 (P473): solo cuenta el vocabulario de impacto que viene DESPUÉS del nombre (el jugador como sujeto);
-    // "el orco golpea a Gorhorn" lo tiene antes (víctima) y "bajo el impacto" es el sustantivo del golpe recibido.
-    const window = [sentence.slice(nameAt + normalizedName.length), sentences[i + 1] ?? ''].join(' ').replace(IMPACTO_SUSTANTIVO_REGEX, ' ');
-    return COMBAT_HIT_LEAK_REGEX.test(window);
+    let nameAt = sentence.indexOf(normalizedName);
+    while (nameAt >= 0) {
+      // QA-517 (P489): «le da a Gorhorn un golpe certero» / «golpea a Gorhorn»: el nombre es la víctima (objeto), no quien golpea.
+      const victima = NOMBRE_VICTIMA_REGEX.test(sentence.slice(0, nameAt));
+      if (!victima) {
+        // QA-355 (P473): solo cuenta el vocabulario de impacto que viene DESPUÉS del nombre (el jugador como sujeto);
+        // "el orco golpea a Gorhorn" lo tiene antes (víctima) y "bajo el impacto" es el sustantivo del golpe recibido.
+        // QA-517 (P489): «Gorhorn se desploma» es el jugador cayendo (recibe), no acertando: no cuenta como golpe suyo.
+        const window = [sentence.slice(nameAt + normalizedName.length), sentences[i + 1] ?? ''].join(' ').replace(IMPACTO_SUSTANTIVO_REGEX, ' ').replace(CAIDA_REGEX, ' ');
+        if (COMBAT_HIT_LEAK_REGEX.test(window)) return true;
+      }
+      nameAt = sentence.indexOf(normalizedName, nameAt + normalizedName.length);
+    }
+    return false;
   });
 }
 
+// QA-517 (P489): el nombre va tras un verbo de golpe + «a/al» (objeto directo/indirecto del golpe): es quien lo recibe.
+const NOMBRE_VICTIMA_REGEX = /\b(da|dan|asesta|propina|lanza|golpea|hiere|alcanza|ataca|acierta|clava)\s+(?:a|al)\s+(?:(?:el|la|los|las)\s+)?$/i;
+const CAIDA_REGEX = /\b(se\s+desploma|desplom[oó]|desplomandose|desplomándose)\b/gi;
 // Sustantivo "impacto" (el golpe recibido), no el verbo "impactó" de COMBAT_HIT_LEAK_REGEX; ya sin tildes (normalizeText).
 const IMPACTO_SUSTANTIVO_REGEX = /\b(el|del|al|su|ese|este|tal|un)\s+impacto\b/gi;
 
