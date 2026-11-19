@@ -52,8 +52,9 @@ export async function calentarNarradorDePartida(saveId: string): Promise<boolean
 /// `modo_dinamico` y `resumen` usan el del narrador: el `narrar` siguiente salía con 0 caracteres reaprovechados y
 /// 24-58 s de prefill (10-12 s con caché). Al acabar un turno (o una vuelta del modo dinámico, o un resumen), si la
 /// última petición a ese modelo no empezaba por el prefijo estable de la partida, se le vuelve a mandar en segundo
-/// plano. El turno siguiente de la partida lo cancela al empezar (`cancelarRecalentado`): una réplica rápida no
-/// espera a un calentamiento que su propia llamada iba a pisar.
+/// plano. El turno siguiente lo cancela al empezar (`cancelarRecalentados`): una réplica rápida no espera a un
+/// calentamiento que su propia llamada iba a pisar. Cancela los de todas las partidas: con una sola caché por modelo,
+/// el turno de otra partida la pisa igual, y uno sin cancelar ocuparía la cola de Ollama hasta 2 min.
 /// En memoria además de en la base: `guardarPrefijoNarrador` no se espera, y al soltar el turno puede no haber escrito.
 const prefijoPorPartida = new Map<string, string>();
 const recalentadoEnCurso = new Map<string, AbortController>();
@@ -79,10 +80,10 @@ export async function recalentarSiDesalojado(saveId: string): Promise<boolean> {
   }
 }
 
-/// Al empezar un turno de la partida: corta su recalentado en la cola o en curso.
-export function cancelarRecalentado(saveId: string): void {
-  recalentadoEnCurso.get(saveId)?.abort();
-  recalentadoEnCurso.delete(saveId);
+/// Al empezar un turno de cualquier partida: corta los recalentados en la cola o en curso.
+export function cancelarRecalentados(): void {
+  for (const controller of recalentadoEnCurso.values()) controller.abort();
+  recalentadoEnCurso.clear();
 }
 
 /// Solo para tests: olvida los calentamientos recientes.

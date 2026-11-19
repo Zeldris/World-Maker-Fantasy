@@ -16,7 +16,7 @@ vi.mock('../lib/prisma.js', () => ({
   },
 }));
 
-const { guardarPrefijoNarrador, calentarNarradorDePartida, olvidarPrefijoEnCacheParaTests, tocaCalentar, INTERVALO_CALENTAR_MS, recalentarSiDesalojado, cancelarRecalentado } = await import('./calentarNarrador.js');
+const { guardarPrefijoNarrador, calentarNarradorDePartida, olvidarPrefijoEnCacheParaTests, tocaCalentar, INTERVALO_CALENTAR_MS, recalentarSiDesalojado, cancelarRecalentados } = await import('./calentarNarrador.js');
 const { claimTurnInFlight, releaseTurnInFlight } = await import('./turnLock.js');
 const { buildNarrationPrompt } = await import('./narrador.js');
 
@@ -157,8 +157,9 @@ describe('QA-514: recalentar el prefijo tras otra tarea del modelo del narrador'
     expect(ollamaGenerate).not.toHaveBeenCalled();
   });
 
-  it('el turno siguiente lo cancela: la señal de la llamada se dispara y no lanza ni avisa', async () => {
+  it('el turno siguiente, de esta partida u otra, lo cancela: la señal de la llamada se dispara y no lanza ni avisa', async () => {
     await guardarPrefijoNarrador('s1', 'PREFIJO-S1');
+    await guardarPrefijoNarrador('s2', 'PREFIJO-S2');
     ollamaGenerate.mockImplementation(
       ({ signal }: { signal: AbortSignal }) =>
         new Promise((_, reject) => signal.addEventListener('abort', () => reject(new Error('Llamada a Ollama cancelada (recalentar)')))),
@@ -168,9 +169,12 @@ describe('QA-514: recalentar el prefijo tras otra tarea del modelo del narrador'
     await vi.waitFor(() => expect(ollamaGenerate).toHaveBeenCalled());
     // Un segundo intento mientras el primero sigue no manda otro.
     expect(await recalentarSiDesalojado('s1')).toBe(false);
-    cancelarRecalentado('s1');
+    const otra = recalentarSiDesalojado('s2');
+    await vi.waitFor(() => expect(ollamaGenerate).toHaveBeenCalledTimes(2));
+    cancelarRecalentados();
     expect(await enCurso).toBe(false);
-    expect(ollamaGenerate.mock.calls[0][0].signal.aborted).toBe(true);
+    expect(await otra).toBe(false);
+    expect(ollamaGenerate.mock.calls.map((c) => c[0].signal.aborted)).toEqual([true, true]);
     expect(aviso).not.toHaveBeenCalled();
     aviso.mockRestore();
   });

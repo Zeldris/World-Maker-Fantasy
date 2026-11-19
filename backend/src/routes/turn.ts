@@ -43,7 +43,7 @@ import { characterSummaryFor } from '../services/characterSummary.js';
 import { entornoTemporalFor } from '../services/worldClock.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
-import { cancelarRecalentado, recalentarSiDesalojado } from '../services/calentarNarrador.js';
+import { cancelarRecalentados, recalentarSiDesalojado } from '../services/calentarNarrador.js';
 import {
   detectsUnequippedWeaponClaim,
   wrongWeaponNarrationFor,
@@ -596,7 +596,7 @@ export async function turnRoutes(app: FastifyInstance) {
     }
     if (!preview) {
       abrirTurnoIa(saveId); // QA-162: id de turno del registro de opt-ai
-      cancelarRecalentado(saveId); // QA-514: el turno no espera detrás del recalentado del anterior
+      cancelarRecalentados(); // QA-514: el turno no espera detrás del recalentado del anterior
     }
 
     const save = await prisma.save.findUnique({
@@ -1402,7 +1402,7 @@ export async function turnRoutes(app: FastifyInstance) {
       // que el frontend esperase minutos un resultado que nunca va a llegar.
       return reply.status(409).send({ error: 'Ya hay un turno resolviéndose para esta partida — espera a que termine.', locked: true });
     }
-    cancelarRecalentado(saveId); // QA-514
+    cancelarRecalentados(); // QA-514
 
     const sessionFacts = await loadSessionFacts(save.id);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
