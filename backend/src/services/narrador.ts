@@ -397,8 +397,15 @@ const rangoEstable = (f: string) => {
   const i = HECHOS_ESTABLES.findIndex((p) => f.startsWith(p));
   return i < 0 ? HECHOS_ESTABLES.length : i;
 };
-export function ordenarHechosPorEstabilidad(facts: string[]): string[] {
-  return facts.map((f, i) => ({ f, i, r: rangoEstable(f) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
+/// QA-509 (`/gw-opt-ai` de la tanda L4): en combate, líneas cortas que cambian de una ronda a otra (la salud del
+/// personaje, el arma de este golpe, si ya hubo intercambio) iban delante de los bloques de NPC, armas y misiones y
+/// cortaban ahí la caché de Ollama: ~10.200 caracteres comunes y primera palabra en 23-25 s, frente a 10-14 s con
+/// ~13.000. En combate van al final de los hechos; cuestan unas decenas de tokens por turno, no todo lo de detrás.
+const HECHOS_VOLATILES_COMBATE = ['ESTADO ACTUAL DEL PERSONAJE', 'ESTE GOLPE EN CONCRETO', 'Ningún intercambio de combate'];
+const esVolatilEnCombate = (f: string) => HECHOS_VOLATILES_COMBATE.some((p) => f.startsWith(p));
+export function ordenarHechosPorEstabilidad(facts: string[], enCombate = false): string[] {
+  const rango = (f: string) => (enCombate && esVolatilEnCombate(f) ? HECHOS_ESTABLES.length + 1 : rangoEstable(f));
+  return facts.map((f, i) => ({ f, i, r: rango(f) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
 }
 
 function factsBlock(facts: string[]): string {
@@ -1719,7 +1726,7 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
   const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
   const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
-  const hechosOrdenados = ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)));
+  const hechosOrdenados = ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)), ctx.enCombate);
   const hechosBlock = factsBlock(hechosOrdenados);
 
   // P412: con réplica aparte, el NPC en una frase breve al final. Bench 20: sin diálogo, la narración abría con Ulkha en 5

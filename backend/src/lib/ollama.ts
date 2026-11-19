@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
-import { calcularTruncated, nsToMs, prefijoComun, prefijoBloque, prefijoBloqueAjeno, type BloquePrompt, registrarCaso, registrarLlamada } from './iaRegistro.js';
+import { calcularTruncated, nsToMs, prefijoComun, prefijoBloqueYLinea, prefijoBloqueAjeno, type BloquePrompt, registrarCaso, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -189,7 +189,7 @@ function registrarGenerate(
     decodeMs: nsToMs(r.eval_duration),
     ttftMs: extra.ttftMs,
     ...(env.iaRegistro ? prefijoComun(options.model, `${options.system ?? ''}\n${options.prompt}`) : {}),
-    ...(env.iaRegistro && options.bloques ? { prefijoBloque: prefijoBloque(options.model, options.bloques) } : {}),
+    ...(env.iaRegistro && options.bloques ? (({ bloque, linea }) => ({ prefijoBloque: bloque, prefijoLinea: linea }))(prefijoBloqueYLinea(options.model, options.bloques)) : {}),
     // Una llamada fallida no dice si se recortó: sin esto contaba en recortado_pct por el largo del prompt.
     truncated: extra.error ? undefined : calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
     error: extra.error,

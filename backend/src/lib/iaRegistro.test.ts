@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, prefijoBloqueAjeno, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa, fijarViaTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, prefijoBloqueYLinea, prefijoBloqueAjeno, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa, fijarViaTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -221,6 +221,17 @@ describe('prefijoBloque (QA-507)', () => {
     prefijoBloqueAjeno('qa507-c');
     expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('otra');
     expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('ninguno');
+  });
+
+  it('dice el principio de la línea donde se corta dentro del bloque (QA-509)', () => {
+    const h = (t: string) => [{ nombre: 'ej', texto: 'fijo' }, { nombre: 'hechos', texto: t }];
+    expect(prefijoBloqueYLinea('qa509-a', h('HECHOS:\n- UBICACIÓN: X\n- ESTADO ACTUAL DEL PERSONAJE: herido.\n- y'))).toEqual({ bloque: 'inicio' });
+    expect(prefijoBloqueYLinea('qa509-a', h('HECHOS:\n- UBICACIÓN: X\n- ESTADO ACTUAL DEL PERSONAJE: malherido, apenas se tiene en pie y sangra.\n- y'))).toEqual({
+      bloque: 'hechos',
+      linea: '- ESTADO ACTUAL DEL PERSONAJE: malherido, apenas',
+    });
+    expect(prefijoBloqueYLinea('qa509-a', [{ nombre: 'otro', texto: 'fijo' }])).toEqual({ bloque: 'otro' });
+    expect(JSON.parse(lineaRegistro({ operation: 'text_completion', prefijoBloque: 'hechos', prefijoLinea: '- ESTADO' }, 'deck'))['app.prefijo_linea']).toBe('- ESTADO');
   });
 
   it('va al registro como app.prefijo_bloque y sin bloques no se escribe', () => {

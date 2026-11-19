@@ -38,6 +38,8 @@ export interface RegistroLlamada {
   prefijoComunChars?: number;
   /// QA-507: nombre del primer bloque del prompt que difiere del anterior del mismo modelo (solo con bloques con nombre).
   prefijoBloque?: string;
+  /// QA-509: principio de la línea donde se corta el prefijo dentro de ese bloque (`prefijoBloqueYLinea`).
+  prefijoLinea?: string;
   truncated?: boolean;
   error?: string;
   ragQuery?: string;
@@ -143,15 +145,34 @@ export interface BloquePrompt {
 /// que el prefijo de la lista anterior ya no era el que había en memoria.
 const ultimosBloquesPorModelo = new Map<string, BloquePrompt[] | null>();
 export function prefijoBloque(modelo: string, bloques: BloquePrompt[]): string {
+  return prefijoBloqueYLinea(modelo, bloques).bloque;
+}
+
+/// QA-509: con el bloque solo, «hechos» no decía qué hecho cambiaba en cada ronda de combate. `linea`: los primeros
+/// caracteres de la línea del bloque nuevo donde empieza la diferencia (solo si el bloque está en las dos listas).
+export function prefijoBloqueYLinea(modelo: string, bloques: BloquePrompt[]): { bloque: string; linea?: string } {
   const anterior = ultimosBloquesPorModelo.get(modelo);
   ultimosBloquesPorModelo.set(modelo, bloques);
-  if (anterior === null) return 'otra';
-  if (!anterior) return 'inicio';
+  if (anterior === null) return { bloque: 'otra' };
+  if (!anterior) return { bloque: 'inicio' };
   const n = Math.max(anterior.length, bloques.length);
   for (let i = 0; i < n; i++) {
-    if (anterior[i]?.nombre !== bloques[i]?.nombre || anterior[i]?.texto !== bloques[i]?.texto) return (bloques[i] ?? anterior[i]!).nombre;
+    const a = anterior[i];
+    const b = bloques[i];
+    if (a?.nombre === b?.nombre && a?.texto === b?.texto) continue;
+    if (!a || !b || a.nombre !== b.nombre) return { bloque: (b ?? a!).nombre };
+    return { bloque: b.nombre, linea: lineaDeLaDiferencia(a.texto, b.texto) };
   }
-  return 'ninguno';
+  return { bloque: 'ninguno' };
+}
+
+const LARGO_LINEA = 48;
+function lineaDeLaDiferencia(anterior: string, nuevo: string): string {
+  let i = 0;
+  while (i < anterior.length && i < nuevo.length && anterior.charCodeAt(i) === nuevo.charCodeAt(i)) i++;
+  const inicio = nuevo.lastIndexOf('\n', i - 1) + 1;
+  const fin = nuevo.indexOf('\n', inicio);
+  return nuevo.slice(inicio, fin < 0 ? undefined : fin).slice(0, LARGO_LINEA);
 }
 
 /// Una llamada a este modelo sin bloques: la siguiente con bloques apunta `otra` (el prefijo previo no era el suyo).
@@ -189,6 +210,7 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.prompt_chars': r.promptChars,
     'app.prefijo_comun_chars': r.prefijoComunChars,
     'app.prefijo_bloque': r.prefijoBloque,
+    'app.prefijo_linea': r.prefijoLinea,
     'app.truncated': r.truncated,
     'app.error': r.error,
     'app.rag.query': r.ragQuery,

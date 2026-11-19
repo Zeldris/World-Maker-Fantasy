@@ -2212,6 +2212,17 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO DEL MUNDO'));
   });
 
+  it('en combate, la salud, el arma del golpe y el aviso de intercambio van tras los NPC, armas y misiones; fuera, no (QA-509)', () => {
+    const hechos = ['ESTADO ACTUAL DEL PERSONAJE: herido.', 'PERSONAJE EN ESCENA: Guerrera serhu', 'ESTE GOLPE EN CONCRETO es con el hacha.', 'Ningún intercambio de combate mecánico se ha resuelto todavía.', 'MISIONES DEL MUNDO: x', 'Guerrera serhu ataca con "Tajo".', 'UBICACIÓN ACTUAL: Hondonada'];
+    const base = { ...ctx('12:10', 'Gorhorn mira.'), worldFacts: hechos };
+    const orden = (enCombate: boolean) => {
+      const p = buildNarrationPrompt({ ...base, enCombate }).prompt;
+      return hechos.map((h) => [h.slice(0, 12), p.indexOf(h)] as const).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+    };
+    expect(orden(true)).toEqual(['UBICACIÓN AC', 'PERSONAJE EN', 'MISIONES DEL', 'Guerrera ser', 'ESTADO ACTUA', 'ESTE GOLPE E', 'Ningún inter']);
+    expect(orden(false)).toEqual(['UBICACIÓN AC', 'ESTADO ACTUA', 'PERSONAJE EN', 'ESTE GOLPE E', 'Ningún inter', 'MISIONES DEL', 'Guerrera ser']);
+  });
+
   it('el esquema pide como mucho 3 hechos nuevos y cortos (QA-289)', () => {
     const nf = (buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).format.properties as Record<string, { maxItems?: number; items?: { maxLength?: number } }>).newFacts;
     expect(nf.maxItems).toBe(3);
