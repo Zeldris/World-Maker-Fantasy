@@ -392,7 +392,10 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
     expect(resultadoDelGolpe({ ...base, combatBothMissed: true })).toBe('Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.');
     // QA-504 (P481): defendiéndose, el golpe se pierde (sin «impacto» que absorber ni resistir): en positivo y sin cubrirse.
     const defensa = resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true });
-    expect(defensa).toMatch(/^(El golpe de Orco enfurecido se pierde en el aire: Gorhorn lo esquiva y no le toca\.|Orco enfurecido lanza su golpe y Gorhorn lo desv[ií]a: pasa de largo sin tocarle\.|El ataque de Orco enfurecido falla: Gorhorn se aparta a tiempo y el golpe pasa de largo, sin tocarle\.)$/);
+    expect(defensa).toMatch(/^(El golpe de Orco enfurecido se pierde en el aire: Gorhorn lo esquiva y no le toca\. Orco enfurecido sigue en pie y atento\.|Orco enfurecido lanza su golpe y Gorhorn lo desv[ií]a: pasa de largo sin tocarle\. Orco enfurecido sigue en pie, en guardia\.|El ataque de Orco enfurecido falla: Gorhorn se aparta a tiempo y el golpe pasa de largo, sin tocarle\. Orco enfurecido sigue en pie y listo\.)$/);
+    // QA-508: las tres variantes dicen que el rival sigue en pie, y sin ideas de derribo.
+    expect(defensa).toContain('Orco enfurecido sigue en pie');
+    expect(defensa).not.toMatch(/desplom|derrib|ca[eé]/i);
     expect(defensa).not.toMatch(/impacto|absorb|resist|encaj|se cubre/i);
     // Determinista por turno, y varía según la acción.
     expect(resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true })).toBe(defensa);
@@ -434,7 +437,19 @@ describe('resultado del golpe obligatorio en combate (QA-340)', () => {
     const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
     expect(prompts.length).toBeGreaterThan(1);
     expect(prompts[0]).not.toContain('TU RESPUESTA ANTERIOR');
-    expect(prompts[1]).toContain('Cuéntalo así: el golpe de Orco enfurecido falla, se pierde en el aire o Gorhorn lo esquiva o lo desvía, y no le toca.');
+    expect(prompts[1]).toContain('Cuéntalo así: el golpe de Orco enfurecido falla, se pierde en el aire o Gorhorn lo esquiva o lo desvía, y no le toca. Orco enfurecido sigue en pie y atento.');
+  });
+
+  it('QA-508: en defensa sin acierto, el 1.er intento y el reintento dicen que el rival sigue en pie', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'Gorhorn clava el hacha en el orco y el golpe del orco le alcanza.', newFacts: [] }) })
+      .mockResolvedValue({ text: JSON.stringify({ narration: 'El orco lanza su golpe y Gorhorn lo esquiva.', newFacts: [] }) });
+    await narrateAction({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true } as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toMatch(/RESULTADO YA DECIDIDO, NO LO CAMBIES: .*Orco enfurecido sigue en pie/);
+    expect(prompts[1]).toMatch(/Cuéntalo así: .*Orco enfurecido sigue en pie y atento\./);
   });
 
   it('narrateAction lo pide primero, obligatorio y con un único valor, y no lo devuelve', async () => {

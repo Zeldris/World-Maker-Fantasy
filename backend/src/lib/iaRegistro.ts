@@ -68,8 +68,32 @@ export function calcularTruncated(inputTokens?: number, numCtx?: number, promptC
 /// Cada petición abre su ámbito (`ambitoTurnoIa`, gancho `onRequest` de server.ts) y el id se escribe en él: un
 /// `enterWith` desde el handler antes de su primer `await` se pegaría al socket y lo heredarían las peticiones
 /// siguientes de la misma conexión (code-review del PR de `QA-160`…`QA-168`).
-const turnoIa = new AsyncLocalStorage<{ id?: string }>();
+const turnoIa = new AsyncLocalStorage<{ id?: string; via?: ViaTurnoIa; interlocutor?: string }>();
 const turnoAbiertoPorPartida = new Map<string, string>();
+
+/// QA-510: por dónde resolvió el turno (`app.via`) y con quién habló (`app.interlocutor`, slug del NPC): sin esto,
+/// distinguir un diálogo puro de un turno narrado obligaba a reconstruirlo desde el código. Se escribe en el ámbito de
+/// la petición (`turnResolution.ts`, justo antes de resolver la narración) y lo heredan las llamadas siguientes del turno.
+export type ViaTurnoIa =
+  | 'dialogo_puro'
+  | 'narrar'
+  | 'combate_encuentro'
+  | 'gistera'
+  | 'saqueo'
+  | 'construccion'
+  | 'cosecha'
+  | 'crafteo'
+  | 'curacion'
+  | 'hambre_sed'
+  | 'descanso_bloqueado';
+
+export function fijarViaTurnoIa(via: ViaTurnoIa, interlocutor?: string | null): void {
+  if (!env.iaRegistro) return;
+  const ambito = turnoIa.getStore();
+  if (!ambito) return;
+  ambito.via = via;
+  ambito.interlocutor = interlocutor ?? undefined;
+}
 
 export function ambitoTurnoIa(siguiente: () => void): void {
   turnoIa.run({}, siguiente);
@@ -150,6 +174,8 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.task': r.task,
     'app.machine_profile': perfil,
     'app.turno': turnoIa.getStore()?.id,
+    'app.via': turnoIa.getStore()?.via,
+    'app.interlocutor': turnoIa.getStore()?.interlocutor,
     'app.intento': r.intento,
     'app.rechazo': r.rechazo,
     'app.rechazo_texto': r.rechazoTexto,

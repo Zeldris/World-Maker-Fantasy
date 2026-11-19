@@ -29,6 +29,8 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `app.decode_ms` | número | Generación |
 | `app.ttft_ms` | número | Primera palabra (solo en streaming) |
 | `app.prompt_chars` | número | Caracteres de `system` + `prompt` (QA-502) |
+| `app.via` | texto | Por dónde resolvió el turno: `dialogo_puro`, `narrar`, `combate_encuentro`, `gistera`, `saqueo`, `construccion`, `cosecha`, `crafteo`, `curacion`, `hambre_sed`, `descanso_bloqueado` (QA-510; no en `/turn/classify`) |
+| `app.interlocutor` | texto | Slug del NPC al que se habla este turno, si lo hay (QA-510) |
 | `app.prefijo_comun_chars` | número | Caracteres iniciales que comparte con la llamada anterior al mismo modelo: dónde se corta el prefijo reaprovechable (QA-502) |
 | `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` o caracteres del prompt / 4 > `num_ctx` (el prompt se recortó; Ollama cuenta los tokens ya recortados) |
 | `app.error` | texto | Mensaje si la llamada falló |

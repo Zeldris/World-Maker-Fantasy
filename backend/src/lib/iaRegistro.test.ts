@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, prefijoBloqueAjeno, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, prefijoBloqueAjeno, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa, fijarViaTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -113,6 +113,40 @@ describe('iaRegistro', () => {
       );
     expect(typeof (await enPeticion(() => abrirTurnoIa('p3')))).toBe('string');
     expect(await enPeticion(() => {})).toBeUndefined();
+  });
+
+  it('QA-510: la vía y el interlocutor del turno salen en sus líneas, y no en el turno siguiente', async () => {
+    fakeEnv.iaRegistro = '/tmp/x.jsonl';
+    const leer = (fn: () => void) =>
+      new Promise<Record<string, unknown>>((resolve) =>
+        ambitoTurnoIa(() => {
+          fn();
+          setImmediate(() => resolve(JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))));
+        }),
+      );
+    const dialogo = await leer(() => fijarViaTurnoIa('dialogo_puro', 'ulkha-ketg'));
+    expect(dialogo['app.via']).toBe('dialogo_puro');
+    expect(dialogo['app.interlocutor']).toBe('ulkha-ketg');
+    const narrar = await leer(() => fijarViaTurnoIa('narrar', null));
+    expect(narrar['app.via']).toBe('narrar');
+    expect('app.interlocutor' in narrar).toBe(false);
+    const nada = await leer(() => {});
+    expect('app.via' in nada).toBe(false);
+  });
+
+  it('QA-510: sin IA_REGISTRO la vía no se apunta', async () => {
+    const linea = await new Promise<Record<string, unknown>>((resolve) =>
+      ambitoTurnoIa(() => {
+        fijarViaTurnoIa('narrar', 'x');
+        setImmediate(() => resolve(JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))));
+      }),
+    );
+    expect('app.via' in linea).toBe(false);
+  });
+
+  it('QA-510: una fila rechazo lleva app.prompt_chars', () => {
+    const l = JSON.parse(lineaRegistro({ evento: 'rechazo', task: 'narrar', intento: 1, rechazo: 'x', promptChars: 1234 }, 'deck'));
+    expect(l['app.prompt_chars']).toBe(1234);
   });
 
   it('sin IA_REGISTRO no hay turno', async () => {

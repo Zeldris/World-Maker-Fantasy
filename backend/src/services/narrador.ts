@@ -1125,11 +1125,12 @@ export function resultadoDelGolpe(
   // QA-504 (P481): «no logra alcanzar, que se cubre» llevaba al modelo a narrar que Gorhorn «se planta y absorbe el impacto»,
   // y la guarda de golpe falso lo rechazaba. En positivo: el golpe se pierde, sin impacto que resistir. Variante fija por
   // turno (el valor va en el esquema y en el reintento), según el rival y la acción, para que no sea siempre la misma frase.
+  // QA-508 (P481): sin acierto, el rival sigue en pie (2 de 5 rechazos eran un orco que «se desploma» sin que nadie le diera).
   if (ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange) {
     const variantes = [
-      `El golpe de ${Rival} se pierde en el aire: ${jugador} lo esquiva y no le toca.`,
-      `${Rival} lanza su golpe y ${jugador} lo desvía: pasa de largo sin tocarle.`,
-      `El ataque de ${Rival} falla: ${jugador} se aparta a tiempo y el golpe pasa de largo, sin tocarle.`,
+      `El golpe de ${Rival} se pierde en el aire: ${jugador} lo esquiva y no le toca. ${Rival} sigue en pie y atento.`,
+      `${Rival} lanza su golpe y ${jugador} lo desvía: pasa de largo sin tocarle. ${Rival} sigue en pie, en guardia.`,
+      `El ataque de ${Rival} falla: ${jugador} se aparta a tiempo y el golpe pasa de largo, sin tocarle. ${Rival} sigue en pie y listo.`,
     ];
     return variantes[[...`${rival}${ctx.action ?? ''}`].reduce((a, c) => a + c.charCodeAt(0), 0) % variantes.length]!;
   }
@@ -1892,7 +1893,10 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // Sin repeat_penalty: Ollama la aplica también al final del prompt, que es la acción, y en el bench
   // `15-filas-4-8` el narrador dejó de contar lo que hacía el jugador («Bebo un trago…» sin beber).
   const MUESTREO_NARRADOR = { min_p: 0.05 };
+  // QA-510: caracteres del prompt del intento en curso (como `app.prompt_chars` de la llamada: `system` vacío + salto + prompt), para las filas `rechazo`.
+  let promptCharsIntento: number | undefined;
   const attempt1 = () => {
+    promptCharsIntento = prompt.length + 1;
     const generateOptions = {
       model: env.ollamaModelNarrador,
       prompt,
@@ -1967,7 +1971,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     const rival = ctx.combatRivalNarrado ? ctx.combatRivalNarrado[0]!.toUpperCase() + ctx.combatRivalNarrado.slice(1) : 'El rival';
     const enPositivo =
       ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange && motivo.includes('ataque_falla')
-        ? ` Cuéntalo así: el golpe de ${rival} falla, se pierde en el aire o ${ctx.characterName ?? 'el jugador'} lo esquiva o lo desvía, y no le toca.`
+        ? ` Cuéntalo así: el golpe de ${rival} falla, se pierde en el aire o ${ctx.characterName ?? 'el jugador'} lo esquiva o lo desvía, y no le toca. ${rival} sigue en pie y atento.`
         : '';
     const sufijo = `\n\nTU RESPUESTA ANTERIOR SE DESCARTÓ POR: ${motivo}. Escríbela de nuevo sin ese error.${golpeDecidido ? ` Resultado del intercambio (ya decidido): ${golpeDecidido}` : ''}${enPositivo}`;
     if (recortar) return { prompt: sinAnterior + sufijo };
@@ -1982,9 +1986,11 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     // llevaba tope y podía irse a los 240s enteros de timeout en vez de cortar antes — 400 sigue
     // dando mucho más margen que los 220 del intento 1 (por si la causa real era truncar de más),
     // sin dejarlo sin límite del todo.
+    const reintento = promptDeReintento(!ultimoFueRechazo);
+    promptCharsIntento = reintento.prompt.length + 1;
     return ollamaGenerate({
       model: env.ollamaModelNarrador,
-      ...promptDeReintento(!ultimoFueRechazo),
+      ...reintento,
       format,
       maxTokens: 400,
       timeoutMs: 240_000,
@@ -1999,10 +2005,12 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // QA-166 (`/opt-ai`, 2026-10-20): con el `num_ctx` 4096 del Modelfile, el respaldo leía 2.050 de ~5.500 tokens y
   // perdía la acción (contestaba con lore). Lleva el prompt recortado del intento 2 y 8192: ~13 s en la Deck.
   // Mismo `num_ctx` y `keep_alive` que `clasificar` (QA-168), para que los dos usen el modelo ya cargado.
-  const attempt3 = () =>
-    ollamaGenerate({
+  const attempt3 = () => {
+    const reintento = promptDeReintento(true);
+    promptCharsIntento = reintento.prompt.length + 1;
+    return ollamaGenerate({
       model: env.ollamaModelCronista,
-      ...promptDeReintento(true),
+      ...reintento,
       format,
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
@@ -2012,6 +2020,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       tarea: 'narrar_respaldo',
       intento: 3,
     });
+  };
 
   let lastResult: NarrationResult | null = null;
   // Red de seguridad (2026-08-31, causa raíz: "sessionFacts reintroduce NPCs retirados/cruza
@@ -2215,7 +2224,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
 
       if (rejection) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
-        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason, rechazoTexto: parsed.narration.slice(0, 600) });
+        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason, rechazoTexto: parsed.narration.slice(0, 600), promptChars: promptCharsIntento });
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         rejectionReasons.push(rejection.reason);

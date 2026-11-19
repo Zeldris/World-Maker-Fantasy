@@ -40,6 +40,7 @@ import { runDailyTick } from './dailyTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
+import { fijarViaTurnoIa } from '../lib/iaRegistro.js';
 import { appendSessionFacts, loadFactsKnownBy, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
 import { nombresDelMundo } from './nombresDelMundo.js';
@@ -4853,6 +4854,31 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // adelantarse a ningún guard de arriba que todavía pudiera descartar el turno entero.
   if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal.rivalNombre ?? null);
 
+  // QA-510: la vía real del turno y el NPC al que se habla, para el registro de IA (`app.via`, `app.interlocutor`).
+  fijarViaTurnoIa(
+    turnoDeDialogoPuro
+      ? 'dialogo_puro'
+      : combatEncounterMode
+        ? 'combate_encuentro'
+        : gisteraSePresentaEsteTurno
+          ? 'gistera'
+          : lootMode
+            ? 'saqueo'
+            : buildMode
+              ? 'construccion'
+              : harvestOutcome
+                ? 'cosecha'
+                : craftMode
+                  ? 'crafteo'
+                  : usingExplicitHealList
+                    ? 'curacion'
+                    : usingExplicitHungerThirstList || bebeFuenteSinNarrador
+                      ? 'hambre_sed'
+                      : restBlockedByCooldown
+                        ? 'descanso_bloqueado'
+                        : 'narrar',
+    dialogueTarget?.slug,
+  );
   const quienEnDialogo = async (npc: NonNullable<typeof dialogueTarget>): Promise<string> => {
     const visible = await nombreVisibleDeNpc(prisma, saveId, npc);
     return visible.oculto ? nombreEnFrase(visible.nombre) : conDefinido(visible.nombre, npc.articulo);
