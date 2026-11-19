@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, prefijoBloqueAjeno, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -180,6 +180,13 @@ describe('prefijoBloque (QA-507)', () => {
     expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2'))).toBe('ninguno');
     expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2', 'extra'))).toBe('b3');
     expect(prefijoBloque('qa507-a', b('x2'))).toBe('b0');
+  });
+
+  it('una llamada al modelo sin bloques desaloja la caché: la siguiente con bloques da «otra», no «ninguno»', () => {
+    expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('inicio');
+    prefijoBloqueAjeno('qa507-c');
+    expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('otra');
+    expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('ninguno');
   });
 
   it('va al registro como app.prefijo_bloque y sin bloques no se escribe', () => {

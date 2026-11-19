@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, otroNpcComparteRaza, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, npcInterpelado, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, otroNpcComparteRaza, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -1399,5 +1399,25 @@ describe('P447/P448', () => {
     expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'b', raza: null, name: 'Orco enfurecido' }])).toBe(true);
     expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'd', raza: 'orcos' }])).toBe(true);
     expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'c', raza: 'humanos', name: 'Gistera Koh' }])).toBe(false);
+  });
+});
+
+describe('npcInterpelado (revisión de código: diálogo puro sin interlocutor por defecto)', () => {
+  const ulkha = { id: 'u', name: 'Ulkha Ketg', aliases: ['jefa del clan serhu'] };
+
+  it('una acción de otra cosa con «?» o «!» no interpela al primer NPC de la escena', () => {
+    expect(npcInterpelado('¿Qué hay tras la puerta? La abro.', ulkha)).toBe(false);
+    expect(npcInterpelado('¡Me lanzo al río!', ulkha)).toBe(false);
+  });
+
+  it('nombrado, con verbo de habla dirigido, citado entre comillas o solo lo dicho: sí', () => {
+    expect(npcInterpelado('Saludo a Ulkha', ulkha)).toBe(true);
+    expect(npcInterpelado('¿Qué te trae, Ulkha?', ulkha)).toBe(true);
+    expect(npcInterpelado('Le pregunto qué opina de mí', ulkha)).toBe(true);
+    expect(npcInterpelado('Saludo con la cabeza', ulkha)).toBe(true);
+    expect(npcInterpelado('«Cuéntame qué pasó»', ulkha)).toBe(true);
+    expect(npcInterpelado('¿Qué pasó aquí?', ulkha)).toBe(true);
+    expect(npcInterpelado('¡Hola!', ulkha)).toBe(true);
+    expect(npcInterpelado('¡Me lanzo al río!', ulkha, true)).toBe(true);
   });
 });

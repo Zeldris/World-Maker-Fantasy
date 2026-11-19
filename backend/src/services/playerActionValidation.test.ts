@@ -233,6 +233,13 @@ describe('detectsAbsentSceneNpcClaim', () => {
       }
     });
 
+    it('revisión: lo dicho tras «:» acaba en el fin de oración; un ausente en otra oración sigue bloqueando', async () => {
+      for (const accion of ['Le digo a Ulkha Ketg: espera aquí. Luego ataco a Gogorath', 'Le digo a Ulkha Ketg: «Espera aquí». Luego ataco a Gogorath', 'Le digo a Ulkha Ketg: espera aquí! Ataco a Gogorath']) {
+        expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']))?.name, accion).toBe('Gogorath');
+      }
+      expect(await detectsAbsentSceneNpcClaim('Le digo a Ulkha Ketg: «Hola. ¿Y Gogorath?»', 'world1', 'save1', ['ulkha-ketg'])).toBeNull();
+    });
+
     it('sigue disparando si el ausente es el destinatario o el objetivo de la acción', async () => {
       for (const accion of ['Ataco a Gogorath.', 'Le pregunto a Gogorath: ¿Quién eres?', 'Le pregunto a Gogorath: ¿Y tú, Ulkha Ketg?', 'Le digo a Gogorath que ataco.']) {
         expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']))?.name, accion).toBe('Gogorath');

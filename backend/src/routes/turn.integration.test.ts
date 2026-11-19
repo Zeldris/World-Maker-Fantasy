@@ -2111,6 +2111,27 @@ describe('Turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => 
     expect(texto).toContain('responde:');
   }, 30_000);
 
+  it('revisión: una pregunta o un grito de otra acción, con Ulkha presente sin nombrarla, sí pasa por narrateAction', async () => {
+    for (const accion of ['¿Qué hay tras la puerta? La abro.', '¡Me lanzo al río!']) {
+      await turno(accion);
+      expect(narrateAction, accion).toHaveBeenCalledTimes(1);
+      expect(generateNpcReplyEspia.mock.calls.length, accion).toBeLessThanOrEqual(1);
+    }
+  }, 30_000);
+
+  it('revisión: con una tirada en el turno, un saludo a Ulkha Ketg pasa por narrateAction (la tirada se narra)', async () => {
+    classifyAction.mockResolvedValue({ requiereTirada: true, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    narrateAction.mockClear();
+    const action = 'Le digo a Ulkha Ketg: ¿qué te trae por aquí?';
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    // El clasificador no tira para un saludo (P306): la tirada llega en el cuerpo de /turn/narrate, como la manda el cliente.
+    const roll = { attribute: 'carisma', value: 8, roll: 12, result: 20, difficulty: 8, success: true, gradoExito: 'claro' };
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: classifyRes.classification, roll } });
+    expect(res.statusCode).toBe(200);
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+  }, 30_000);
+
   it('«Intento convencer a Ulkha Ketg de que me deje pasar» (no es saludo ni pregunta) sí pasa por narrateAction', async () => {
     await turno('Intento convencer a Ulkha Ketg de que me deje pasar');
     expect(narrateAction).toHaveBeenCalledTimes(1);

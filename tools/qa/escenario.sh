@@ -100,10 +100,28 @@ relanzar_juego() {
 descargar_ollama() {
   local url="${OLLAMA_BASE_URL:-http://localhost:11434}" ps m
   ps="$(curl -sf --max-time 5 "$url/api/ps" 2>/dev/null)" || return 0
+  # Solo los modelos del juego: Ollama de :11434 puede tener cargados los de otros procesos (GVE, generador de prompts).
+  mapfile -t propios < <(modelos_del_juego)
   for m in $(printf '%s' "$ps" | python3 -c 'import json,sys
-for m in json.load(sys.stdin).get("models", []): print(m["name"])' 2>/dev/null); do
+n = lambda s: s if ":" in s else s + ":latest"
+propios = {n(a) for a in sys.argv[1:]}
+for m in json.load(sys.stdin).get("models", []):
+    if n(m["name"]) in propios: print(m["name"])' "${propios[@]}" 2>/dev/null); do
     curl -sf --max-time 60 "$url/api/generate" -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null &&
       echo "Ollama: descargado $m antes de restaurar (P478)" || echo "AVISO: no pude descargar $m de Ollama"
+  done
+}
+
+# Los modelos que usa el backend (backend/src/config/env.ts): la variable del entorno, si no la última asignación
+# de backend/.env y, si no, el valor por defecto de env.ts.
+modelos_del_juego() {
+  local par var val
+  for par in OLLAMA_MODEL_NARRADOR=tarkor-narrador-llama31 OLLAMA_MODEL_CRONISTA=qwen2.5:1.5b-instruct \
+    OLLAMA_MODEL_SUGERENCIAS=qwen3.5:4b OLLAMA_MODEL_EMBEDDINGS=nomic-embed-text; do
+    var="${par%%=*}"
+    val="${!var:-}"
+    [ -n "$val" ] || val="$(sed -n "s/^$var=[\"']\{0,1\}\([^\"'#]*\).*/\1/p" backend/.env 2>/dev/null | tail -n1 | tr -d '[:space:]')"
+    printf '%s\n' "${val:-${par#*=}}"
   done
 }
 

@@ -115,16 +115,24 @@ export interface BloquePrompt {
   nombre: string;
   texto: string;
 }
-const ultimosBloquesPorModelo = new Map<string, BloquePrompt[]>();
+/// `null`: la última llamada a ese modelo no llevaba bloques (dialogo_npc, calentar…) y desalojó la caché de Ollama, así
+/// que el prefijo de la lista anterior ya no era el que había en memoria.
+const ultimosBloquesPorModelo = new Map<string, BloquePrompt[] | null>();
 export function prefijoBloque(modelo: string, bloques: BloquePrompt[]): string {
   const anterior = ultimosBloquesPorModelo.get(modelo);
   ultimosBloquesPorModelo.set(modelo, bloques);
+  if (anterior === null) return 'otra';
   if (!anterior) return 'inicio';
   const n = Math.max(anterior.length, bloques.length);
   for (let i = 0; i < n; i++) {
     if (anterior[i]?.nombre !== bloques[i]?.nombre || anterior[i]?.texto !== bloques[i]?.texto) return (bloques[i] ?? anterior[i]!).nombre;
   }
   return 'ninguno';
+}
+
+/// Una llamada a este modelo sin bloques: la siguiente con bloques apunta `otra` (el prefijo previo no era el suyo).
+export function prefijoBloqueAjeno(modelo: string): void {
+  ultimosBloquesPorModelo.set(modelo, null);
 }
 
 export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Date()): string {

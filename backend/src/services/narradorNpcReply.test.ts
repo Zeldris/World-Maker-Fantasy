@@ -200,6 +200,18 @@ describe('narrateAction: el intento 2 conserva el prefijo tras un rechazo (QA-50
     expect(prompts[1]!.slice(prompts[0]!.length)).toMatch(/SE DESCARTÓ POR: fuga de inglés/);
   });
 
+  it('revisión: el intento 3 tras un rechazo va recortado (QA-166) pero con el motivo del descarte', async () => {
+    ollamaGenerate.mockReset();
+    const mala = JSON.stringify({ narration: 'Gorhorn mira the river con calma.', newFacts: [] });
+    ollamaGenerate.mockResolvedValueOnce({ text: mala }).mockResolvedValueOnce({ text: mala }).mockResolvedValue({ text: buena });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction(ctx as unknown as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts).toHaveLength(3);
+    expect(prompts[2]).not.toContain('Hecho C de la escena.');
+    expect(prompts[2]).toMatch(/SE DESCARTÓ POR: fuga de inglés/);
+  });
+
   it('tras un fallo técnico (JSON cortado), el prompt recortado', async () => {
     ollamaGenerate.mockReset();
     ollamaGenerate.mockResolvedValueOnce({ text: '{"narration": "Gorhorn mi' }).mockResolvedValue({ text: buena });

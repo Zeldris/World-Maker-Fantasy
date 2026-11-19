@@ -48,7 +48,7 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, npcInterpelado, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, ataquePendienteDeApertura } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -125,6 +125,12 @@ export class TransitCancelledError extends Error {
     super('El CharacterTransit fue cancelado mientras se resolvía este turno.');
     this.name = 'TransitCancelledError';
   }
+}
+
+/// P306: ¿hay en escena alguien vivo cuya facción sea hostil para la jugadora? Un saludo o una pregunta solo abre
+/// combate (o deja de ser diálogo puro) en ese caso; un hostil muerto o convaleciente (`npcsInSceneVivos`) no cuenta.
+function hayReputacionHostilEnEscena(npcs: ReadonlyArray<{ faction: string | null }>, factionsStatus: Record<string, number>): boolean {
+  return npcs.some((n) => reputacionHostil(n.faction, factionsStatus));
 }
 
 function minutesLabel(minutos: number): string {
@@ -2304,7 +2310,7 @@ async function resolveCombatSlugsAndPersist(params: {
   const saludoSinHostilidad =
     !enCombate &&
     detectsGreetingOrQuestion(action) &&
-    !npcsInSceneVivos.some((n) => reputacionHostil(n.faction, factionsStatus));
+    !hayReputacionHostilEnEscena(npcsInSceneVivos, factionsStatus);
   const combatSlugsFromModel = saludoSinHostilidad ? [] : (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
     npcsInSceneVivos.some((n) => {
       if (n.slug !== slug) return false;
@@ -4812,15 +4818,19 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // P464(b), P466, P474, P476 (decisión de Álvaro, 2026-11-17): un saludo o una pregunta a un NPC, fuera de combate, sin
   // viaje, sin escena fija y sin reputación hostil (que podría abrir combate), no pasa por el narrador: línea fija del
   // jugador (`lineaDialogoDelJugador`) y la réplica de `dialogo_npc` detrás. Ahorra además la llamada a `narrar`.
+  // Revisión de código: además, sin tirada en el turno (su resultado se aplicaría sin narrarse) y con el NPC
+  // interpelado de verdad (`npcInterpelado`): no vale el primero de la escena por defecto.
+  const dialogoPuroCon =
+    dialogueTarget && !roll && npcInterpelado(action, dialogueTarget, !!explicitDialogueTarget) ? dialogueTarget : null;
   const turnoDeDialogoPuro =
-    !!dialogueTarget &&
+    !!dialogoPuroCon &&
     !enCombate &&
     !travel &&
     !combatExchangeDisplayFinal &&
     !gisteraSePresentaEsteTurno &&
     !pursuerRevealedThisTurn &&
     detectsGreetingOrQuestion(action) &&
-    !npcsInScene.some((n) => reputacionHostil(n.faction, factionsStatus));
+    !hayReputacionHostilEnEscena(npcsInSceneVivos, factionsStatus);
 
   const wasLlmNarrated = !(
     turnoDeDialogoPuro ||
@@ -4845,7 +4855,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
 
   const quienEnDialogo = async (npc: NonNullable<typeof dialogueTarget>): Promise<string> => {
     const visible = await nombreVisibleDeNpc(prisma, saveId, npc);
-    return visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, npc.articulo);
+    return visible.oculto ? nombreEnFrase(visible.nombre) : conDefinido(visible.nombre, npc.articulo);
   };
   const narration: NarrationResult = combatEncounterMode
     ? { narration: combatEncounterNarration, newFacts: [] }
@@ -4871,8 +4881,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                       narration: `${characterName} no está lo bastante cansado y no quiere volver a descansar todavía. ${pickFlavor(REST_COOLDOWN_FLAVOR)}`,
                       newFacts: [],
                     }
-                  : turnoDeDialogoPuro && dialogueTarget
-                    ? { narration: lineaDialogoDelJugador(characterName, action, await quienEnDialogo(dialogueTarget)), newFacts: [] }
+                  : dialogoPuroCon && turnoDeDialogoPuro
+                    ? { narration: lineaDialogoDelJugador(characterName, action, await quienEnDialogo(dialogoPuroCon)), newFacts: [] }
                     : await narrateAction(narrationCtx);
   // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
@@ -4891,8 +4901,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // diálogo (o en un intercambio de combate) el respaldo sigue como siempre. Si el streaming ya sacó el
   // texto antiguo, el cliente recibe el definitivo en la respuesta.
   if (wasLlmNarrated && narration.fallbackDeterminista && dialogueTarget && !combatExchangeDisplayFinal) {
-    const visible = await nombreVisibleDeNpc(prisma, saveId, dialogueTarget);
-    const quien = visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, dialogueTarget.articulo);
+    const quien = await quienEnDialogo(dialogueTarget);
     narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1), characterName);
   }
 

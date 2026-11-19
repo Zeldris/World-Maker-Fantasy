@@ -161,8 +161,8 @@ class Cargar(unittest.TestCase):
         escribir(os.path.join(e2e, 'driver.token'), 'clave')
         return d
 
-    def correr(self, d: str, *args: str):
-        env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH']}
+    def correr(self, d: str, *args: str, extra_env: dict | None = None):
+        env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH'], **(extra_env or {})}
         return subprocess.run(['bash', 'tools/qa/escenario.sh', *args], cwd=d, env=env, capture_output=True, text=True)
 
     def test_cargar_descarga_los_modelos_de_ollama_antes_de_restaurar(self):
@@ -171,15 +171,17 @@ class Cargar(unittest.TestCase):
         ruta = os.path.join(d, 'bin', 'curl')
         escribir(ruta, f'''#!/bin/bash
 echo "curl $*" >> "{d}/llamadas.log"
-case "$*" in *api/ps*) echo '{{"models":[{{"name":"narrador:latest"}},{{"name":"cronista:1b"}}]}}' ;; esac
+case "$*" in *api/ps*) echo '{{"models":[{{"name":"narrador:latest"}},{{"name":"cronista:1b"}},{{"name":"gve-prompts:latest"}}]}}' ;; esac
 ''')
         os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
-        r = self.correr(d, 'cargar', 'uno')
+        r = self.correr(d, 'cargar', 'uno', extra_env={'OLLAMA_MODEL_NARRADOR': 'narrador', 'OLLAMA_MODEL_CRONISTA': 'cronista:1b'})
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         llamadas = leer(os.path.join(d, 'llamadas.log')).splitlines()
         descargas = [i for i, l in enumerate(llamadas) if l.startswith('curl') and '"keep_alive":0' in l]
         self.assertEqual(len(descargas), 2, llamadas)
         self.assertIn('"model":"narrador:latest"', llamadas[descargas[0]])
+        # Revisión: un modelo cargado por otro proceso (GVE, generador de prompts) no se toca.
+        self.assertFalse(any('gve-prompts' in l for l in llamadas if '"keep_alive":0' in l), llamadas)
         restaurar = next(i for i, l in enumerate(llamadas) if l.startswith('pg_restore'))
         self.assertLess(descargas[-1], restaurar)
 

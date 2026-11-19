@@ -429,7 +429,18 @@ function esErrataDeAlias(alias: string, palabra: string): boolean {
 /// A quién le habla el jugador (QA-289, bench 17): «Le pregunto a Ulkha Ketg…» sin comillas respondía el primer NPC
 /// detectado (un orco metido en escena por un hecho de sus huellas). Orden: el citado entre comillas, el que la
 /// acción nombra (nombre entero, nombre de pila y, si los trae, alias), y si no nombra a nadie, el primero.
-export function elegirInterlocutor<T extends { id: string; name: string; aliases?: string[] }>(action: string, explicito: T | null, candidatos: T[]): T | null {
+type ConNombre = { id: string; name: string; aliases?: string[] };
+
+/// ¿La acción nombra a este NPC (nombre completo, de pila o alias)? Lo que `elegirInterlocutor` usa para elegir.
+function nombraNpc(accion: string, nombreNormalizado: (n: string) => boolean, n: ConNombre): boolean {
+  return (
+    nombreNormalizado(n.name) ||
+    nombreNormalizado(n.name.split(' ')[0]!) ||
+    (!!n.aliases && matchNpcAliases(accion, [{ id: n.id, aliases: n.aliases }]).length > 0)
+  );
+}
+
+export function elegirInterlocutor<T extends ConNombre>(action: string, explicito: T | null, candidatos: T[]): T | null {
   if (explicito) return explicito;
   const accion = normalizeText(action);
   const nombra = (nombre: string) => nombre.length >= 4 && matchesAliasBoundary(accion, normalizeText(nombre));
@@ -440,6 +451,28 @@ export function elegirInterlocutor<T extends { id: string; name: string; aliases
     candidatos[0] ??
     null
   );
+}
+
+/// Verbo de habla dirigido («le digo», «le pregunto», «saludo», «me presento»…): la jugadora se dirige a alguien.
+const HABLA_DIRIGIDA_REGEX = /\b(le|les)\s+(digo|pregunto|saludo|contesto|respondo|hablo|susurro|grito|cuento|explico|comento|ofrezco|pido|ruego|doy las gracias)\b|\bsaludo\b|\bme presento\b|\bhablo (con|a)\b/;
+const SALUDO_SUELTO_REGEX = /^[^\p{L}]*(hola|buenas|saludos|salve|buen[oa]s (dias|tardes|noches)|buen dia)\b/u;
+
+/// Revisión de código: `elegirInterlocutor` cae en el primer NPC de la escena si la acción no nombra a nadie, así que
+/// «¿Qué hay tras la puerta? La abro.» o «¡Me lanzo al río!» tenían interlocutor sin dirigirse a nadie. True si el
+/// NPC está interpelado de verdad: citado entre comillas (`explicito`), nombrado, con un verbo de habla dirigido, o
+/// si la acción entera es solo lo dicho (cita, pregunta o saludo) sin otra oración de acción fuera.
+export function npcInterpelado(action: string, npc: ConNombre, explicito = false): boolean {
+  if (explicito) return true;
+  const accion = normalizeText(action);
+  if (nombraNpc(action, (nombre) => nombre.length >= 4 && matchesAliasBoundary(accion, normalizeText(nombre)), npc)) return true;
+  if (HABLA_DIRIGIDA_REGEX.test(accion)) return true;
+  const sinCitas = action.replace(/«[^»]*»|“[^”]*”|"[^"]*"/g, ' ');
+  if (!/\p{L}/u.test(sinCitas)) return true;
+  return sinCitas
+    .split(/(?<=[.!?…])\s+/)
+    .map((o) => o.trim())
+    .filter((o) => /\p{L}/u.test(o))
+    .every((o) => /[¿?]/.test(o) || SALUDO_SUELTO_REGEX.test(normalizeText(o)));
 }
 
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {

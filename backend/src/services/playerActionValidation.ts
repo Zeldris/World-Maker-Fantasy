@@ -201,10 +201,27 @@ const QUIEN_ES_ANTES_DEL_NOMBRE = /\bquien(?:es)?\s+(?:es|era|fue|son|eran|fuero
 
 /// P480: el nombre cae dentro de lo que dice el jugador («Le pregunto a Ulkha Ketg: ¿Quién era Gogorath?», «Le digo a
 /// Ulkha «… Gogorath …»»): tras los dos puntos que siguen al nombre de alguien presente, entre comillas o dentro de ¿…?.
+/// Lo dicho tras los dos puntos acaba en el fin de oración (`.`, `!`, `?` fuera de comillas) o en la comilla de cierre
+/// de la cita: «Le digo a Ulkha: espera aquí. Luego ataco a Gogorath» no incluye a Gogorath en lo dicho.
+function dosPuntosSigueAbierto(prefijo: string, desde: number): boolean {
+  const c = prefijo.indexOf(':', desde);
+  if (c < 0) return false;
+  let profundidad = 0;
+  let comillaRecta = false;
+  for (const ch of prefijo.slice(c + 1)) {
+    if (ch === '«' || ch === '“') profundidad++;
+    else if (ch === '»' || ch === '”') {
+      if (--profundidad < 0) return false;
+    } else if (ch === '"') comillaRecta = !comillaRecta;
+    else if (profundidad === 0 && !comillaRecta && /[.!?]/.test(ch)) return false;
+  }
+  return true;
+}
+
 function dentroDeLoDicho(texto: string, posNombre: number, finPresente: number): boolean {
   const prefijo = texto.slice(0, posNombre);
   const cuenta = (c: string) => prefijo.split(c).length - 1;
-  return prefijo.indexOf(':', finPresente) >= 0 || cuenta('«') > cuenta('»') || cuenta('"') % 2 === 1 || cuenta('“') > cuenta('”') || cuenta('¿') > cuenta('?');
+  return dosPuntosSigueAbierto(prefijo, finPresente) || cuenta('«') > cuenta('»') || cuenta('"') % 2 === 1 || cuenta('“') > cuenta('”') || cuenta('¿') > cuenta('?');
 }
 
 function esTemaDeLaPregunta(action: string, nombres: string[], presentes: string[] = []): boolean {

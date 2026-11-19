@@ -799,6 +799,14 @@ describe('hasFalseCombatMiss', () => {
     expect(hasFalseCombatMiss('Gorhorn soporta el impacto en pleno pecho, apenas conmovido.', true)).toBe(true);
   });
 
+  it('revisión: un golpe que entra no se rechaza por «sin inmutarse» del rival ni por «a escasos palmos» del atacante', () => {
+    expect(hasFalseCombatMiss('El hacha de Gorhorn se hunde en el hombro del orco, que encaja el golpe sin inmutarse.', true)).toBe(false);
+    expect(hasFalseCombatMiss('Gorhorn se planta a escasos palmos del orco y le abre un tajo.', true)).toBe(false);
+    // Los fallos que motivaron las alternativas siguen rechazándose.
+    expect(hasFalseCombatMiss('Gorhorn encaja el golpe en pleno pecho sin inmutarse.', true)).toBe(true);
+    expect(hasFalseCombatMiss('El hacha pasa a escasos centímetros de su cabeza.', true)).toBe(true);
+  });
+
   it('P477: no dispara con la hoja que se clava en la carne del rival', () => {
     expect(hasFalseCombatMiss('La hoja se clava en la carne del orco, que ruge de dolor.', true)).toBe(false);
   });

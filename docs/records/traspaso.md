@@ -14,7 +14,7 @@ cada commit.**
 | **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/generador-mapas`, `claude/banco-narrador`. Filas de ramas cerradas: [`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342). Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #102 de `claude/wonderful-volta-662qt8` (2026-11-18, `afd57639`): `docs/metrics/` como contenido (retro `QA-511`); antes, PR #100 de `claude/marca-imagenes` y PR #99. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
-| **Tarea en curso · `claude/ronda-local-2`** | Ronda local 2 (Deck, 2026-11-19): tandas L1-L3 subidas y /gw-opt-ai hecho (QA-512, QA-513, QA-514). 🚧 QA-515: revisión de bloque hecha (12 hallazgos: 7 a arreglar, 1 descartado por QA-501, 1 leve a pendientes, 3 de limpieza dentro del 1); arreglos con un subagente sonnet, sin subir. Decisiones pendientes: P311, P485. Siguiente: revisar y subir los arreglos de QA-515 (commit con Findings: 7); luego arreglos de P479/P482, P252, P245, P262, P272, QA-505+QA-512, QA-508, QA-513, QA-510, QA-509, QA-514. |
+| **Tarea en curso · `claude/ronda-local-2`** | Ronda local 2 (Deck, 2026-11-19): tandas L1-L3 y /gw-opt-ai hechos (QA-512…514 aprobadas). ~~QA-515~~ revisión de bloque cerrada (7 arreglos, Findings: 7). turn.integration y simulacion60: 11 fallos previos en la Deck (misiones, caza, saqueo), sin mirar. Decisiones pendientes: P311, P485. Siguiente: arreglos de P479/P482, P252, P245, P262, P272, QA-505+QA-512, QA-508, QA-513, QA-510, QA-509, QA-514; antes, mirar los 11 fallos previos. |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | PR a main: docs/metrics/ como content en .claude/gw.json (propuesta de la retro QA-511, aprobada por la usuaria). PR #101 ya fusionado. Sigue pendiente IMG-59 en la Deck. |
 | **Tarea en curso · `claude/narrador-tiempos`** | Fusionada en `main` (PR #97, 2026-11-15) y, con ~~`QA-347`~~, ~~`QA-348`~~ y las tandas 131-132, en `claude/ronda-local-2` (2026-11-15). Rama terminada. |
@@ -159,11 +159,8 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-18 — QA-511: retro de la v0.8.0 del flujo aplicada (guía de imágenes marcada como desfasada, otra rama por subagente, cobertura.py --fila)
-2. 2026-11-17 — QA-507: app.prefijo_bloque en el registro de la IA
-3. 2026-11-17 — QA-506: frases de P479 en clasificar-casos.jsonl
-4. 2026-11-17 — QA-503: medido en la Deck, el RSS de llama-server no crece turno a turno (174-405 MiB); sin tope
-5. 2026-11-16 — UX-40: marca de Tarkor en la interfaz, sin imágenes (llega a main con UX-41)
-6. 2026-11-16 — QA-364, QA-365, QA-366, QA-367, QA-368: `/gw-opt-tokens` y retro de UX-41 (hoja de piezas, aviso de diff de roadmap, hoja.sh con FONDO, css-sin-uso.py en el check)
-7. 2026-11-16 — P466, P474: guardas de acotación sin comillas y de cita del NPC atribuida al jugador
-8. 2026-11-16 — QA-356: el narrador recibe la apertura/presentación de Gistera en forma corta (nombre y misión), el guardia sigue con el texto completo
+1. 2026-11-19 — ~~QA-515~~ (2026-11-19): revisión de bloque de la ronda local 2, 7 arreglos
+2. 2026-11-18 — QA-511: retro de la v0.8.0 del flujo aplicada (guía de imágenes marcada como desfasada, otra rama por subagente, cobertura.py --fila)
+3. 2026-11-17 — QA-507: app.prefijo_bloque en el registro de la IA
+4. 2026-11-17 — QA-506: frases de P479 en clasificar-casos.jsonl
+5. 2026-11-17 — QA-503: medido en la Deck, el RSS de llama-server no crece turno a turno (174-405 MiB); sin tope

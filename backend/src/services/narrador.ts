@@ -1959,7 +1959,9 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
     const motivo = rejectionReasons[rejectionReasons.length - 1] ?? '';
     const quitaAnterior = REPETICION.has(motivo) && !!narracionAnterior;
     const sinAnterior = quitaAnterior ? base.replace(narracionAnterior, '') : base;
-    if (recortar) return { prompt: sinAnterior };
+    // Solo el recorte tras un fallo técnico va sin motivo: tras un rechazo de la guarda, el respaldo (intento 3) sigue
+    // recortado (QA-166) pero lleva el sufijo con el motivo y la corrección en positivo.
+    if (recortar && !ultimoFueRechazo) return { prompt: sinAnterior };
     // QA-504 (P481): tras rechazar un golpe falso cuando Gorhorn solo se defendió, la corrección dice en positivo lo que
     // pasó (el golpe se pierde, no toca) en vez de dejar al modelo con el «error» a secas, que lo llevaba a «absorbe el impacto».
     const rival = ctx.combatRivalNarrado ? ctx.combatRivalNarrado[0]!.toUpperCase() + ctx.combatRivalNarrado.slice(1) : 'El rival';
@@ -1968,6 +1970,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         ? ` Cuéntalo así: el golpe de ${rival} falla, se pierde en el aire o ${ctx.characterName ?? 'el jugador'} lo esquiva o lo desvía, y no le toca.`
         : '';
     const sufijo = `\n\nTU RESPUESTA ANTERIOR SE DESCARTÓ POR: ${motivo}. Escríbela de nuevo sin ese error.${golpeDecidido ? ` Resultado del intercambio (ya decidido): ${golpeDecidido}` : ''}${enPositivo}`;
+    if (recortar) return { prompt: sinAnterior + sufijo };
     return {
       prompt: sinAnterior + sufijo,
       bloques: [...bloques.map((b) => (quitaAnterior && b.nombre === 'narracion_anterior' ? { ...b, texto: '' } : b)), { nombre: 'reintento', texto: sufijo }],
@@ -2694,10 +2697,13 @@ export function hasCombatVocabulary(narration: string): boolean {
 // con todas sus fuerzas, pero NO LOGRA CONECTAR con su objetivo" — negación directa de impacto que
 // ninguna de las frases de arriba cubría (no es "esquiva"/"se aparta", es la negación explícita del
 // verbo "conectar" que el propio resumen mecánico usa para narrar el ÉXITO — "el golpe conecta").
+// Revisión de código: «a escasos palmos del orco y le abre un tajo» (el atacante se acerca) y «el orco, que encaja el golpe
+// sin inmutarse» (la herida es del rival) son golpes que sí entran: «a escasos…» exige una parte del cuerpo con posesivo o
+// artículo, y «sin inmutarse» no cuenta dentro de una subordinada con «que» (habla del rival, no del jugador).
 // P477 (ronda local 2, grupo 5 tanda C): con el golpe «de lleno», «se hunde en la arcilla… a escasos centímetros de su
 // cabeza» (el arma en el suelo, no en el rival) y, con el jugador a GRAVE, «soporta el impacto… apenas conmovido».
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|sin inmutarse|(ni|no) se inmuta)\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos) de (su|sus|tu|tus|la|el) (cabeza|rostro|cara|cuello|garganta|pecho|cuerpo|oreja|ojo)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|(?<!\bque\b[^.;]{0,40})(sin inmutarse|(ni|no) se inmuta))\b/i;
 
 export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean, nonExchangeAttackHitLanded?: boolean): boolean {
   if (!combatRealHitLanded && !nonExchangeAttackHitLanded) return false;

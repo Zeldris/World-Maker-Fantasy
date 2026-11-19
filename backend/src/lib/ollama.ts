@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
-import { calcularTruncated, nsToMs, prefijoComun, prefijoBloque, type BloquePrompt, registrarCaso, registrarLlamada } from './iaRegistro.js';
+import { calcularTruncated, nsToMs, prefijoComun, prefijoBloque, prefijoBloqueAjeno, type BloquePrompt, registrarCaso, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -168,6 +168,8 @@ function registrarGenerate(
 ): void {
   const r = (raw ?? {}) as OllamaRawStats;
   const numCtx = numCtxDe(options);
+  // Una llamada sin bloques también ocupa la caché de Ollama de ese modelo: la siguiente con bloques no compara con la anterior.
+  if (env.iaRegistro && !options.bloques) prefijoBloqueAjeno(options.model);
   registrarLlamada({
     operation: 'text_completion',
     provider: 'ollama',
