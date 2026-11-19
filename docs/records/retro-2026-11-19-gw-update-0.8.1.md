@@ -27,5 +27,10 @@ analizar. No cierra bloque ni versión del proyecto, así que no hay barrido de 
 - C1: `scope-guard.py` ignora rutas `vendored`; `gw-update` limpia o avisa de una marca de tarea cerrada.
 - C2: `handoff.py set-row`/`close-row` actualizan la fila «Actualizado».
 - C3: `commit-msg` no avisa de `Findings:` por la palabra en prosa.
+- C6: `test_measure.py` (`short_session`) copia `scripts/config.py` y `schema/gw.schema.json` con la ruta del repo
+  del flujo; instalado en `.claude/skills/` no existen y 5 tests fallan en el CI. Arreglado en WMF tras la retro
+  (prueba también `.claude/gw/<ruta>`), para que el CI pase; `apply.py --check` lo marca como copia distinta hasta
+  que el flujo traiga el arreglo. Lo mismo, `handoff.py check <ruta>` compara con la bitácora de HEAD aunque la ruta
+  sea otra (WMF aisló su test en un repo de prueba).
 
 **Estado:** decidida por la usuaria (2026-11-19): C1-C3 aplazadas para `gw-harvest` (apartado de arriba); C4 aplazada; C5 aprobada, la aplica la usuaria desactivando el conector `Claude_Docs` en WMF.
