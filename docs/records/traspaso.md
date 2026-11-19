@@ -159,8 +159,8 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-19 — ~~QA-515~~ (2026-11-19): revisión de bloque de la ronda local 2, 7 arreglos
-2. 2026-11-18 — QA-511: retro de la v0.8.0 del flujo aplicada (guía de imágenes marcada como desfasada, otra rama por subagente, cobertura.py --fila)
-3. 2026-11-17 — QA-507: app.prefijo_bloque en el registro de la IA
-4. 2026-11-17 — QA-506: frases de P479 en clasificar-casos.jsonl
-5. 2026-11-17 — QA-503: medido en la Deck, el RSS de llama-server no crece turno a turno (174-405 MiB); sin tope
+1. 2026-11-19 — QA-510: app.via y app.interlocutor en la línea del turno del registro de IA, app.prompt_chars en las filas rechazo (2026-11-19)
+2. 2026-11-19 — ~~QA-515~~ (2026-11-19): revisión de bloque de la ronda local 2, 7 arreglos
+3. 2026-11-18 — QA-511: retro de la v0.8.0 del flujo aplicada (guía de imágenes marcada como desfasada, otra rama por subagente, cobertura.py --fila)
+4. 2026-11-17 — QA-507: app.prefijo_bloque en el registro de la IA
+5. 2026-11-17 — QA-506: frases de P479 en clasificar-casos.jsonl
