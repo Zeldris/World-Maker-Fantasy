@@ -122,3 +122,6 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 - Aprobadas el 2026-11-17, tanda de comprobación (no se vuelven a proponer): `QA-505` ampliada al sustantivo «impacto», el rival sigue
   en pie en defensa sin acierto (`QA-508`), bloques estables del combate antes de `hechos` (`QA-509`, la última y con bench) y vía e
   interlocutor del turno en el registro (`QA-510`).
+- Aprobadas el 2026-11-19, ronda local 2 L1-L3 (no se vuelven a proponer): falsos positivos de la guarda de objeto sin camino
+  (`QA-512`, con `QA-505`), P272 por la palabra propia del título en `titulosPorEntidad` (`QA-513`) y recalentar el prefijo
+  del narrador tras `dialogo_npc` (`QA-514`, tras `QA-509`). Descartado por memoria en la Deck: `OLLAMA_NUM_PARALLEL=2`.
