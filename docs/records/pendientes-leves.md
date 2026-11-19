@@ -80,3 +80,7 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 - QA-354, `detectsUnknownConstructionClaim`: «se levanta una empalizada» (impersonal) ya no cuenta como construir.
 - QA-355, `hasFalseCombatAttacker`: el golpe con el jugador detrás del verbo («un tajo certero de Gorhorn abre…») ya no se rechaza; tampoco «Gorhorn mira. El orco golpea a Gorhorn» se libra (como antes).
 - P474, `hasPlayerLineAddressedToPlayer`: «Gorhorn escucha a Ulkha: «Tus clanes cayeron, Gorhorn»» (la oración empieza por el jugador, pero habla el NPC) se rechaza de más; solo cuesta un reintento.
+
+## Pendientes leves de la revisión de bloque de la ronda local 2 (2026-11-19)
+
+- `npcScene.ts` P479 (~358): un PRINCIPAL ya conocido se reconoce por la primera palabra de su nombre (≥4 letras): si es un título o palabra común («Vieja Ulma», «Hermano X»), «busco a la vieja del pozo» lo mete en escena; un nombre de pila de menos de 4 letras («Kor») nunca casa.
