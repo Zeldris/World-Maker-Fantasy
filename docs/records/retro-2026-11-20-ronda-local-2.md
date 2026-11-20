@@ -1,6 +1,6 @@
 # Retro: ronda local 2 a `main` (`claude/ronda-local-2`, 2026-11-20)
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** aprobada (usuario, 2026-11-20): R1 aprobada, apuntada como `QA-520` en `roadmap-front.md`; R2 aplicada (`50251e47`); las notas para Galivelop-workflow, decididas: quedan aquí para `gw-harvest`.
 
 Fuentes: sesión `6b88b4e7` (QA-518, QA-519, revisión de bloque), esta sesión (fase 1 y `/gw-opt-tokens`),
 `task.py deviations` y `docs/records/pendientes-leves.md`.
