@@ -58,3 +58,10 @@ print("vacio" if not modelos else ("gpu" if any((m.get("size_vram") or 0) > 0 fo
     *) echo "Aviso: /api/ps no muestra ningún modelo cargado, no se puede comprobar la GPU (QA-141)" >&2; return 2 ;;
   esac
 }
+
+# QA-521 (`/gw-opt-ai` de la ronda local 3): L1 y L2 se jugaron con Ollama real arrancado sin `IA_PERFIL` (sin
+# `juego.sh`) y quedaron sin `IA_REGISTRO`. El real responde a /api/version con JSON («"version"»); el simulado
+# (tools/ci/mock-ollama.mjs), con «Ollama is running». Devuelve 0 si en la URL ($1) hay un Ollama real.
+ia_ollama_real() {
+  curl -sf --max-time 3 "${1%/}/api/version" 2>/dev/null | grep -q '"version"'
+}

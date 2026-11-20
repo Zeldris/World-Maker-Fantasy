@@ -53,6 +53,13 @@ if [ "${1:-}" = "--parar" ] || [ "${1:-}" = "--parar-juego" ]; then
   exit 0
 fi
 
+# QA-521: con Ollama real escuchando y sin `IA_PERFIL`, la tanda no deja registro (`IA_REGISTRO`) y no se puede medir.
+if [ -z "${IA_PERFIL:-}" ] && ia_ollama_real "$OLLAMA_BASE_URL"; then
+  echo "Hay un Ollama real en $OLLAMA_BASE_URL y no hay IA_PERFIL: la tanda no dejaría registro (QA-521)." >&2
+  echo "Arranca el juego con 'bash tools/qa/deck/juego.sh' (IA_PERFIL=deck e IA_REGISTRO), o para ese Ollama para usar el simulado." >&2
+  exit 1
+fi
+
 # QA-310: se guarda con qué IA corre este arranque; `escenario.sh cargar|avanzar` relanza el juego y lo recupera.
 # shellcheck source=tools/playwright-e2e/perfil-ia.sh
 . tools/playwright-e2e/perfil-ia.sh

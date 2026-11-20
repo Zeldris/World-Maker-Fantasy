@@ -1,6 +1,8 @@
 """QA-141: ruta absoluta de IA_REGISTRO y detección de GPU de tools/playwright-e2e/ia-comprobaciones.sh."""
+import http.server
 import os
 import subprocess
+import threading
 import tempfile
 import unittest
 
@@ -96,6 +98,35 @@ class IaComprobaciones(unittest.TestCase):
         self.assertIn('mock_ok=1', s)
         self.assertIn('tras 10 s: mira logs/mock-ollama.log" >&2', s)
         self.assertIn('rm -f logs/mock-ollama.pid', s)
+
+    def servidor(self, cuerpo):
+        class H(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(cuerpo.encode())
+
+            def log_message(self, *a):
+                pass
+        srv = http.server.HTTPServer(('127.0.0.1', 0), H)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        return f'http://127.0.0.1:{srv.server_port}'
+
+    def test_ollama_real_por_api_version(self):
+        # QA-521: el real da JSON con «version»; el simulado, «Ollama is running»; sin nada escuchando, no es real.
+        self.assertEqual(bash(f"ia_ollama_real '{self.servidor('{\"version\":\"0.12.0\"}')}/'").returncode, 0)
+        self.assertEqual(bash(f"ia_ollama_real '{self.servidor('Ollama is running')}'").returncode, 1)
+        self.assertNotEqual(bash("ia_ollama_real 'http://127.0.0.1:9'").returncode, 0)
+
+    def test_arrancar_juego_para_con_ollama_real_sin_perfil(self):
+        with open(SCRIPT) as f:
+            s = f.read()
+        guarda = s.index('if [ -z "${IA_PERFIL:-}" ] && ia_ollama_real "$OLLAMA_BASE_URL"; then')
+        self.assertLess(s.index('--parar-juego" ]; then'), guarda)  # --parar sigue funcionando
+        self.assertLess(guarda, s.index('guardar_perfil_ia\n'))  # antes de tocar nada
+        self.assertIn('tools/qa/deck/juego.sh', s[guarda:guarda + 400])
 
 
 if __name__ == '__main__':

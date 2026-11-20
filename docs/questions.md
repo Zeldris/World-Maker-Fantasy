@@ -23,21 +23,27 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-3
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: /gw-opt-ai 2026-11-20 (P1): L1 y L2 de la ronda local 3 se jugaron con Ollama real sin IA_REGISTRO (ia-ronda.sh arrancar + escenario.sh cargar, sin juego.sh). ¿Hacemos que arrancar-juego.sh falle en ese caso?
 - Recommendation: Sí: arrancar-juego.sh se para con un error si :11434 es un Ollama real y no hay IA_PERFIL, y dice la orden (juego.sh); tarea QA nueva
+- Answer: a
+- Answered: 2026-11-20
 
 ## Q-4
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: /gw-opt-ai 2026-11-20 (P2): P491 (Tirag no nombra a los Ketg como la casta que manda). ¿Se cierra o se trabaja el prompt de dialogo_npc?
 - Recommendation: Cerrar P491 como «no aplica»: el lore entra en el prompt y Tirag, «sometida por los Ketg», calla por miedo, como dice ese lore
+- Answer: a
+- Answered: 2026-11-20
 
 ## Q-5
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: /gw-opt-ai 2026-11-20 (P3): P492 (Torgash llama «forastero» a Gorhorn). ¿Se cierra como diseño?
 - Recommendation: Cerrar como diseño (P467) la parte de «forastero», y comprobar en la próxima tanda, con registro, que tras «Soy Gorhorn» Torgash usa el nombre
+- Answer: a
+- Answered: 2026-11-20
