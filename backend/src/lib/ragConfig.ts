@@ -10,8 +10,8 @@ import { createHash } from 'node:crypto';
 ///   RAG_PREFIJO_DOCUMENTO  --prefijo-documento <t>  prefijo del texto de cada trozo ('')
 ///   RAG_PLANTILLA          --plantilla <t>          texto embebido de cada trozo, con {title} y {trozo} ('{title}\n{trozo}')
 ///                          --prefijos-nomic         los dos prefijos de nomic-embed-text (`search_query: `, `search_document: `)
-///   RAG_MODELO             --modelo <nombre>        modelo de Ollama que embebe el lore (`QA-351`, R7; por defecto el de
-///                                                   OLLAMA_MODEL_EMBEDDINGS, o nomic-embed-text). Solo el lore: los hechos
+///   RAG_MODELO             --modelo <nombre>        modelo de Ollama que embebe el lore (`QA-351`, R7; por defecto bge-m3,
+///                                                   `QA-361`; nomic-embed-text sigue con --modelo). Solo el lore: los hechos
 ///                                                   de partida (`SessionFact`, vector(768)) siguen con OLLAMA_MODEL_EMBEDDINGS.
 ///   RAG_BUSQUEDA           --hibrida                `vector` (por defecto) o `hibrida` (`QA-351`, R5): vector + texto
 ///                                                   completo sobre cada trozo, fusionadas con RRF (k 60). No cambia el índice.
@@ -51,7 +51,7 @@ export const CONFIG_RAG_POR_DEFECTO: ConfigRag = {
   prefijoConsulta: '',
   prefijoDocumento: '',
   plantilla: '{title}\n{trozo}',
-  modelo: 'nomic-embed-text',
+  modelo: 'bge-m3',
   busqueda: 'vector',
 };
 
@@ -97,7 +97,7 @@ export function configRag(entorno: NodeJS.ProcessEnv = process.env): ConfigRag {
     prefijoConsulta: texto(entorno.RAG_PREFIJO_CONSULTA, d.prefijoConsulta),
     prefijoDocumento: texto(entorno.RAG_PREFIJO_DOCUMENTO, d.prefijoDocumento),
     plantilla: texto(entorno.RAG_PLANTILLA, d.plantilla),
-    modelo: entorno.RAG_MODELO || entorno.OLLAMA_MODEL_EMBEDDINGS || d.modelo,
+    modelo: entorno.RAG_MODELO || d.modelo,
     busqueda: (entorno.RAG_BUSQUEDA || d.busqueda) as Busqueda,
   };
   if (!BUSQUEDAS.includes(cfg.busqueda)) throw new Error(`RAG_BUSQUEDA tiene que ser vector o hibrida (recibida: ${entorno.RAG_BUSQUEDA})`);

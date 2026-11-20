@@ -9,7 +9,7 @@ vi.mock('../lib/prisma.js', () => ({ prisma: { $queryRaw: queryRaw } }));
 const { retrieveLore } = await import('./retrieval.js');
 const sql = (i: number) => (queryRaw.mock.calls[i][0] as TemplateStringsArray).join('?').replace(/\s+/g, ' ');
 
-// QA-351: los mandos RAG_BUSQUEDA y RAG_MODELO. Sin ellos, una sola consulta por vector con nomic-embed-text.
+// QA-351: los mandos RAG_BUSQUEDA y RAG_MODELO. Sin ellos, una sola consulta por vector con bge-m3 (QA-361).
 describe('retrieveLore con los mandos de QA-351', () => {
   beforeEach(() => {
     queryRaw.mockReset();
@@ -25,7 +25,7 @@ describe('retrieveLore con los mandos de QA-351', () => {
     await retrieveLore('hola', 'w1', 4);
     expect(queryRaw).toHaveBeenCalledTimes(1);
     expect(sql(0)).not.toContain('tsquery');
-    expect(embed).toHaveBeenCalledWith('hola', process.env.OLLAMA_MODEL_EMBEDDINGS || 'nomic-embed-text');
+    expect(embed).toHaveBeenCalledWith('hola', 'bge-m3');
   });
 
   it('RAG_MODELO embebe la consulta con ese modelo', async () => {

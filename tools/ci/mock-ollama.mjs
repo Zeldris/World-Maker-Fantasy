@@ -77,10 +77,10 @@ function respond(body) {
   return narrationFor(prompt);
 }
 
-function vec(text) {
+function vec(text, model = '') {
   let h = 2166136261;
   for (const c of text) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
-  return Array.from({ length: 768 }, (_, i) => Math.sin(h + i) * 0.1);
+  return Array.from({ length: /bge-m3/.test(model) ? 1024 : 768 }, (_, i) => Math.sin(h + i) * 0.1);
 }
 
 http
@@ -109,7 +109,7 @@ http
       if (url.startsWith('/api/embed')) {
         const inputs = Array.isArray(body.input) ? body.input : [body.input ?? body.prompt ?? ''];
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ model: body.model, embeddings: inputs.map(vec), embedding: vec(inputs[0]) }));
+        res.end(JSON.stringify({ model: body.model, embeddings: inputs.map((t) => vec(t, body.model)), embedding: vec(inputs[0], body.model) }));
         return;
       }
       if (url.startsWith('/api/tags')) {

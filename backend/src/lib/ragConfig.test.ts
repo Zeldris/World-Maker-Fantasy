@@ -61,9 +61,10 @@ describe('hashDelIndice (T6 del GVE)', () => {
 });
 
 describe('mandos de modelo y búsqueda (QA-351)', () => {
-  it('por defecto, nomic-embed-text (o OLLAMA_MODEL_EMBEDDINGS) y búsqueda por vector', () => {
-    expect(configRag({})).toMatchObject({ modelo: 'nomic-embed-text', busqueda: 'vector' });
-    expect(configRag({ OLLAMA_MODEL_EMBEDDINGS: 'otro' }).modelo).toBe('otro');
+  it('por defecto, bge-m3 sin prefijos y búsqueda por vector; OLLAMA_MODEL_EMBEDDINGS (hechos) no lo cambia (QA-361)', () => {
+    expect(configRag({})).toMatchObject({ modelo: 'bge-m3', prefijoConsulta: '', prefijoDocumento: '', busqueda: 'vector' });
+    expect(configRag({ OLLAMA_MODEL_EMBEDDINGS: 'nomic-embed-text' }).modelo).toBe('bge-m3');
+    expect(configRag({ RAG_MODELO: 'nomic-embed-text' }).modelo).toBe('nomic-embed-text');
   });
 
   it('--modelo y --hibrida pasan a RAG_MODELO y RAG_BUSQUEDA, y el argumento gana', () => {
@@ -78,10 +79,10 @@ describe('mandos de modelo y búsqueda (QA-351)', () => {
   });
 
   it('el modelo es del índice y la búsqueda no', () => {
-    const { busqueda: _b, ...actual } = configRag({ RAG_MODELO: 'bge-m3', RAG_BUSQUEDA: 'hibrida' });
+    const { busqueda: _b, ...actual } = configRag({ RAG_MODELO: 'nomic-embed-text', RAG_BUSQUEDA: 'hibrida' });
     const { busqueda: _b2, ...base } = CONFIG_RAG_POR_DEFECTO;
-    expect(diferenciasDeIndice(base, actual)).toEqual(['modelo: índice "nomic-embed-text", corrida "bge-m3"']);
-    expect(diferenciasDeIndice({ ...base, modelo: 'bge-m3' }, actual)).toEqual([]);
+    expect(diferenciasDeIndice(base, actual)).toEqual(['modelo: índice "bge-m3", corrida "nomic-embed-text"']);
+    expect(diferenciasDeIndice({ ...base, modelo: 'nomic-embed-text' }, actual)).toEqual([]);
   });
 });
 

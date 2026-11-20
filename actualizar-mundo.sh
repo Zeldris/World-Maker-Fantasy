@@ -33,7 +33,7 @@ fi
 NODE_BIN="$(ls -d "$HOME/.var/app/com.visualstudio.code/config/nvm/versions/node"/v22*/bin 2>/dev/null | sort -V | tail -1)"
 [ -n "$NODE_BIN" ] && export PATH="$NODE_BIN:$PATH"
 
-# reindex-lore necesita Ollama arriba (embeddings de nomic-embed-text) — igual que
+# reindex-lore necesita Ollama arriba (embeddings de bge-m3 (QA-361)) — igual que
 # iniciar-tarkor.sh, se arranca en segundo plano si no estaba ya.
 STARTED_OLLAMA=0
 if curl -s -o /dev/null http://localhost:11434; then
