@@ -12,8 +12,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (21): P49, P66, P252, P262, P272, P310, P464, P466, P472, P474, P476, P477, P478,
-  P479, P481, P483, P484, P486, P490, P492, P495.
+- **Pendientes** (20): P49, P66, P252, P262, P272, P310, P464, P466, P472, P474, P476, P477, P478,
+  P479, P481, P483, P484, P486, P490, P492.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (16): P70, P131, P180, P243, P245, P253, P306, P414, P382, P429, P443,
   P451, P469, P470, P471, P491.
@@ -45,9 +45,9 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
   P460, P461, P462, P463, P465, P467, P468, P473, P475, P480, P482, P487, P488, P489, P493.
 - **Arreglados, no jugables (los cubre un test o la base)** (10): P25, P44, P52, P143, P174, P188,
   P204, P250, P267, P342.
-- **Cerrados sin arreglo (no aplica, dato o roadmap)** (36): P5, P10, P16, P22, P23, P30, P34, P40,
+- **Cerrados sin arreglo (no aplica, dato o roadmap)** (37): P5, P10, P16, P22, P23, P30, P34, P40,
   P48, P59, P71, P75, P89, P129, P146, P179, P222, P238, P239, P249, P256, P289, P312, P317, P321,
-  P322, P325, P413, P368, P370, P376, P430, P436, P442, P453, P485.
+  P322, P325, P413, P368, P370, P376, P430, P436, P442, P453, P485, P495.
 <!-- fin del resumen -->
 
 - **Roadmap** (diseño o desarrollo nuevo, para cuando se vuelva a él): `REI-122` (permiso para fundar),
@@ -555,4 +555,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P492 | Tanda L7 de la ronda local 2 (2026-11-20, t13b2-ketg): Ulkha Ketg dice en un diálogo que la tormenta no dañó al clan, y más tarde el narrador narra «una valla dañada» (la acción de la jugadora hablaba de daños en techos y vallas); además Torgash Ketg llama «forastero» a Gorhorn tras haber hablado con él en ese mismo rato | Pendiente (leve, memoria del diálogo con NPC) · Ronda local 3 L1 (2026-11-20): Torgash Ketg sigue llamando «forastero» a Gorhorn en 3 turnos seguidos («No soy un recordatorio de nombres, forastero»); la tormenta/vallas no se reprodujo (Ulkha dijo que dañó rebaños y hermanos; el narrador narró revisar vallas sin daños, sin contradicción). Pendiente (leve, memoria del diálogo con NPC; para el próximo /gw-opt-ai) |
 | P493 | Tanda L8 de la ronda local 2 (2026-11-20, t13b2-ketg, Ollama real, pasada 3, `QA-518`): «Cuéntame qué pasó con los Maktor, Ulkha.» → réplica de 5 frases que recita la entrada del lore («pacífico y orgulloso, como tú dices», «dos golpes») y la mezcla: «una traición por parte de los Goirntes del Clan Serhu» (en el lore, la casta de Ketg traiciona con ayuda Goirnte). Pide 1-2 frases | ✅ Comprobado jugando 2026-11-20 (ronda local 3, tanda L1, t13b2-ketg, Ollama real, 3 pasadas, QA-518): réplicas de 2 frases, solo lo público, sin traición ni Goirntes; p. ej. «Los Maktor... un clan de las Llanuras del Viento Rojo. Fueron aniquilados dos veces, hace mucho. [...] No es algo que nos concierna al Clan Serhu.». Antes: Arreglado sin jugar (QA-518, revisión de bloque: solo lo público, ~280 caracteres, 1-2 frases sin recitar; falta jugarlo con Ollama real) |
 | P494 | Tanda L8 de la ronda local 2 (2026-11-20, proceso): el registro de IA (`IA_REGISTRO`) no guarda el texto del prompt y `IA_CASOS` no está en `juego-ia.env`: para ver qué lore entra en una réplica hay que relanzar el juego con `IA_CASOS` a mano (una pasada de más en la L8). Además, `systemd-inhibit` solo existe en el host: va por `tools/qa/host.sh` | Arreglado (QA-519: IA_CASOS junto a IA_REGISTRO en perfil-ia.sh; runbook) |
-| P495 | Tanda L2 de la ronda local 3 (2026-11-20, mv-hondonada-hostiles, combate1v1:orco-enfurecido-hondonada, Ollama real), visto al revisar P485: en fase Ataque «Esquivar» sigue desactivada tras 45 s con 62 de energía (coste 5), así que no es la energía; y todas las acciones del combate se apagan mientras el narrador escribe. Por confirmar si Esquivar es solo de la fase de defensa (diseño) y si el apagado durante la narración debe avisar de por qué | pendiente (por confirmar si es diseño; mirar CombatPanel.tsx ~861-900 antes de jugar) |
+| P495 | Tanda L2 de la ronda local 3 (2026-11-20, mv-hondonada-hostiles, combate1v1:orco-enfurecido-hondonada, Ollama real), visto al revisar P485: en fase Ataque «Esquivar» sigue desactivada tras 45 s con 62 de energía (coste 5), así que no es la energía; y todas las acciones del combate se apagan mientras el narrador escribe. Por confirmar si Esquivar es solo de la fase de defensa (diseño) y si el apagado durante la narración debe avisar de por qué | no aplica: no es bug (tanda P495, 2026-11-20, Ollama real). Esquivar se usa en Ataque (77→72 de energía) y en Defensa; lo que se vio en L2 era `busy` mientras narraba (≈50-60 s): CombatPanel.tsx:874/:1084 apagan todo sin aviso propio en el panel, solo el HUD «El narrador escribe». Si el panel debe decir por qué, lo decide Álvaro |
