@@ -12,12 +12,12 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (23): P49, P66, P252, P262, P272, P310, P464, P466, P472, P474, P476, P477, P478,
-  P479, P481, P483, P484, P485, P486, P490, P492, P493, P494.
+- **Pendientes** (21): P49, P66, P252, P262, P272, P310, P464, P466, P472, P474, P476, P477, P478,
+  P479, P481, P483, P484, P485, P486, P490, P492.
 - **Pendientes de una decisión de la usuaria** (1): P311.
 - **Arreglados en parte** (16): P70, P131, P180, P243, P245, P253, P306, P414, P382, P429, P443,
   P451, P469, P470, P471, P491.
-- **Arreglados, sin comprobar jugando** (3): P251, P266, P273.
+- **Arreglados, sin comprobar jugando** (5): P251, P266, P273, P493, P494.
 - **Comprobados jugando** (406): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43,
   P45, P46, P47, P50, P51, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68,
@@ -553,5 +553,5 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P490 | Tanda L5 de la ronda local 2 (2026-11-19, mv-hondonada-hostiles, 1v1 con el Guerrero serhu, Ollama real): detalles de la narración de combate, todos aceptados al intento 1: «del impacto del golpe de El Guerrero serhu» (artículo en mayúscula tras «de»); un «Ataque Básico» narrado como «estocada rápida y certera… en la espalda»; un «Defenderse» (plantarse y aguantar) narrado como «Gorhorn se aparta a tiempo». La tirada y el panel cuadran con cada texto | Pendiente (leve, calidad del narrador; para el próximo /gw-opt-ai) |
 | P491 | Tanda L7 de la ronda local 2 (2026-11-20, t13b2-ketg, texto libre, Ollama real): en el diálogo con Tirag Susig, en Hogar Ketg, dice «no es fácil con los Ketg siempre acechando», como si los Ketg fueran enemigos en su propio hogar (el RAG trae «Clan Serhu y la casta de Ketg») | Arreglado en parte 2026-11-20 (`QA-518`, tanda L8, 3 pasadas): con la entrada «Clan Serhu y la casta de Ketg» en su réplica, Tirag ya no hace enemigos a los Ketg, pero no los nombra: no se ha visto que los reconozca como la casta que manda. Antes: pendiente |
 | P492 | Tanda L7 de la ronda local 2 (2026-11-20, t13b2-ketg): Ulkha Ketg dice en un diálogo que la tormenta no dañó al clan, y más tarde el narrador narra «una valla dañada» (la acción de la jugadora hablaba de daños en techos y vallas); además Torgash Ketg llama «forastero» a Gorhorn tras haber hablado con él en ese mismo rato | Pendiente (leve, memoria del diálogo con NPC; para el próximo /gw-opt-ai) |
-| P493 | Tanda L8 de la ronda local 2 (2026-11-20, t13b2-ketg, Ollama real, pasada 3, `QA-518`): «Cuéntame qué pasó con los Maktor, Ulkha.» → réplica de 5 frases que recita la entrada del lore («pacífico y orgulloso, como tú dices», «dos golpes») y la mezcla: «una traición por parte de los Goirntes del Clan Serhu» (en el lore, la casta de Ketg traiciona con ayuda Goirnte). Pide 1-2 frases | Pendiente (lore del diálogo con NPC: recitar y mezclar la entrada) |
-| P494 | Tanda L8 de la ronda local 2 (2026-11-20, proceso): el registro de IA (`IA_REGISTRO`) no guarda el texto del prompt y `IA_CASOS` no está en `juego-ia.env`: para ver qué lore entra en una réplica hay que relanzar el juego con `IA_CASOS` a mano (una pasada de más en la L8). Además, `systemd-inhibit` solo existe en el host: va por `tools/qa/host.sh` | Pendiente (proceso de las rondas locales) |
+| P493 | Tanda L8 de la ronda local 2 (2026-11-20, t13b2-ketg, Ollama real, pasada 3, `QA-518`): «Cuéntame qué pasó con los Maktor, Ulkha.» → réplica de 5 frases que recita la entrada del lore («pacífico y orgulloso, como tú dices», «dos golpes») y la mezcla: «una traición por parte de los Goirntes del Clan Serhu» (en el lore, la casta de Ketg traiciona con ayuda Goirnte). Pide 1-2 frases | Arreglado sin jugar (QA-518, revisión de bloque: solo lo público, ~280 caracteres, 1-2 frases sin recitar; falta jugarlo con Ollama real) |
+| P494 | Tanda L8 de la ronda local 2 (2026-11-20, proceso): el registro de IA (`IA_REGISTRO`) no guarda el texto del prompt y `IA_CASOS` no está en `juego-ia.env`: para ver qué lore entra en una réplica hay que relanzar el juego con `IA_CASOS` a mano (una pasada de más en la L8). Además, `systemd-inhibit` solo existe en el host: va por `tools/qa/host.sh` | Arreglado (QA-519: IA_CASOS junto a IA_REGISTRO en perfil-ia.sh; runbook) |

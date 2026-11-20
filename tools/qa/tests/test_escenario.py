@@ -222,7 +222,7 @@ case "$*" in *api/ps*) echo '{{"models":[{{"name":"narrador:latest"}},{{"name":"
         script = os.path.join(QA, '..', 'playwright-e2e', 'perfil-ia.sh')
         def guardar(**entorno):
             env = {**os.environ, **entorno}
-            for k in ('IA_PERFIL', 'IA_REGISTRO'):
+            for k in ('IA_PERFIL', 'IA_REGISTRO', 'IA_CASOS'):
                 if k not in entorno:
                     env.pop(k, None)
             r = subprocess.run(['bash', '-c', f'. "{script}"; guardar_perfil_ia'], cwd=d, env=env, capture_output=True, text=True)
@@ -230,8 +230,12 @@ case "$*" in *api/ps*) echo '{{"models":[{{"name":"narrador:latest"}},{{"name":"
         archivo = os.path.join(d, 'logs', 'juego-ia.env')
         guardar(IA_PERFIL='deck', IA_REGISTRO='/r/con espacio/hoy.jsonl')
         self.assertEqual(leer(archivo).splitlines()[0], f'# boot={id_de_arranque()}')
-        leido = subprocess.run(['bash', '-c', f'. "{archivo}"; echo "$IA_PERFIL|$IA_REGISTRO"'], capture_output=True, text=True)
-        self.assertEqual(leido.stdout.strip(), 'deck|/r/con espacio/hoy.jsonl')
+        leido = subprocess.run(['bash', '-c', f'. "{archivo}"; echo "$IA_PERFIL|$IA_REGISTRO|$IA_CASOS"'], capture_output=True, text=True)
+        # QA-519 (P494): sin IA_CASOS, los casos (con el prompt entero) van junto al registro y se recuperan al relanzar.
+        self.assertEqual(leido.stdout.strip(), 'deck|/r/con espacio/hoy.jsonl|/r/con espacio/hoy.casos.jsonl')
+        guardar(IA_PERFIL='deck', IA_REGISTRO='/r/hoy.jsonl', IA_CASOS='/otro/casos.jsonl')
+        leido = subprocess.run(['bash', '-c', f'. "{archivo}"; echo "$IA_CASOS"'], capture_output=True, text=True)
+        self.assertEqual(leido.stdout.strip(), '/otro/casos.jsonl')
         guardar()
         self.assertFalse(os.path.exists(archivo))
 
