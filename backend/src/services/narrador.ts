@@ -1384,7 +1384,7 @@ Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNO
 
 LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más). Donde pone «(tú)» habla de ti: cuéntalo en primera persona («yo…»), nunca como si fuera otra persona:
 ${factsBlock(hechos)}
-${ctx.lore?.length ? `\nLO QUE SABES DEL MUNDO (lo sabe cualquiera de tu pueblo: si viene a cuento, háblalo con tus palabras, sin recitarlo ni añadir detalles; nunca digas que no lo conoces):\n${ctx.lore.map((l) => `- ${l}`).join('\n')}\n` : ''}
+${ctx.lore?.length ? `\nLO QUE SABES DEL MUNDO (nunca digas que no lo conoces; si viene a cuento, háblalo con tus palabras, sin recitarlo ni añadir detalles, y siempre desde tu lado: lo de otro clan, pueblo o raza es ajeno, de oídas, nunca «nuestro» ni «nos»):\n${ctx.lore.map((l) => `- ${l}`).join('\n')}\n` : ''}
 ${quien} te acaba de decir: "${accion}"
 
 ${ctx.replicaAnterior ? `\nTu réplica anterior fue ${ctx.replicaAnterior}: no empieces igual ni repitas sus frases.\n` : ''}
