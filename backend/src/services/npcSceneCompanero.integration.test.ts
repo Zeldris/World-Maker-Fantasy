@@ -38,3 +38,75 @@ describe('P441 — a la compañera se la nombra por su nombre de pila', () => {
     expect(await enEscena('Le doy el Tótem Maktor a Tirag')).toContain('tirag-susig');
   });
 });
+
+describe('P479 — a quien ya se ha tratado se le llama por su nombre de pila, no por el apellido de clan', () => {
+  let saveId: string;
+  let worldId: string;
+  beforeAll(async () => {
+    worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const lugar = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'campamento-serhu' } });
+    saveId = (await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Gorhorn (P479)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 12, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 0 }, portraitInitial: 'G',
+        currentLocationId: lugar.id, worldState: { create: { fictionalMinutes: 600 } },
+      },
+    })).id;
+    await asegurarMundoDePartida(prisma, saveId);
+    for (const slug of ['ulkha-ketg', 'torgash-ketg']) {
+      const npc = await prisma.npc.findFirstOrThrow({ where: { worldId, slug } });
+      await prisma.npcState.upsert({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: '' } }, create: { saveId, npcId: npc.id, scope: '', condicionFisica: 'ILESO' }, update: {} });
+      await prisma.zonePoint.create({ data: { locationId: lugar.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: slug, cantidad: 1, activo: true } });
+    }
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  const enEscena = async (action: string) =>
+    (await detectNpcsInScene({ action, worldId, sessionFacts: [], saveId, currentLocationId: (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId, fictionalMinutes: 600 })).map((n) => n.slug);
+
+  it('«Torgash» suelto lo mete en escena; «Ketg» suelto no mete a nadie del clan', async () => {
+    expect(await enEscena('Le digo a Torgash que quiero saber qué opina de él.')).toContain('torgash-ketg');
+    const porClan = await enEscena('Miro las tiendas del clan Ketg.');
+    expect(porClan).not.toContain('torgash-ketg');
+    expect(porClan).not.toContain('ulkha-ketg');
+  });
+});
+
+describe('P479/P482 — a quien ya se conoce (descubierto, sin NpcState) también se le llama por su nombre de pila', () => {
+  let saveId: string;
+  let worldId: string;
+  beforeAll(async () => {
+    worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
+    const lugar = await prisma.location.findFirstOrThrow({ where: { worldId, slug: 'campamento-serhu' } });
+    saveId = (await prisma.save.create({
+      data: {
+        userId: await getDefaultUserId(), worldId, characterName: 'Gorhorn (P482)', characterArchetype: 'guerrero', characterOrigin: 'x', characterMotivation: 'x',
+        attributes: { fuerza: 12, destreza: 10, constitucion: 10, inteligencia: 10, voluntad: 10, carisma: 10, magia: 0 }, portraitInitial: 'G',
+        currentLocationId: lugar.id, worldState: { create: { fictionalMinutes: 600 } },
+      },
+    })).id;
+    await asegurarMundoDePartida(prisma, saveId);
+    // Como en t13b2-ketg: hablar con ellos los descubre, pero no crea `NpcState`.
+    for (const slug of ['ulkha-ketg', 'torgash-ketg']) {
+      await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: slug } });
+      await prisma.zonePoint.create({ data: { locationId: lugar.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: slug, cantidad: 1, activo: true } });
+    }
+  });
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  const enEscena = async (action: string, sessionFacts: string[] = []) =>
+    (await detectNpcsInScene({ action, worldId, sessionFacts, saveId, currentLocationId: (await prisma.save.findUniqueOrThrow({ where: { id: saveId } })).currentLocationId, fictionalMinutes: 600 })).map((n) => n.slug);
+
+  it('«Ulkha, ¿quién es Gistera?» tras hablar con Torgash mete a Ulkha en escena (P482)', async () => {
+    expect(await enEscena('Ulkha, ¿quién es Gistera?', ['Torgash Ketg responde a Gorhorn sobre los Serhu.'])).toContain('ulkha-ketg');
+  });
+
+  it('«Cuéntame qué pasó con los Maktor, Ulkha.» mete a Ulkha en escena (P479); «Ketg» suelto, a nadie', async () => {
+    expect(await enEscena('Cuéntame qué pasó con los Maktor, Ulkha.')).toContain('ulkha-ketg');
+    expect(await enEscena('Miro las tiendas del clan Ketg.')).toEqual([]);
+  });
+});

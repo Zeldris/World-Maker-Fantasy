@@ -316,27 +316,40 @@ export function narrarAperturaCombateForzado(targetName: string, cantidad?: numb
   };
 }
 
-const GISTERA_TEXTO_PRESENTACION =
+export const GISTERA_TEXTO_PRESENTACION =
   'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
 /// P243 (decidido por la usuaria 2026-10-26): desde la segunda vez que se pulsa «Preguntar más antes de
 /// decidir», Gistera no repite el discurso: dice brevemente que ya lo contó.
 export const GISTERA_TEXTO_YA_CONTADO =
-  'Gistera te mira con impaciencia, sin dejar de vigilar las rocas. «Ya te lo he contado todo, Gorhorn. No hay más que decir: decide, y deprisa.»';
+  'Gistera te mira con impaciencia, sin dejar de vigilar las rocas. «Ya te lo he contado todo. No hay más que decir: decide, y deprisa.»';
 const GISTERA_OPCIONES_PRESENTACION = ['Aceptar ayudarla', 'Preguntar más antes de decidir', 'Rechazar y seguir tu camino'];
 
 /// P105 (QA-27): la despedida de Gistera al aceptar en la conversación. Si ya se dijo, aceptar la
 /// misión en su tarjeta no añade otra (`quests.ts`).
 export const GISTERA_DESPEDIDA_EN_CONVERSACION =
-  'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias, Gorhorn. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.';
+  'Gistera esboza un gesto de alivio que apenas dura un instante. «Gracias. No puedo quedarme aquí más tiempo, pero si nos volvemos a ver, ¡te lo agradeceré como corresponde!» Se aleja a toda velocidad entre las rocas de la hondonada sin mirar atrás.';
 
 /// Ramifica por `respuesta` (la opción que el jugador ya eligió), NUNCA solo por el número de
 /// vuelta — "preguntar" recicla la presentación (misma vuelta lógica, no avanza a la 3), y
 /// "aceptar"/"rechazar" ambos SALEN de la vuelta 2, pero a desenlaces distintos.
+/// P464: la escena de apertura de Gistera (vuelta 1), fija; el narrador no debe volver a contarla.
+export const GISTERA_TEXTO_APERTURA =
+  'Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo, con la respiración entrecortada y sin dejar de mirar hacia atrás — algo, o alguien, la persigue.';
+
+/// P464 (QA-356): forma corta de la escena de Gistera para el bloque «narración del turno anterior» del narrador. Con la
+/// apertura/presentación enteras ahí, el modelo las volvía a contar (rechazo «repetir casi verbatim»); se conservan quién
+/// es ella y la misión (el riesgo), no las frases. El guardia de repetición sigue comparando contra el texto completo.
+export const GISTERA_RESUMEN_APERTURA = '[Una orca de las llanuras llegó corriendo, huyendo de alguien.]';
+export const GISTERA_RESUMEN_PRESENTACION =
+  '[Gistera Koh, del Clan Serhu (ya sin clan), se presentó: la persigue un orco del clan que quiere matarla, y pide a Gorhorn que acabe con él antes de que sea tarde.]';
+export function acotarEscenasFijasGistera(texto: string): string {
+  return texto.split(GISTERA_TEXTO_PRESENTACION).join(GISTERA_RESUMEN_PRESENTACION).split(GISTERA_TEXTO_APERTURA).join(GISTERA_RESUMEN_APERTURA);
+}
+
 export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera | null, yaContado = false): GisteraTurnoOutput {
   if (vuelta === 1) {
     return {
-      narration:
-        'Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo, con la respiración entrecortada y sin dejar de mirar hacia atrás — algo, o alguien, la persigue.',
+      narration: GISTERA_TEXTO_APERTURA,
       opciones: ['Me acerco a ella', 'Observo con atención', 'Me retiro'],
       cierra: false,
     };
@@ -346,7 +359,7 @@ export function narrarVueltaGistera(vuelta: number, respuesta: RespuestaGistera 
   }
   if (respuesta === 'rechazar') {
     return {
-      narration: 'Gistera aprieta la mandíbula, decepcionada pero sin insistir. «Entiendo. Cuídate, Gorhorn.» Retrocede hacia las sombras y desaparece de la vista.',
+      narration: 'Gistera aprieta la mandíbula, decepcionada pero sin insistir. «Entiendo. Cuídate.» Retrocede hacia las sombras y desaparece de la vista.',
       opciones: [],
       cierra: true,
     };

@@ -1,6 +1,6 @@
 import { env } from '../config/env.js';
 import { ollamaQueue } from './ollamaQueue.js';
-import { calcularTruncated, nsToMs, registrarCaso, registrarLlamada } from './iaRegistro.js';
+import { calcularTruncated, nsToMs, prefijoComun, prefijoBloqueYLinea, prefijoBloqueAjeno, type BloquePrompt, registrarCaso, registrarLlamada } from './iaRegistro.js';
 
 export interface OllamaGenerateOptions {
   model: string;
@@ -49,6 +49,8 @@ export interface OllamaGenerateOptions {
   numCtx?: number;
   /// Intento de la cascada del narrador (1, 2 o 3), solo para el registro (`app.intento`, QA-162).
   intento?: number;
+  /// QA-507: el prompt por bloques con nombre (su concatenación es `prompt`), solo para el registro (`app.prefijo_bloque`).
+  bloques?: BloquePrompt[];
   /// Muestreo extra de Ollama (`options`), p. ej. el del narrador (QA-289). Sin él, manda el Modelfile.
   muestreo?: { min_p?: number; repeat_penalty?: number; repeat_last_n?: number };
 }
@@ -166,6 +168,8 @@ function registrarGenerate(
 ): void {
   const r = (raw ?? {}) as OllamaRawStats;
   const numCtx = numCtxDe(options);
+  // Una llamada sin bloques también ocupa la caché de Ollama de ese modelo: la siguiente con bloques no compara con la anterior.
+  if (env.iaRegistro && !options.bloques) prefijoBloqueAjeno(options.model);
   registrarLlamada({
     operation: 'text_completion',
     provider: 'ollama',
@@ -184,6 +188,8 @@ function registrarGenerate(
     prefillMs: nsToMs(r.prompt_eval_duration),
     decodeMs: nsToMs(r.eval_duration),
     ttftMs: extra.ttftMs,
+    ...(env.iaRegistro ? prefijoComun(options.model, `${options.system ?? ''}\n${options.prompt}`) : {}),
+    ...(env.iaRegistro && options.bloques ? (({ bloque, linea }) => ({ prefijoBloque: bloque, prefijoLinea: linea }))(prefijoBloqueYLinea(options.model, options.bloques)) : {}),
     // Una llamada fallida no dice si se recortó: sin esto contaba en recortado_pct por el largo del prompt.
     truncated: extra.error ? undefined : calcularTruncated(r.prompt_eval_count, numCtx, (options.system?.length ?? 0) + options.prompt.length),
     error: extra.error,

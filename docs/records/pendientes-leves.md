@@ -68,3 +68,27 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 ## Actualización del flujo a v0.7.0 (`claude/wonderful-volta-662qt8`, 2026-11-16)
 
 - ~~`test_measure.py` (parche P24): `StopIteration` sin ruta~~ ✅ 2026-11-18 (`QA-511`): ahora `FileNotFoundError` con las rutas buscadas.
+
+## QA-353 (`claude/ronda-local-2`, 2026-11-16)
+
+- `vigilante-memoria.sh`: con MemAvailable ilegible `desde` no se reinicia (la racha previa se hereda al volver la lectura) y, tras suspender la Deck, `SECONDS` salta y una racha abierta antes de dormir dispara la alerta al despertar.
+- `vigilante-memoria.sh`: la ventana de 30 s es fija; un `escenario.sh cargar` que dure más de 30 s por debajo de 1500 MiB para la ronda en mitad de la carga (`VENTANA_S` la sube a mano).
+- `ia-ronda.sh estado`: avisa «FALTA el vigilante» con cualquier Ollama en :11434, también el de otra rama (GVE, imágenes), que no es de la ronda; visto en la Deck, 2026-11-16.
+
+## Sesión de arreglos de la ronda local 2 (`claude/ronda-local-2`, 2026-11-16)
+
+- QA-354, `detectsUnknownConstructionClaim`: «se levanta una empalizada» (impersonal) ya no cuenta como construir.
+- QA-355, `hasFalseCombatAttacker`: el golpe con el jugador detrás del verbo («un tajo certero de Gorhorn abre…») ya no se rechaza; tampoco «Gorhorn mira. El orco golpea a Gorhorn» se libra (como antes).
+- P474, `hasPlayerLineAddressedToPlayer`: «Gorhorn escucha a Ulkha: «Tus clanes cayeron, Gorhorn»» (la oración empieza por el jugador, pero habla el NPC) se rechaza de más; solo cuesta un reintento.
+
+## Pendientes leves de la revisión de bloque de la ronda local 2 (2026-11-19)
+
+- `npcScene.ts` P479 (~358): un PRINCIPAL ya conocido se reconoce por la primera palabra de su nombre (≥4 letras): si es un título o palabra común («Vieja Ulma», «Hermano X»), «busco a la vieja del pozo» lo mete en escena; un nombre de pila de menos de 4 letras («Kor») nunca casa.
+
+## Pendientes leves de la revisión de bloque de la ronda local 2 (2026-11-20)
+
+Los dos de `iaRegistro.ts`, en `QA-520` (retro, 2026-11-20).
+
+- `iaRegistro.ts` `lineaDeLaDiferencia` (~170): si el bloque nuevo solo pierde la cola, `prefijo_linea` apunta a la última línea (igual) y no a la quitada; con `i = 0` y texto que empieza por `\n` da la segunda línea.
+- `iaRegistro.ts` (~175): `prefijo_linea` guarda los primeros 48 caracteres de la línea; en líneas largas (PERSONAJES AQUÍ…, INVENTARIO…) la diferencia queda más allá: guardar una ventana alrededor de la diferencia o su columna.
+- `iniciar-tarkor.sh`, `actualizar-mundo.sh`, `generar-dataset-dpo.sh`: Ollama fijo en `~/ollama-bin` sin respaldo a `~/.local/ollama` (como hace `ia-ronda.sh`) y `docs/arquitectura/04-decisiones-tecnicas.md:154` sigue con la ruta vieja.

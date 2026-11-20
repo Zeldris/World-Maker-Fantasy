@@ -10,14 +10,15 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-11-19 |
+| **Actualizado** | 2026-11-20 |
 | **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/generador-mapas`, `claude/banco-narrador`. Filas de ramas cerradas: [`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342). Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
-| **Último commit en `main`** | PR #99 de `claude/wonderful-volta-662qt8` (2026-11-16, `2dee60b3`, CI en verde): flujo Galivelop-workflow v0.7.0 y su retro (`QA-363` hecha, `QA-362` al roadmap, hito `0.3`). |
+| **Último commit en `main`** | PR #103 de `claude/wonderful-volta-662qt8` (2026-11-19, `2b7ff9ba`, CI en verde): flujo Galivelop-workflow v0.8.1; antes, PR #102 (`docs/metrics/` como contenido, retro `QA-511`), PR #100 de `claude/marca-imagenes` y PR #99. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
-| **Tarea en curso · `claude/marca-imagenes`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
+| **Tarea en curso · `claude/ronda-local-2`** | PR abierto a `main`: https://github.com/Zeldris/World-Maker-Fantasy/pull/104 (2026-11-20, ronda local 2: L1-L8, ~~QA-509~~…~~QA-519~~, retro aprobada); se fusiona con el CI en verde. Al fusionarse, rama terminada. Quedan P311, P485, P491, P492, P493 (jugar con Ollama real) y `QA-520` (barrido de `iaRegistro.ts`) para otra rama. |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | PR a main: flujo Galivelop-workflow v0.8.1 (gw-update 0.8.0 → 0.8.1, 2026-11-19). Fases 1-3 hechas (revisión trivial, 0 hallazgos; retro decidida: C1-C3 para gw-harvest, C4 aplazada, C5 la aplica la usuaria). Al fusionarse, rama terminada. Sigue pendiente IMG-59 en la Deck. |
-| **Tarea en curso · `claude/narrador-tiempos`** | `QA-289` 🚧 (usuario, 2026-11-14): ronda cerrada (P412, P423, P417 ✅; nuevos P469, P470), `/gw-opt-ai` hecho (`QA-339`…`QA-341`). Fases 1 y 2 hechas (retro aprobada: ~~`QA-345`~~, ~~`QA-346`~~). Fase 3: arreglos del code-review de la fase 2 hechos (`Findings: 8`, resolver-conflicto.py con base y por id). **Siguiente:** `reviewed.sh`, push y PR con gh; luego QA-339…341. |
+| **Tarea en curso · `claude/narrador-tiempos`** | Fusionada en `main` (PR #97, 2026-11-15) y, con ~~`QA-347`~~, ~~`QA-348`~~ y las tandas 131-132, en `claude/ronda-local-2` (2026-11-15). Rama terminada. |
+| **Tarea en curso · `claude/marca-imagenes`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
 | **Tests** | Rama `claude/wonderful-volta-662qt8` (2026-10-20, antes del PR de `opt-ai`): backend `tsc` 0, `vitest` 302 archivos / 3661 con 2 rojos que también fallan en `main` con la misma base (`mundoPartida` y `deudaDeVida`, integración: estado de la base tras la ronda con Ollama real, no del PR); frontend `tsc -b` 0; `tools/qa/tests` 68 y `opt-ai` 16 en verde. Tras un reinicio del contenedor, `.claude/hooks/session-start.sh` (`QA-10`) levanta Postgres y el Ollama simulado. |
 
@@ -69,7 +70,7 @@ Lo nuevo que surja va a «Propuestas aprobadas…» (abajo) sin hito, como bande
    - ~~Reino R-A~~ ✅ (`REI-110`…`REI-116`, `REI-33`, `REI-40`, `REI-41`; ver [roadmap-front-reino.md](../producto/roadmap-front-reino.md))
    - ~~Zona Z-A~~ ✅ (`ZON-10`, `11`, `13`, `14`, `17`, `19`, `20`, `62` + pictogramas del mapa de `BAS-2`; captura en `docs/producto/img/zona-mapa-z-a.jpg`)
 4. ~~**Fase D — El mundo vivo, visible**~~ ✅ 2026-10-02 (noticias del mundo + agenda leída de `FactionRelation`; el Libro de Sucesos `CR-1`…`CR-4` sigue esperando la decisión de Álvaro).
-5. 🚧 **Fase F — latencia en la Steam Deck**: script `npm run benchmark-turno` hecho (2026-10-02); falta que Álvaro lo ejecute en la Steam Deck y pase el JSON.
+5. ✅ **Fase F — latencia en la Steam Deck**: medida el 2026-11-14 con Ollama real (turno total: mediana 29 s, p90 44,7 s); falta que Álvaro fije el objetivo de turno.
 6. **Fase E — súbditos mínimos** (bloqueada, ver decisiones).
 7. ⏸ **Fase G — pasada de juego completa**: aplazada a la **fase única de pruebas** (fila `0.7` del mapa). Lo hecho y lo pendiente, en [`fase-g-0.1-hallazgos.md`](fase-g-0.1-hallazgos.md).
 8. 🚧 **Hito `0.2` Facciones vivas** (empezado 2026-10-02 por decisión de la usuaria, con el `0.1`
@@ -109,7 +110,7 @@ Aprobadas por la usuaria, a la espera del roadmap: ahora en [`propuestas-aprobad
 | Bloquea | Pregunta | Dónde |
 |---|---|---|
 | Fase E del 0.1 | ¿Vale la propuesta de llegada de pobladores? | `21-roadmap.md`, preguntas abiertas 1 |
-| Fase F del 0.1 (acción, no decisión) | Ejecutar `cd backend && npm run benchmark-turno -- --turnos 10` en la Steam Deck con el backend y el Ollama reales, y pasar el JSON que genera | `plan-roadmap-0.1.md` § Fase F |
+| Fase F del 0.1 | Medida en la Deck (2026-11-14): turno total mediana 29 s, p90 44,7 s (narrar, 13 · 30 s). ¿Qué objetivo de turno se fija en el roadmap? | `plan-roadmap-0.1.md` § Fase F |
 | Reputación (no bloquea) | ¿Perdonar a un rival (Clemente) debe restar 50 con su clan? (P270) | `pruebas-0.3-hallazgos.md` |
 | Maestro de diplomacia | ¿Quién lo enseña y dónde? | `21-roadmap.md`, preguntas abiertas 2 |
 | Z-C (0.2) | ¿Dónde vive el mapa de zona? (`ZON-1`) | `roadmap-front-zona.md` § 16 |
@@ -158,6 +159,11 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-18 — QA-511: retro de la v0.8.0 del flujo aplicada (guía de imágenes marcada como desfasada, otra rama por subagente, cobertura.py --fila)
-2. 2026-11-16 — UX-40: marca de Tarkor en la interfaz, sin imágenes (llega a main con UX-41)
-3. 2026-11-16 — QA-364, QA-365, QA-366, QA-367, QA-368: `/gw-opt-tokens` y retro de UX-41 (hoja de piezas, aviso de diff de roadmap, hoja.sh con FONDO, css-sin-uso.py en el check)
+1. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
+   QA-352, QA-353, QA-354, QA-355, QA-356, QA-370, QA-503, QA-505, QA-506, QA-507, QA-508, QA-510, QA-512,
+   QA-513, QA-515, QA-516 (detalle en `roadmap-front.md` y el PR #104)
+2. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
+3. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos
+4. 2026-11-20 — QA-514: cerrada sin recalentado; la tanda A/B L7 mostró que con Ollama 0.34.2 dialogo_npc no desaloja al narrador (narrar tras diálogo 10-22 s de prefill frente a 24-26 s con recalentado); revert del código
+5. 2026-11-19 — QA-509: volátiles de combate al final de hechos; primera palabra p50 21,6→12,5 s en la tanda L5
+6. 2026-11-19 — QA-517: sin falsos positivos de las guardas de golpe en la tanda L5 (intento 2 25→13 %, respaldo 0)

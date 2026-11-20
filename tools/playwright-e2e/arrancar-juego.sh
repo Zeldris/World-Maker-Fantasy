@@ -124,6 +124,16 @@ fi
 if [ -n "${IA_PERFIL:-}" ]; then
   if [ "$IA_PERFIL" = deck ]; then ia_comprobar_log_gpu logs/ollama.log || exit 1; fi
   salida="$(cd backend && npm run --silent rag-eval 2>&1)" && rc=0 || rc=$?
+  # P274: un escenario guardado con el Ollama simulado trae el lore con sus embeddings, y contra el real el RAG
+  # devuelve trozos al azar. Si fallan casos obligatorios, se reindexa una vez (~20 s en la Deck) y se mide otra vez.
+  if [ "$rc" = 1 ] && printf '%s\n' "$salida" | grep -Eq 'fallan debe_pasar: [1-9]'; then
+    echo "rag-eval: fallan casos obligatorios; el lore lleva otros embeddings (P274): reindexando…"
+    if (cd backend && npm run --silent reindex-lore > /dev/null 2>&1); then
+      salida="$(cd backend && npm run --silent rag-eval 2>&1)" && rc=0 || rc=$?
+    else
+      echo "reindex-lore ha fallado" >&2
+    fi
+  fi
   printf '%s\n' "$salida"
   ia_veredicto_rag_eval "$rc" "$salida" || exit 1
   # rag-eval ya cargó el modelo de embeddings: ahora /api/ps lista algo (recién arrancado salía vacío).

@@ -10,8 +10,8 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$DIR/logs"
 
-export PATH="$HOME/.local/ollama/bin:$PATH"
-export LD_LIBRARY_PATH="$HOME/.local/ollama/lib/ollama:$LD_LIBRARY_PATH"
+export PATH="$HOME/ollama-bin/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/ollama-bin/lib/ollama:$LD_LIBRARY_PATH"
 
 echo "Generando dataset DPO sintético para Tarkor..."
 echo

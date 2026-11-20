@@ -184,6 +184,20 @@ class Resumen(unittest.TestCase):
         self.assertIn('- **Arreglados, sin comprobar jugando** (2): P2, P8.', texto)
         self.assertIn('- **Arreglados en parte** (2): P6, P9.', texto)
 
+    def test_manda_el_ultimo_tramo_si_empieza_por_check_o_cierre(self):
+        """QA-352: el historial de delante («en parte», «falta:», «combates reabiertos») no manda sobre el último tramo."""
+        escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | arreglado en parte, falta: el texto · ✅ comprobado jugando (tanda 9) |
+| P8 | Ocho | ✅ hecho con dos combates reabiertos · ✅ cerrado 2026-11-15, no jugable: no se reproduce |
+| P9 | Nueve | pendiente de que la usuaria decida · → roadmap (Álvaro) |
+| P10 | Diez | ✅ comprobado · pendiente: sale otra vez |
+""")
+        self.assertEqual(self.correr('--resumen').returncode, 0)
+        texto = leer(self.ruta)
+        self.assertIn('- **Comprobados jugando** (2): P3, P7.', texto)
+        self.assertIn('- **Arreglados, no jugables (los cubre un test o la base)** (1): P8.', texto)
+        self.assertIn('- **Cerrados sin arreglo (no aplica, dato o roadmap)** (2): P5, P9.', texto)
+        self.assertIn('- **Arreglados en parte** (2): P6, P10.', texto)
+
     def test_arreglado_sin_check_cuenta_como_arreglado(self):
         escribir(self.ruta, CON_RESUMEN + """| P7 | Siete | arreglado (2026-10-19, decisión de la usuaria): suma a la Comida |
 | P8 | Ocho | arreglado (2026-10-19): test en verde. Jugado ✓ (2026-10-19) |

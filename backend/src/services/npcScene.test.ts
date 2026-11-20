@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { matchNpcAliases, elegirInterlocutor, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { matchNpcAliases, elegirInterlocutor, npcInterpelado, contraataqueDifficultyFor, utilityDifficultyFor, tabulatedAttackAttribute, detectsAttackIntent, detectsHostileSearchIntent, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, detectsFarewellIntent, detectsGreetingOrQuestion, sinNombreReal, nombraPorNombreVisible, otroNpcComparteRaza, filterFarewellFacts, sinRastrosDeNpc, corregirNombresCasi, scopeFor, pickAmbientEncounterCandidate, slugsConPuntoSoloEnOtraZona, npcSceneBlockFor, buildNpcInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import type { AttributeBlock } from './dice.js';
 
 const NPCS = [
@@ -310,6 +310,21 @@ describe('detectsAttackIntent', () => {
   it('detecta verbos de ataque directo', () => {
     expect(detectsAttackIntent('Cargo contra mi enemigo')).toBe(true);
     expect(detectsAttackIntent('Miro el paisaje')).toBe(false);
+  });
+
+  it('P471: reconoce tajo, mandoble, estocada, cuchillada, embestir y «descargo … contra», sin confundir «atajo»/«tajada»', () => {
+    expect(detectsAttackIntent('Lanzo un tajo al costado del orco')).toBe(true)
+    expect(detectsAttackIntent('Le suelto dos tajos seguidos')).toBe(true)
+    expect(detectsAttackIntent('Descargo un mandoble')).toBe(true)
+    expect(detectsAttackIntent('Intento una estocada al pecho')).toBe(true)
+    expect(detectsAttackIntent('Le arreo una cuchillada')).toBe(true)
+    expect(detectsAttackIntent('Embisto al orco con el hombro')).toBe(true)
+    expect(detectsAttackIntent('Intento embestir al orco')).toBe(true)
+    expect(detectsAttackIntent('Descargo toda mi furia contra el orco')).toBe(true)
+    expect(detectsAttackIntent('Tomo un atajo por el bosque')).toBe(false)
+    expect(detectsAttackIntent('Descargo el fardo y me apoyo contra la roca')).toBe(false)
+    expect(detectsAttackIntent('Corto una tajada de pan')).toBe(false)
+    expect(detectsAttackIntent('No lanzo ningún tajo')).toBe(false)
   });
 
   it('tolera una errata de distancia 2 en un stem literal (auditoría 2026-07-20, P0.4)', () => {
@@ -937,6 +952,12 @@ describe('npcSceneBlockFor', () => {
     expect(block).not.toMatch(/no hay botín que ofrecer/);
   });
 
+  it('P470: un convaleciente sigue tendido: el bloque y la línea corta lo dicen', () => {
+    const npc = npcFixture({ condicionFisica: 'CONVALECIENTE' });
+    expect(npcSceneBlockFor(npc, 1)).toContain('Sigue tendido en el suelo');
+    expect(npcSceneLineFor(npc, 1)).toContain('sigue en el suelo');
+  });
+
   it('convaleciente Y YA saqueado: no lista ningún equipo, dice explícitamente que no queda botín', () => {
     const block = npcSceneBlockFor(npcFixture({ condicionFisica: 'CONVALECIENTE', saqueado: true }), 1);
     expect(block).toContain('YA RESUELTO');
@@ -1274,6 +1295,15 @@ describe('detectsGreetingOrQuestion (P306)', () => {
     expect(detectsGreetingOrQuestion('¡Ataco al orco con el hacha!')).toBe(false);
     expect(detectsGreetingOrQuestion('Le amenazo: «¡dame el oro!»')).toBe(false);
   });
+
+  it('P479: un imperativo de habla con vocativo es diálogo; uno de movimiento o de acción, no', () => {
+    expect(detectsGreetingOrQuestion('Cuéntame qué pasó con los Maktor, Ulkha.')).toBe(true);
+    expect(detectsGreetingOrQuestion('Dime, Torgash, qué opinas del clan.')).toBe(true);
+    expect(detectsGreetingOrQuestion('Explícame cómo funciona el drogh.')).toBe(true);
+    expect(detectsGreetingOrQuestion('Sígueme, Ulkha.')).toBe(false);
+    expect(detectsGreetingOrQuestion('Dame el hacha, Ulkha.')).toBe(false);
+    expect(detectsGreetingOrQuestion('Cuéntame una amenaza: te mato, Ulkha.')).toBe(false);
+  });
 });
 
 describe('sinNombreReal (revisión P327)', () => {
@@ -1349,5 +1379,45 @@ describe('slugsConPuntoSoloEnOtraZona — cliente de la transacción', () => {
     expect([...r]).toEqual(['orco']);
     expect(db.zonePoint.findMany).toHaveBeenCalledTimes(1);
     expect(db.companion.findMany).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('P447/P448', () => {
+  it('P447: «saber dónde cazar» en una charla pacífica es un saludo/pregunta, no búsqueda hostil', () => {
+    expect(detectsGreetingOrQuestion('Le digo a Torgash que sirve saber dónde cazar para alimentar al clan')).toBe(true);
+    expect(detectsGreetingOrQuestion('Le digo que voy a cazar al orco')).toBe(false);
+  });
+  it('P448: «el orco» a secas nombra al orco desconocido', () => {
+    expect(nombraPorNombreVisible('Saludo al orco con la palma abierta', 'orco desconocido')).toBe(true);
+    expect(nombraPorNombreVisible('Saludo a la orca con la palma abierta', 'orco desconocido')).toBe(false);
+  });
+  it('P448: la raza suelta no vale si otro NPC de la escena comparte raza («ataco al orco enfurecido»)', () => {
+    expect(nombraPorNombreVisible('Ataco al orco enfurecido', 'orco desconocido', false)).toBe(false);
+    expect(nombraPorNombreVisible('Registro el cadáver del orco', 'orco desconocido', false)).toBe(false);
+    expect(nombraPorNombreVisible('Saludo al orco desconocido', 'orco desconocido', false)).toBe(true);
+    const oculto = { id: 'a', raza: 'orcos', genero: 'M' };
+    expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'b', raza: null, name: 'Orco enfurecido' }])).toBe(true);
+    expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'd', raza: 'orcos' }])).toBe(true);
+    expect(otroNpcComparteRaza(oculto, [{ id: 'a', raza: 'orcos' }, { id: 'c', raza: 'humanos', name: 'Gistera Koh' }])).toBe(false);
+  });
+});
+
+describe('npcInterpelado (revisión de código: diálogo puro sin interlocutor por defecto)', () => {
+  const ulkha = { id: 'u', name: 'Ulkha Ketg', aliases: ['jefa del clan serhu'] };
+
+  it('una acción de otra cosa con «?» o «!» no interpela al primer NPC de la escena', () => {
+    expect(npcInterpelado('¿Qué hay tras la puerta? La abro.', ulkha)).toBe(false);
+    expect(npcInterpelado('¡Me lanzo al río!', ulkha)).toBe(false);
+  });
+
+  it('nombrado, con verbo de habla dirigido, citado entre comillas o solo lo dicho: sí', () => {
+    expect(npcInterpelado('Saludo a Ulkha', ulkha)).toBe(true);
+    expect(npcInterpelado('¿Qué te trae, Ulkha?', ulkha)).toBe(true);
+    expect(npcInterpelado('Le pregunto qué opina de mí', ulkha)).toBe(true);
+    expect(npcInterpelado('Saludo con la cabeza', ulkha)).toBe(true);
+    expect(npcInterpelado('«Cuéntame qué pasó»', ulkha)).toBe(true);
+    expect(npcInterpelado('¿Qué pasó aquí?', ulkha)).toBe(true);
+    expect(npcInterpelado('¡Hola!', ulkha)).toBe(true);
+    expect(npcInterpelado('¡Me lanzo al río!', ulkha, true)).toBe(true);
   });
 });

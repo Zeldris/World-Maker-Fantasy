@@ -1,5 +1,5 @@
 import { ollamaGenerate, ollamaGenerateStream } from '../lib/ollama.js';
-import { registrarLlamada } from '../lib/iaRegistro.js';
+import { registrarLlamada, type BloquePrompt } from '../lib/iaRegistro.js';
 import { sinComillasSueltas } from './accionCitada.js';
 import { extractStreamingNarration } from './narrationStream.js';
 import { env } from '../config/env.js';
@@ -250,6 +250,12 @@ interface TurnContext {
   /// TAMBIÉN pasó algo real del otro lado). Mismo criterio que `npcFallsUnconsciousThisTurn`: un
   /// hecho mecánico ya resuelto que la narración tiene que reflejar, no una opción.
   jugadorRecibeGolpeEsteTurno?: boolean;
+  /// QA-340: true cuando en este intercambio el golpe del jugador conecta con el rival (`npcAttackHits`). Con
+  /// `jugadorRecibeGolpeEsteTurno` y `combatBothMissed` decide el valor de `resultadoDelGolpe`.
+  jugadorConectaEsteTurno?: boolean;
+  /// QA-340: el rival del intercambio como se le narra (`nombreNarrado`: «el orco desconocido» si Gorhorn aún no lo
+  /// conoce). En la Deck, con el nombre real en `resultadoDelGolpe`, la narración pasó a decir «Orco enfurecido».
+  combatRivalNarrado?: string;
   /// Ver `hasFalseItemUse` más abajo — nombres reales de objetos médicos/de energía que el
   /// personaje lleva encima PERO que este turno no se detectó que usara de verdad (ni
   /// `detectMedicalItemUse` ni `detectEnergyItemUse` los reconocieron en la acción del jugador).
@@ -265,6 +271,9 @@ interface TurnContext {
   /// runbook del proyecto (docs/runbooks/revisar-partida.md § "NPCs que resucitan") — un modelo pequeño a
   /// veces la ignora igual que ignoraba el resto de instrucciones "no hagas X" de esta lista.
   possiblyResurrectedNpcNames?: string[];
+  /// P464: textos fijos de una escena ya contada (la apertura de Gistera, del modo dinámico, que no se guarda como
+  /// narración anterior): una narración que los repite se rechaza.
+  escenasFijasYaContadas?: string[];
   /// Ver `hasFalseNpcAppearance` más abajo (Grupo 3 § Mundo determinista, Capa 3, 2026-08-25) —
   /// nombres reales de NPCs geográficamente plausibles aquí (`candidateNpcNamesNotInScene`,
   /// npcScene.ts) que NINGÚN mecanismo determinista puso en escena este turno concreto. Vacío = no
@@ -388,8 +397,15 @@ const rangoEstable = (f: string) => {
   const i = HECHOS_ESTABLES.findIndex((p) => f.startsWith(p));
   return i < 0 ? HECHOS_ESTABLES.length : i;
 };
-export function ordenarHechosPorEstabilidad(facts: string[]): string[] {
-  return facts.map((f, i) => ({ f, i, r: rangoEstable(f) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
+/// QA-509 (`/gw-opt-ai` de la tanda L4): en combate, líneas cortas que cambian de una ronda a otra (la salud del
+/// personaje, el arma de este golpe, si ya hubo intercambio) iban delante de los bloques de NPC, armas y misiones y
+/// cortaban ahí la caché de Ollama: ~10.200 caracteres comunes y primera palabra en 23-25 s, frente a 10-14 s con
+/// ~13.000. En combate van al final de los hechos; cuestan unas decenas de tokens por turno, no todo lo de detrás.
+const HECHOS_VOLATILES_COMBATE = ['ESTADO ACTUAL DEL PERSONAJE', 'ESTE GOLPE EN CONCRETO', 'Ningún intercambio de combate'];
+const esVolatilEnCombate = (f: string) => HECHOS_VOLATILES_COMBATE.some((p) => f.startsWith(p));
+export function ordenarHechosPorEstabilidad(facts: string[], enCombate = false): string[] {
+  const rango = (f: string) => (enCombate && esVolatilEnCombate(f) ? HECHOS_ESTABLES.length + 1 : rangoEstable(f));
+  return facts.map((f, i) => ({ f, i, r: rango(f) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.f);
 }
 
 function factsBlock(facts: string[]): string {
@@ -948,6 +964,8 @@ export interface NpcReplyContext {
   replicaAnterior?: string;
   /// P420: nombres propios del mundo (`nombresDelMundo`), para no inventar pueblos ni personajes.
   nombresConocidos?: Set<string>;
+  /// QA-518: lore de lo que nombra la frase del jugador (`loreParaReplica`), para no negar lo que su pueblo sabe.
+  lore?: string[];
 }
 
 const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
@@ -1003,12 +1021,20 @@ export function repiteTodasLasFrases(narracion: string, anterior?: string): bool
   return !!anterior && todas.length > 0 && todas.every(repiteTramoDe(anterior));
 }
 
-function repiteTramoDe(anterior: string): (frase: string) => boolean {
+/// P464: la narración copia un tramo de 10+ palabras de un texto fijo ya narrado (la escena de apertura/presentación).
+/// Umbral más alto que el de turno a turno: con 6 se rechazaba una frase corriente que compartía una cola con el texto
+/// fijo («corre sin dejar de mirar hacia atrás»).
+const TRAMO_ESCENA_FIJA = 10;
+export function repiteEscenaFija(narracion: string, fijas?: string[]): boolean {
+  return !!fijas && fijas.some((f) => frases(narracion).some(repiteTramoDe(f, TRAMO_ESCENA_FIJA)));
+}
+
+function repiteTramoDe(anterior: string, tramo = TRAMO_REPETIDO): (frase: string) => boolean {
   const previas = palabras(anterior);
-  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - TRAMO_REPETIDO + 1)).map((_, i) => previas.slice(i, i + TRAMO_REPETIDO).join(' ')));
+  const tramos = new Set(previas.slice(0, Math.max(0, previas.length - tramo + 1)).map((_, i) => previas.slice(i, i + tramo).join(' ')));
   return (f) => {
     const p = palabras(f);
-    return p.some((_, i) => i + TRAMO_REPETIDO <= p.length && tramos.has(p.slice(i, i + TRAMO_REPETIDO).join(' ')));
+    return p.some((_, i) => i + tramo <= p.length && tramos.has(p.slice(i, i + tramo).join(' ')));
   };
 }
 
@@ -1093,10 +1119,42 @@ export function conAccionDelanteDe(narracion: string, accion: string, characterN
   return `${characterName} ${limpia[0]!.toLowerCase()}${limpia.slice(1)}. ${narracion}`.trim();
 }
 
+/// QA-340 (`/gw-opt-ai`, ronda local 2): la mitad de los rechazos en combate eran un fallo narrado como golpe (×4) o un
+/// golpe invertido (×2). Como `P412`, el esquema pide antes de `narration` un campo con el resultado ya decidido; aquí con un
+/// único valor posible (`enum`), así el modelo lo escribe tal cual antes de narrar. `null` sin intercambio resuelto.
+export const CLAVE_RESULTADO_GOLPE = 'resultadoDelGolpe';
+export function resultadoDelGolpe(
+  ctx: Pick<TurnContext, 'enCombate' | 'characterName' | 'combatRivalNarrado' | 'combatBothMissed' | 'playerActedAsDefenderThisExchange' | 'jugadorConectaEsteTurno' | 'action' | 'jugadorRecibeGolpeEsteTurno'>,
+): string | null {
+  const jugador = ctx.characterName;
+  const rival = ctx.combatRivalNarrado;
+  if (!ctx.enCombate || !jugador || !rival) return null;
+  const Rival = rival[0]!.toUpperCase() + rival.slice(1);
+  // Si el jugador solo se defendió, no «golpea y falla»: el rival no le alcanza.
+  // QA-504 (P481): «no logra alcanzar, que se cubre» llevaba al modelo a narrar que Gorhorn «se planta y absorbe el impacto»,
+  // y la guarda de golpe falso lo rechazaba. En positivo: el golpe se pierde, sin impacto que resistir. Variante fija por
+  // turno (el valor va en el esquema y en el reintento), según el rival y la acción, para que no sea siempre la misma frase.
+  // QA-508 (P481): sin acierto, el rival sigue en pie (2 de 5 rechazos eran un orco que «se desploma» sin que nadie le diera).
+  if (ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange) {
+    const variantes = [
+      `El golpe de ${Rival} se pierde en el aire: ${jugador} lo esquiva y no le toca. ${Rival} sigue en pie y atento.`,
+      `${Rival} lanza su golpe y ${jugador} lo desvía: pasa de largo sin tocarle. ${Rival} sigue en pie, en guardia.`,
+      `El ataque de ${Rival} falla: ${jugador} se aparta a tiempo y el golpe pasa de largo, sin tocarle. ${Rival} sigue en pie y listo.`,
+    ];
+    return variantes[[...`${rival}${ctx.action ?? ''}`].reduce((a, c) => a + c.charCodeAt(0), 0) % variantes.length]!;
+  }
+  if (ctx.combatBothMissed) return `Nadie acierta: ni ${jugador} ni ${rival} conectan su golpe.`;
+  if (ctx.jugadorConectaEsteTurno && ctx.jugadorRecibeGolpeEsteTurno) return `Los dos aciertan: ${jugador} golpea a ${rival} y ${rival} golpea a ${jugador}.`;
+  if (ctx.jugadorConectaEsteTurno) return `${jugador} acierta y golpea a ${rival}; ${rival} no le acierta.`;
+  if (ctx.jugadorRecibeGolpeEsteTurno) return `${Rival} acierta y golpea a ${jugador}; ${jugador} no le acierta.`;
+  return null;
+}
+
 /// Posproceso del camino bueno (frases repetidas, campo `loQueHace<Nombre>` y su acción delante). También se aplica al
 /// último resultado cuando todos los intentos se rechazan por motivos distintos (QA-289): sin él quedaba el campo crudo.
 export function posprocesarNarracion(parsed: NarrationResult, ctx: TurnContext): NarrationResult {
   parsed.narration = quitarFrasesRepetidas(parsed.narration, ctx.lastNarrationText);
+  delete (parsed as unknown as Record<string, unknown>)[CLAVE_RESULTADO_GOLPE];
   if (ctx.characterName && !ctx.enCombate) {
     const clave = claveAccionDelJugador(ctx.characterName);
     const accion = (parsed as unknown as Record<string, unknown>)[clave];
@@ -1161,16 +1219,35 @@ export function unirReplica(
   narracion: string,
   reply: string,
   npc: { name: string; nombreVisible?: string; articulo: string | null; genero: string | null },
+  // Turno de diálogo puro: la línea del jugador ya nombra al NPC y acaba en su propia cita, así que quien responde
+  // se dice siempre (si no, la réplica se leería como la continuación de lo que dice el jugador).
+  conHablante = false,
 ): string {
   // P425: «-La situación…»: un guion suelto al abrir no es la raya de diálogo.
   const sinGuion = (reply.trim() === '' ? REPLICA_DE_RESPALDO : reply).replace(/^([«“"]?)\s*-+\s*/, '$1');
   const cita = /^[«“"—]/.test(sinGuion) ? sinGuion : `«${sinGuion.replace(/^'+|'+$/g, '')}»`;
-  if (narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
+  if (!conHablante && narracion !== '' && !/[.!?…»”"]$/.test(narracion)) return `${narracion.replace(/[\s,;:]+$/, '')}: ${cita}`;
   const visible = npc.nombreVisible ?? npc.name;
-  if (contieneNombre(frases(narracion).at(-1) ?? '', visible)) return `${narracion} ${cita}`.trim();
+  if (!conHablante && contieneNombre(frases(narracion).at(-1) ?? '', visible)) return `${narracion} ${cita}`.trim();
   const articulo = npc.nombreVisible ? (npc.genero === 'F' ? 'la' : 'el') : npc.articulo;
   const quien = articulo ? `${articulo[0]!.toUpperCase()}${articulo.slice(1)} ${visible.toLowerCase()}` : visible;
   return `${narracion} ${quien} responde: ${cita}`.trim();
+}
+
+/// P464(b), P466, P474, P476 (decisión de Álvaro, 2026-11-17): en un turno de diálogo puro (saludo o pregunta a un NPC,
+/// sin combate ni escena fija) no se llama al narrador, que hablaba o gesticulaba por el jugador y le atribuía la
+/// réplica del NPC. Va esta línea fija y, detrás, la réplica de `dialogo_npc` (`unirReplica` con hablante). Si la
+/// acción trae lo que dice entre comillas o tras dos puntos, se cita; si no («Le pregunto a Ulkha qué la trae»), solo
+/// a quién se dirige. `quien` es el nombre en frase («la orca desconocida», «Ulkha Ketg»).
+export function lineaDialogoDelJugador(characterName: string, action: string, quien: string): string {
+  const a = quien.replace(/^el\s/i, 'al ').replace(/^(?!al\s)/, 'a ');
+  const cita = (/[«“"]([^»”"]{2,})[»”"]/.exec(action)?.[1] ?? /:\s*(.{2,})$/.exec(action)?.[1] ?? '').trim().replace(/[\s,;:]+$/, '');
+  if (cita) {
+    const conMayuscula = cita.replace(/^([¿¡]?)(\p{Ll})/u, (_, signo: string, letra: string) => signo + letra.toUpperCase());
+    const final = /[.!?…]$/.test(conMayuscula) ? conMayuscula : `${conMayuscula}.`;
+    return `${characterName} le ${/\?/.test(cita) ? 'pregunta' : 'dice'} ${a}: «${final}»`;
+  }
+  return /pregunt|[¿?]/i.test(action) ? `${characterName} se vuelve hacia ${quien} y le pregunta.` : `${characterName} se dirige ${a}.`;
 }
 
 function contieneNombre(texto: string, nombre: string): boolean {
@@ -1212,12 +1289,62 @@ export function abreConElNpc(narracion: string, npc: string, characterName: stri
   return delNpc >= 0 && (delJugador < 0 || delNpc < delJugador);
 }
 
+/// P474 (ronda local 2): el narrador pone en boca del jugador lo que dice el NPC: «Gorhorn se acerca a Ulkha… "La caída
+/// del Clan Maktor fue el resultado de su propia debilidad, Gorhorn"». Una frase citada que llama al jugador por su
+/// nombre (vocativo) no puede decirla él: si la oración que la abre empieza por el jugador, se atribuye mal.
+export function hasPlayerLineAddressedToPlayer(narration: string, characterName: string): boolean {
+  if (!characterName) return false;
+  const n = escapar(characterName);
+  const citas = narration.matchAll(/[«“"]([^»”"]+)[»”"]|(?<![\p{L}])'([^']{4,})'(?![\p{L}])/gu);
+  for (const m of citas) {
+    const cita = m[1] ?? m[2] ?? '';
+    const enCita = new RegExp(`(,\\s*${n}\\s*[.!?…]*\\s*$)|(^\\s*[¡¿]?${n}\\s*,)`, 'iu');
+    if (!enCita.test(cita.trim())) continue;
+    const antes = narration.slice(0, m.index);
+    const ini = Math.max(antes.lastIndexOf('. '), antes.lastIndexOf('! '), antes.lastIndexOf('? '), antes.lastIndexOf('»'), antes.lastIndexOf('”'), antes.lastIndexOf('"'), antes.lastIndexOf('\n')) + 1;
+    const oracion = antes.slice(ini).trim().replace(/^[.:;,\s'‘’]+/, '');
+    if (new RegExp(`^${n}(?![\\p{L}])`, 'iu').test(oracion)) return true;
+  }
+  return false;
+}
+
 /// P263 (ronda QA-289, 2026-11-03): Ulkha contesta «El mando sigue en manos de mi hermana, Ulkha Ketg… Yo, Ulkha Ketg,
 /// soy la que manda». Un posesivo a una o dos palabras de su propio nombre es hablar de sí como de otra persona;
 /// «mi nombre es Ulkha Ketg» no cuenta.
 export function hablaDeSiComoOtro(reply: string, nombre: string): boolean {
   const m = new RegExp(`(^|[^\\p{L}])(mi|mis|su|sus|nuestra|nuestro|nuestras|nuestros)\\s+(?:[\\p{L}']+,?\\s+){0,2}${escapar(nombre)}(?=$|[^\\p{L}])`, 'iu').exec(reply);
   return !!m && !/\b(nombre|llaman|llamo)\b/i.test(m[0]);
+}
+
+/// P466/P467/P469: una réplica de NPC que no sirve se pide otra vez (y si repite, sin réplica: sale la de respaldo).
+/// - Sin frase hablada (P466): empieza por el nombre del propio NPC, es una acotación («Ulkha Ketg se inclina…»).
+/// - Habla de sí en tercera persona (P469): su nombre (o el visible) aparece en su boca sin ser «me llamo / soy / mi nombre es».
+/// - Nombre del jugador en boca de quien no lo conoce (P467).
+export function replicaDefectuosa(
+  reply: string,
+  npc: { name: string; nombreVisible?: string },
+  characterName: string,
+  conoceAlJugador: boolean,
+): string | null {
+  const texto = reply.replace(/^[\s«»“”"—-]+/, '');
+  const nombres = [npc.name, npc.nombreVisible].filter((n): n is string => !!n);
+  if (nombres.some((n) => new RegExp(`^${escapar(n)}(?![\\p{L}])(?![,:;])`, 'iu').test(texto))) return 'acotación sin frase hablada';
+  // P466 (ronda local 2): «Ulkha mira hacia Gorhorn, su rostro serio.» — sin ninguna comilla, abre con una parte del
+  // nombre del NPC o habla del jugador con una preposición («se inclina hacia Gorhorn»): acotación, no habla.
+  if (!/[«»“”"'‘’]/.test(reply)) {
+    const partes = nombres.flatMap((n) => n.split(/\s+/)).filter((t) => t.length >= 4);
+    if (partes.some((t) => new RegExp(`^${escapar(t)}(?![\\p{L}])(?![,:;])`, 'iu').test(texto))) return 'acotación sin frase hablada';
+    if (new RegExp(`(^|[^\\p{L}])(hacia|a|con|ante|sobre)\\s+${escapar(characterName)}(?![\\p{L}])`, 'iu').test(reply)) return 'acotación sin frase hablada';
+  }
+  for (const n of nombres) {
+    const re = new RegExp(`(^|[^\\p{L}])${escapar(n)}(?![\\p{L}])`, 'giu');
+    for (const m of reply.matchAll(re)) {
+      const antes = reply.slice(Math.max(0, m.index! - 24), m.index! + m[1]!.length);
+      if (npc.nombreVisible || !/(yo|me llamo|soy|mi nombre es|llámame|me llaman)\s*,?\s*$/i.test(antes)) return 'habla de sí en tercera persona';
+    }
+  }
+  if (!conoceAlJugador && contieneNombre(reply, characterName)) return 'nombre del jugador sin conocerlo';
+  return null;
 }
 
 function sinNombreDelJugador(texto: string, characterName: string): string {
@@ -1257,7 +1384,7 @@ Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNO
 
 LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más). Donde pone «(tú)» habla de ti: cuéntalo en primera persona («yo…»), nunca como si fuera otra persona:
 ${factsBlock(hechos)}
-
+${ctx.lore?.length ? `\nLO QUE SABES DEL MUNDO (nunca digas que no lo conoces; si viene a cuento, respóndelo en 1-2 frases con tus palabras, sin recitarlo; no inventes lo que aquí no diga: de eso, lo que sabes es poco o nada; y siempre desde tu lado: lo de otro clan, pueblo o raza es ajeno, de oídas, nunca «nuestro» ni «nos»):\n${ctx.lore.map((l) => `- ${l}`).join('\n')}\n` : ''}
 ${quien} te acaba de decir: "${accion}"
 
 ${ctx.replicaAnterior ? `\nTu réplica anterior fue ${ctx.replicaAnterior}: no empieces igual ni repitas sus frases.\n` : ''}
@@ -1277,6 +1404,7 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   for (let intento = 0; intento < 2; intento++) {
     const reply = sinEco(await pedirReplicaNpc(system, prompt));
     if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) continue;
+    if (reply !== '' && replicaDefectuosa(reply, ctx.npc, ctx.characterName, conoce)) continue;
     const inventado = ctx.nombresConocidos ? nombreInventado(reply, ctx.nombresConocidos, [ctx.characterName, ctx.action, ...ctx.sessionFacts]) : null;
     if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) continue;
     if (inventado) console.warn(`[lint] nombre inventado en la réplica de ${ctx.npc.name}: «${inventado}»`);
@@ -1425,6 +1553,10 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
   hechosBlock: string;
   /// El bloque «TU PROPIA NARRACIÓN DEL TURNO ANTERIOR», para quitarlo del reintento tras repetirla (P414).
   narracionAnterior: string;
+  /// Principio de `prompt` hasta los hechos estables de la escena (QA-339): se guarda para calentar la caché al abrir.
+  prefijoEstable: string;
+  /// QA-507: el prompt por bloques con nombre, en orden (su concatenación es `prompt`).
+  bloques: BloquePrompt[];
 } {
   const rollBlock = ctx.roll
     ? rollBlockFor(ctx.roll)
@@ -1472,8 +1604,10 @@ export function buildNarrationPrompt(ctx: TurnContext & { roll?: RollResult }): 
           ? ' El NPC te SORPRENDE A TI — nota tu presencia y reacciona primero, con ventaja sobre ti. Pero NO describas ningún golpe ya recibido por tu personaje: eso se decide en el combate que empieza ahora, no en esta narración.'
           : ' Ninguno sorprende al otro — ambos se preparan a la vez, en igualdad de condiciones, sin que el enfrentamiento en sí (quién golpea, quién sale herido) se resuelva todavía en esta narración.'
       : '';
+  // P473: quién golpea a quién en este intercambio, ya decidido, en una frase corta y sin ambigüedad (también en el reintento).
+  const golpe = resultadoDelGolpe(ctx);
   const combatBlock = ctx.enCombate
-    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
+    ? `ESTÁS DENTRO DE UN COMBATE (docs/mecanicas/14-combate-y-muerte.md § 2.3): ${golpe ? `RESULTADO YA DECIDIDO, NO LO CAMBIES: ${golpe} Quien acierta es quien golpea; quien no acierta, no toca al otro. ` : ''}Narra en 1-2 frases, corto y directo, el intercambio de ESTE turno — nada de ambientación de relleno, es el ritmo de un choque, no una escena. Puedes proponer "condicionFisica" si el personaje sale herido de este intercambio (nunca lo cures aquí salvo que la acción sea explícitamente curarse). No te contradigas dentro de la misma frase — si un golpe se bloquea o esquiva sin daño, no describas ninguna herida/mancha/marca en el mismo aliento; si SÍ hay herida, no digas antes que fue "sin daño".${
         ctx.npcFallsUnconsciousThisTurn
           ? ctx.npcFallsConvalecienteThisTurn
             ? // Grupo que continúa (auditoría 2026-08-22, "revisa la partida otra vez"): este mismo
@@ -1594,7 +1728,8 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
   const identidad = corteEstado >= 0 ? ctx.characterSummary.slice(0, corteEstado) : ctx.characterSummary;
   const estadoPartida = corteEstado >= 0 ? `\n\n${ctx.characterSummary.slice(corteEstado + 1)}` : '';
   const narracionAnterior = ctx.worldFacts.filter(esNarracionAnterior).map((f) => `\n\n${f}`).join('');
-  const hechosBlock = factsBlock(ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f))));
+  const hechosOrdenados = ordenarHechosPorEstabilidad(ctx.worldFacts.filter((f) => !esNarracionAnterior(f)), ctx.enCombate);
+  const hechosBlock = factsBlock(hechosOrdenados);
 
   // P412: con réplica aparte, el NPC en una frase breve al final. Bench 20: sin diálogo, la narración abría con Ulkha en 5
   // de 7 turnos (y en uno hablaba sin que nadie le preguntara); fuera de combate, la línea va en todos los turnos.
@@ -1610,31 +1745,41 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
       ? ''
       : `\nFOCO: la narración cuenta lo que hace ${jugador}; empieza por ${ctx.characterName ?? 'él'} y su acción. Si hay otros personajes, salen después y en una frase breve.${campoAccion}\n`;
 
-  const prompt = `${GOOD_NARRATION_EXAMPLE}
+  const cabeceraEjemplo = `${GOOD_NARRATION_EXAMPLE}\n\n`;
+  const cabeceraInstrucciones = `${fixedInstructions}\n\n`;
+  const cabeceraPersonaje = `PERSONAJE:\n${identidad}\n\n`;
+  const cabeceraHechos = `HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):\n`;
+  const cabecera = cabeceraEjemplo + cabeceraInstrucciones + cabeceraPersonaje + cabeceraHechos;
+  // QA-339: lo que el siguiente turno en la misma zona comparte con este, para calentarlo al abrir la partida.
+  // QA-348 (`/gw-opt-ai`, 2026-11-15): en combate, todos los hechos. Dos rondas seguidas comparten también los no
+  // estables hasta el bloque de la ronda (al final de los hechos, QA-307); con solo los estables, el 1.er turno tras
+  // reabrir en combate procesaba 24-25 s de prompt, frente a 8-10 s los siguientes (Deck, tanda 131).
+  const prefijoEstable = ctx.enCombate
+    ? cabecera + hechosBlock
+    : cabecera + hechosOrdenados.filter((f) => rangoEstable(f) < HECHOS_ESTABLES.length).map((f) => `- ${f}`).join('\n');
+  // QA-507: el prompt como lista de bloques con nombre (su concatenación ES el prompt); el registro de la IA apunta
+  // el primer bloque que cambia respecto al prompt anterior (`app.prefijo_bloque`).
+  const bloques: BloquePrompt[] = [
+    { nombre: 'ejemplo', texto: cabeceraEjemplo },
+    { nombre: 'instrucciones', texto: cabeceraInstrucciones },
+    { nombre: 'personaje', texto: cabeceraPersonaje },
+    { nombre: 'hechos', texto: cabeceraHechos + hechosBlock },
+    { nombre: 'estado_partida', texto: estadoPartida },
+    { nombre: 'narracion_anterior', texto: narracionAnterior },
+    { nombre: 'lore_fondo', texto: backgroundLoreBlock },
+    { nombre: 'grounding', texto: `\n${groundingBlock}\n\n` },
+    { nombre: 'tirada', texto: `${rollBlock}\n\n` },
+    { nombre: 'combate', texto: `${combatBlock}\n\n` },
+    { nombre: 'longitud', texto: `${lengthGuidance}\n\n` },
+    { nombre: 'accion', texto: `ACCIÓN DEL JUGADOR:\n"${ctx.action}"\n${focoBlock}\nResponde solo con el JSON pedido, nada más.` },
+  ];
+  const prompt = bloques.map((b) => b.texto).join('');
 
-${fixedInstructions}
-
-PERSONAJE:
-${identidad}
-
-HECHOS DEL MUNDO (lo que es real y está pasando en esta escena/partida ahora mismo):
-${hechosBlock}${estadoPartida}${narracionAnterior}${backgroundLoreBlock}
-${groundingBlock}
-
-${rollBlock}
-
-${combatBlock}
-
-${lengthGuidance}
-
-ACCIÓN DEL JUGADOR:
-"${ctx.action}"
-${focoBlock}
-Responde solo con el JSON pedido, nada más.`;
-
+  // QA-340: el resultado del golpe, ya decidido (`golpe`, arriba), va primero y es obligatorio (ver `resultadoDelGolpe`).
   const format = {
     type: 'object',
     properties: {
+      ...(golpe ? { [CLAVE_RESULTADO_GOLPE]: { type: 'string', enum: [golpe] } } : {}),
       ...(claveAccion ? { [claveAccion]: { type: 'string', maxLength: 160 } } : {}),
       narration: { type: 'string' },
       // QA-289: como mucho 3 hechos y cortos; más era repetir la narración en otra lista (y tiempo de escritura).
@@ -1715,10 +1860,10 @@ Responde solo con el JSON pedido, nada más.`;
             },
     },
     // P412 (ronda 5c): sin estar en `required`, la gramática de Ollama dejaba saltarse el campo y llegaba vacío 3 de 3.
-    required: [...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
+    required: [...(golpe ? [CLAVE_RESULTADO_GOLPE] : []), ...(claveAccion ? [claveAccion] : []), 'narration', 'newFacts'],
   };
 
-  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior };
+  return { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, prefijoEstable, bloques };
 }
 
 /// Red de seguridad del reintento en cascada (2026-08-31, causa raíz: "sessionFacts reintroduce
@@ -1734,7 +1879,7 @@ export function allAttemptsRejectedForSameReason(reasons: string[], totalAttempt
 }
 
 export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): Promise<NarrationResult> {
-  const { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior } = buildNarrationPrompt(ctx);
+  const { prompt, format, backgroundLoreBlock, hechosBlock, narracionAnterior, bloques } = buildNarrationPrompt(ctx);
 
   // Tres intentos en cascada. Visto en pruebas reales (2026-07-18): una acción concreta colgó
   // 4 de 4 veces con el modelo grande, incluso reduciendo hechos y relajando la regla de "no
@@ -1757,14 +1902,19 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // Sin repeat_penalty: Ollama la aplica también al final del prompt, que es la acción, y en el bench
   // `15-filas-4-8` el narrador dejó de contar lo que hacía el jugador («Bebo un trago…» sin beber).
   const MUESTREO_NARRADOR = { min_p: 0.05 };
+  // QA-510: caracteres del prompt del intento en curso (como `app.prompt_chars` de la llamada: `system` vacío + salto + prompt), para las filas `rechazo`.
+  let promptCharsIntento: number | undefined;
   const attempt1 = () => {
+    promptCharsIntento = prompt.length + 1;
     const generateOptions = {
       model: env.ollamaModelNarrador,
       prompt,
+      bloques,
       format,
       // QA-163: 220 → 300. Solo cuesta si el modelo los usa (p50 de salida ~150); con 220, 1 de cada ~40
       // intentos 1 se cortaba a mitad del JSON y pasaba al intento 2.
-      maxTokens: 300,
+      // QA-347: 400 en combate; con `resultadoDelGolpe` (QA-340) la salida p50 subió a ~196 y 1 de 12 llegó a 300.
+      maxTokens: ctx.enCombate ? 400 : 300,
       // Bajado de 180s a 90s (2026-08-04, "ronda larga de pruebas" — logs reales de la Deck bajo
       // presión de memoria: el intento 1 se colgó del todo y agotó los 180s completos en CADA
       // turno narrado de la sesión, y el intento 2 (que sí funcionó) tardó solo ~60-105s más
@@ -1805,23 +1955,51 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   const retryFacts = ctx.worldFacts.slice(0, Math.max(2, ctx.criticalFactsCount ?? 0)).filter((f) => !esNarracionAnterior(f));
   // El lore de fondo (backgroundLoreBlock) es aún más prescindible que sessionFacts en un
   // reintento de emergencia — se omite entero, nunca se recorta a medias.
+  const golpeDecidido = resultadoDelGolpe(ctx);
   const retryPrompt = prompt
-    .replace(hechosBlock, factsBlock(retryFacts))
+    .replace(hechosBlock, factsBlock(golpeDecidido ? [`Resultado del intercambio (ya decidido): ${golpeDecidido}`, ...retryFacts] : retryFacts))
     .replace(backgroundLoreBlock, '');
   // P414 (bench 19, QA-289): con la narración anterior en el prompt, el modelo la copió en los 3 intentos y el turno cayó
   // al respaldo. Tras un rechazo por repetirla, el reintento va sin ella; el guard sigue comparando con `lastNarrationText`.
   const rejectionReasons: string[] = [];
-  const promptDeReintento = () =>
-    REPETICION.has(rejectionReasons[rejectionReasons.length - 1] ?? '') && narracionAnterior ? retryPrompt.replace(narracionAnterior, '') : retryPrompt;
+  // QA-501 (`/gw-opt-ai` del grupo 5): el recorte cambia el bloque que va justo tras la cabecera, y Ollama volvía a
+  // procesar ~3.000 tokens (prefill del intento 2 de 24-36 s, frente a 6-8 s con el prefijo). Solo se recorta tras un
+  // fallo técnico (timeout, JSON cortado); tras un rechazo de la guarda, el mismo prompt con el motivo al final.
+  // El respaldo (intento 3, otro modelo y `num_ctx` 8192, QA-166) va siempre recortado.
+  let ultimoFueRechazo = false;
+  const promptDeReintento = (recortar: boolean): { prompt: string; bloques?: BloquePrompt[] } => {
+    const base = recortar ? retryPrompt : prompt;
+    const motivo = rejectionReasons[rejectionReasons.length - 1] ?? '';
+    const quitaAnterior = REPETICION.has(motivo) && !!narracionAnterior;
+    const sinAnterior = quitaAnterior ? base.replace(narracionAnterior, '') : base;
+    // Solo el recorte tras un fallo técnico va sin motivo: tras un rechazo de la guarda, el respaldo (intento 3) sigue
+    // recortado (QA-166) pero lleva el sufijo con el motivo y la corrección en positivo.
+    if (recortar && !ultimoFueRechazo) return { prompt: sinAnterior };
+    // QA-504 (P481): tras rechazar un golpe falso cuando Gorhorn solo se defendió, la corrección dice en positivo lo que
+    // pasó (el golpe se pierde, no toca) en vez de dejar al modelo con el «error» a secas, que lo llevaba a «absorbe el impacto».
+    const rival = ctx.combatRivalNarrado ? ctx.combatRivalNarrado[0]!.toUpperCase() + ctx.combatRivalNarrado.slice(1) : 'El rival';
+    const enPositivo =
+      ctx.combatBothMissed && ctx.playerActedAsDefenderThisExchange && motivo.includes('ataque_falla')
+        ? ` Cuéntalo así: el golpe de ${rival} falla, se pierde en el aire o ${ctx.characterName ?? 'el jugador'} lo esquiva o lo desvía, y no le toca. ${rival} sigue en pie y atento.`
+        : '';
+    const sufijo = `\n\nTU RESPUESTA ANTERIOR SE DESCARTÓ POR: ${motivo}. Escríbela de nuevo sin ese error.${golpeDecidido ? ` Resultado del intercambio (ya decidido): ${golpeDecidido}` : ''}${enPositivo}`;
+    if (recortar) return { prompt: sinAnterior + sufijo };
+    return {
+      prompt: sinAnterior + sufijo,
+      bloques: [...bloques.map((b) => (quitaAnterior && b.nombre === 'narracion_anterior' ? { ...b, texto: '' } : b)), { nombre: 'reintento', texto: sufijo }],
+    };
+  };
 
   const attempt2 = () => {
     // maxTokens 400 (roadmap de velocidad, 2026-07-19, hallazgo de Fable): antes este intento no
     // llevaba tope y podía irse a los 240s enteros de timeout en vez de cortar antes — 400 sigue
     // dando mucho más margen que los 220 del intento 1 (por si la causa real era truncar de más),
     // sin dejarlo sin límite del todo.
+    const reintento = promptDeReintento(!ultimoFueRechazo);
+    promptCharsIntento = reintento.prompt.length + 1;
     return ollamaGenerate({
       model: env.ollamaModelNarrador,
-      prompt: promptDeReintento(),
+      ...reintento,
       format,
       maxTokens: 400,
       timeoutMs: 240_000,
@@ -1836,10 +2014,12 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
   // QA-166 (`/opt-ai`, 2026-10-20): con el `num_ctx` 4096 del Modelfile, el respaldo leía 2.050 de ~5.500 tokens y
   // perdía la acción (contestaba con lore). Lleva el prompt recortado del intento 2 y 8192: ~13 s en la Deck.
   // Mismo `num_ctx` y `keep_alive` que `clasificar` (QA-168), para que los dos usen el modelo ya cargado.
-  const attempt3 = () =>
-    ollamaGenerate({
+  const attempt3 = () => {
+    const reintento = promptDeReintento(true);
+    promptCharsIntento = reintento.prompt.length + 1;
+    return ollamaGenerate({
       model: env.ollamaModelCronista,
-      prompt: promptDeReintento(),
+      ...reintento,
       format,
       numCtx: CTX_CRONISTA,
       maxTokens: 220,
@@ -1849,6 +2029,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       tarea: 'narrar_respaldo',
       intento: 3,
     });
+  };
 
   let lastResult: NarrationResult | null = null;
   // Red de seguridad (2026-08-31, causa raíz: "sessionFacts reintroduce NPCs retirados/cruza
@@ -1889,16 +2070,18 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
         { check: () => hasAnachronism(parsed.narration), reason: 'anacronismo' },
         { check: () => isTooSimilarToLast(parsed.narration, ctx.lastNarrationText) || repiteTodasLasFrases(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE },
         { check: () => hasRepeatedDialogueLine(parsed.narration, ctx.lastNarrationText), reason: RECHAZO_REPITE_REPLICA },
+        { check: () => repiteEscenaFija(parsed.narration, ctx.escenasFijasYaContadas), reason: 'volver a contar una escena fija ya narrada (apertura/presentación)' },
         { check: () => hasEnglishLeak(parsed.narration), reason: 'fuga de inglés' },
         { check: () => hasHumanRaceLeak(parsed.narration), reason: 'mención de "humano/humana" — Helek Sirik no tiene raza humana' },
         { check: () => hasSecondPersonLeak(parsed.narration), reason: 'salto a segunda persona fuera de diálogo citado' },
+        { check: () => hasPlayerLineAddressedToPlayer(parsed.narration, ctx.characterName ?? ''), reason: 'frase citada que llama al jugador por su nombre atribuida al propio jugador (es la réplica del NPC)' },
         { check: () => hasFalseCombatHit(narrationAndFacts, ctx.combatBothMissed), reason: 'narrar (en prosa o en newFacts) un golpe que no conectó (ataque_falla/parada_en_seco)' },
         {
           check: () => hasFalseCombatMiss(narrationAndFacts, ctx.combatRealHitLanded, ctx.nonExchangeAttackHitLanded),
           reason: 'narrar (en prosa o en newFacts) una esquiva/bloqueo limpio cuando el golpe sí conectó (golpe_normal/golpe_pleno/golpes_mutuos)',
         },
         {
-          check: () => hasFalseCombatAttacker(narrationAndFacts, ctx.characterName, ctx.jugadorRecibeGolpeEsteTurno),
+          check: () => hasFalseCombatAttacker(narrationAndFacts, ctx.characterName, ctx.jugadorRecibeGolpeEsteTurno, ctx.jugadorConectaEsteTurno),
           reason: 'narrar (en prosa o en newFacts) al jugador acertando un golpe cuando el golpe real de este intercambio lo dio el NPC contra el jugador',
         },
         {
@@ -2050,10 +2233,11 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
 
       if (rejection) {
         console.warn(`[narrador] intento ${idx + 1}/3 descartado por ${rejection.reason}, reintentando`);
-        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason, rechazoTexto: parsed.narration.slice(0, 600) });
+        registrarLlamada({ evento: 'rechazo', task: idx === 2 ? 'narrar_respaldo' : 'narrar', intento: idx + 1, rechazo: rejection.reason, rechazoTexto: parsed.narration.slice(0, 600), promptChars: promptCharsIntento });
         if (idx === 0) ctx.onNarrationReset?.();
         lastResult = parsed;
         rejectionReasons.push(rejection.reason);
+        ultimoFueRechazo = true;
         continue;
       }
       return posprocesarNarracion(parsed, ctx);
@@ -2064,6 +2248,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       // silencioso que este proyecto ya se ha propuesto cazar (ver P0.2/P0.4 del roadmap).
       console.warn(`[narrador] intento ${idx + 1}/3 falló: ${err instanceof Error ? err.message : err}`);
       if (idx === 0) ctx.onNarrationReset?.();
+      ultimoFueRechazo = false;
       continue;
     }
   }
@@ -2481,11 +2666,57 @@ export function sanitizeSuggestions(suggestions: string[] | undefined): string[]
 // su brazo de cuchillo" con `resultado: 'parada_en_seco'` (fallo total del jugador) — "derriba" sin
 // más describe un golpe conectado, vocabulario nuevo sin cubrir hasta ahora.
 const COMBAT_HIT_LEAK_REGEX =
-  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
+  /\b(golpe[oó]|golpea(?!\s+el\s+aire)|golpeando|impact[oó]|impactando|hiri[oó]|hiere|hiriendo|(?<!sin\s)(?<!sin\s\w+\s)(?<!ni\suna\s)(?<!ninguna\s)(?<!no\sle\s(?:causa|hace|provoca|produce)\s(?:una\s)?)herida|atraves[oó]|atraviesa|atravesando|reban[oó]|rebanando|degüell[oa]|hace sangrar|rastro de sangre|l[ií]nea de sangre|l[ií]nea roja|sangrando|sangra por|se desploma|desplom[oó]|desplomándose|muerte instantánea|corta la garganta|corta el cuello|derram\w* (una gran cantidad de )?sangre|derrib[oa]|derribando|asesta\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|propina\s+\w*\s*(golpe|zarpazo|tajo|estocada|mandoble)|golpe\s+(certero|limpio|directo|contundente|mortal)|zarpazo\s+(certero|limpio|directo)|tajo\s+(certero|limpio|profundo)|estocada\s+(certera|limpia|directa)|ensarta|empala|clava\s+(su|el|un|la)|clava\s+con\s+\w+\s+en)\b/i;
+
+// QA-505 (P481): el sustantivo «impacto» sin daño (anticipado o resistido: «listo para absorber el impacto», «cualquier otro
+// impacto», «aguanta el impacto sin derrumbarse», «el impacto hace que el suelo se estremezca») no es un golpe que conecta.
+// Solo cuenta si el resto de la frase trae daño o efecto sobre alguien («el impacto le parte…»); lo que sigue a una negación
+// («sin…», «impidiendo que…daño») no cuenta. El verbo «impactando/impactó» no pasa por aquí: sigue contando.
+const IMPACTO_NOUN_REGEX = /\bimpacto\b/gi;
+const IMPACTO_NEGACION_REGEX = /\b(sin|no|ni|impidiendo|evitando|evita|impide)\b[^.!?\n]*/gi;
+const IMPACTO_DANO_REGEX = /\b(le|lo|la|les|los)\s+(parte|part[eií]\w*|rompe|romp\w*|hiere|abre|desgarr\w*|hunde|destroz\w*|lastim\w*|tumba|derrib\w*|lanza|arroja|aplast\w*|quiebr\w*|fractur\w*|perfor\w*|cort\w*|atraviesa|hace\s+(sangrar|retroceder|caer|tambalear\w*))|sangr\w*|herid\w*|da[ñn]o|\bcae\b|retroced\w*|derrumb\w*/i;
+
+function stripImpactoSinDano(text: string): string {
+  return text.replace(IMPACTO_NOUN_REGEX, (match, offset: number) => {
+    const rest = text.slice(offset + match.length);
+    const clause = (rest.split(/[.!?\n]/)[0] ?? '').replace(IMPACTO_NEGACION_REGEX, ' ');
+    return IMPACTO_DANO_REGEX.test(clause) ? match : ' ';
+  });
+}
+
+// QA-517 (P488): un golpe INTENTADO y resuelto en la misma oración con «pero/aunque… esquiva/bloquea/desvía/falla…» es un fallo
+// («ataca con un golpe directo, pero la Guerrera esquiva el golpe»): lo que va antes del «pero» no cuenta, lo de después sí
+// (sigue pasando por el regex) y, si trae daño («pero esquiva tarde y sangra»), la oración entera cuenta.
+const FALLO_TRAS_PERO_REGEX =
+  /\b(pero|aunque|sin\s+embargo)\b(?=[^.!?\n]*\b(esquiv\w*|se\s+aparta\w*|se\s+protege\w*|bloque\w*|desv[ií]\w*|deten\w*|fall[aóo]\w*|no\s+(?:le\s+)?(?:alcanza|logra|consigue|llega)\w*|lo\s+par[aó]|la\s+par[aó]|par[aó]\s+el\s+golpe))/i;
+// QA-517 (P488): un golpe que da «en el escudo» sin daño lo para el escudo: no es un golpe que conecte con el cuerpo.
+const GOLPE_EN_ESCUDO_REGEX = /\bgolpe(?:a|ó|ando)\s+(?:\w+\s+){0,2}?en\s+(?:el|su|un)\s+escudo\b/gi;
+
+const DANO_EXTRA_REGEX = /\b(hiri[eé]ndo\w*|hiri[oó]|hiere|atraviesa\w*|atraves[oó])\b/i;
+
+function conDano(text: string): boolean {
+  const sinNegacion = text.replace(IMPACTO_NEGACION_REGEX, ' ');
+  return IMPACTO_DANO_REGEX.test(sinNegacion) || DANO_EXTRA_REGEX.test(sinNegacion);
+}
+
+function stripFalloIntentado(text: string): string {
+  return text
+    .split(/(?<=[.!?\n])/)
+    .map((sentence) => {
+      let out = sentence;
+      const pero = FALLO_TRAS_PERO_REGEX.exec(out);
+      // El daño puede ir antes o después del «pero» («le abre una herida, pero bloquea el siguiente»): con daño en la oración, cuenta entera.
+      if (pero && !conDano(out)) out = out.slice(pero.index);
+      return out.replace(GOLPE_EN_ESCUDO_REGEX, (m, offset: number) => {
+        return conDano(out.slice(offset + m.length)) ? m : ' ';
+      });
+    })
+    .join('');
+}
 
 export function hasFalseCombatHit(narration: string, combatBothMissed?: boolean): boolean {
   if (!combatBothMissed) return false;
-  return COMBAT_HIT_LEAK_REGEX.test(narration);
+  return COMBAT_HIT_LEAK_REGEX.test(stripFalloIntentado(stripImpactoSinDano(narration)));
 }
 
 /// Mismo vocabulario que `COMBAT_HIT_LEAK_REGEX`, sin condicionar a ningún contexto de combate ya
@@ -2530,8 +2761,13 @@ export function hasCombatVocabulary(narration: string): boolean {
 // con todas sus fuerzas, pero NO LOGRA CONECTAR con su objetivo" — negación directa de impacto que
 // ninguna de las frases de arriba cubría (no es "esquiva"/"se aparta", es la negación explícita del
 // verbo "conectar" que el propio resumen mecánico usa para narrar el ÉXITO — "el golpe conecta").
+// Revisión de código: «a escasos palmos del orco y le abre un tajo» (el atacante se acerca) y «el orco, que encaja el golpe
+// sin inmutarse» (la herida es del rival) son golpes que sí entran: «a escasos…» exige una parte del cuerpo con posesivo o
+// artículo, y «sin inmutarse» no cuenta dentro de una subordinada con «que» (habla del rival, no del jugador).
+// P477 (ronda local 2, grupo 5 tanda C): con el golpe «de lleno», «se hunde en la arcilla… a escasos centímetros de su
+// cabeza» (el arma en el suelo, no en el rival) y, con el jugador a GRAVE, «soporta el impacto… apenas conmovido».
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar)\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos) de (su|sus|tu|tus|la|el) (cabeza|rostro|cara|cuello|garganta|pecho|cuerpo|oreja|ojo)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|(?<!\bque\b[^.;]{0,40})(sin inmutarse|(ni|no) se inmuta))\b/i;
 
 export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean, nonExchangeAttackHitLanded?: boolean): boolean {
   if (!combatRealHitLanded && !nonExchangeAttackHitLanded) return false;
@@ -2556,16 +2792,34 @@ export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: bool
 /// otro sujeto distinto de Gorhorn (p. ej. un tercer NPC entrando en la escena), podría disparar de
 /// más — no observado en la práctica todavía, mismo criterio que otros guards de esta familia
 /// (mejor un reintento de más que dejar pasar la inversión de roles real).
-export function hasFalseCombatAttacker(narration: string, characterName?: string, jugadorRecibeGolpeEsteTurno?: boolean): boolean {
-  if (!characterName || !jugadorRecibeGolpeEsteTurno) return false;
+// P473: si el jugador TAMBIÉN conecta (golpes_mutuos/contragolpe) narrarlo acertando es lo correcto: el guard no aplica.
+export function hasFalseCombatAttacker(narration: string, characterName?: string, jugadorRecibeGolpeEsteTurno?: boolean, jugadorConectaEsteTurno?: boolean): boolean {
+  if (!characterName || !jugadorRecibeGolpeEsteTurno || jugadorConectaEsteTurno) return false;
   const normalizedName = normalizeText(characterName);
   const sentences = narration.split(SENTENCE_SPLIT_REGEX).map(normalizeText);
   return sentences.some((sentence, i) => {
-    if (!sentence.includes(normalizedName)) return false;
-    const window = [sentence, sentences[i + 1] ?? ''].join(' ');
-    return COMBAT_HIT_LEAK_REGEX.test(window);
+    let nameAt = sentence.indexOf(normalizedName);
+    while (nameAt >= 0) {
+      // QA-517 (P489): «le da a Gorhorn un golpe certero» / «golpea a Gorhorn»: el nombre es la víctima (objeto), no quien golpea.
+      const victima = NOMBRE_VICTIMA_REGEX.test(sentence.slice(0, nameAt));
+      if (!victima) {
+        // QA-355 (P473): solo cuenta el vocabulario de impacto que viene DESPUÉS del nombre (el jugador como sujeto);
+        // "el orco golpea a Gorhorn" lo tiene antes (víctima) y "bajo el impacto" es el sustantivo del golpe recibido.
+        // QA-517 (P489): «Gorhorn se desploma» es el jugador cayendo (recibe), no acertando: no cuenta como golpe suyo.
+        const window = [sentence.slice(nameAt + normalizedName.length), sentences[i + 1] ?? ''].join(' ').replace(IMPACTO_SUSTANTIVO_REGEX, ' ').replace(CAIDA_REGEX, ' ');
+        if (COMBAT_HIT_LEAK_REGEX.test(window)) return true;
+      }
+      nameAt = sentence.indexOf(normalizedName, nameAt + normalizedName.length);
+    }
+    return false;
   });
 }
+
+// QA-517 (P489): el nombre va tras un verbo de golpe + «a/al» (objeto directo/indirecto del golpe): es quien lo recibe.
+const NOMBRE_VICTIMA_REGEX = /\b(da|dan|asesta|propina|lanza|golpea|hiere|alcanza|ataca|acierta|clava)\s+(?:a|al)\s+(?:(?:el|la|los|las)\s+)?$/i;
+const CAIDA_REGEX = /\b(se\s+desploma|desplom[oó]|desplomandose|desplomándose)\b/gi;
+// Sustantivo "impacto" (el golpe recibido), no el verbo "impactó" de COMBAT_HIT_LEAK_REGEX; ya sin tildes (normalizeText).
+const IMPACTO_SUSTANTIVO_REGEX = /\b(el|del|al|su|ese|este|tal|un)\s+impacto\b/gi;
 
 /// Narración-vs-mecánica, mismo patrón que `hasFalseCombatHit` (2026-08-02, bug real jugando en
 /// vivo, confirmado en DOS partidas seguidas — 2026-07-31 y 2026-08-01): el turno de aceptar ayudar
@@ -2781,11 +3035,12 @@ export function hasFalseNewItemClaim(narration: string, newItemName: string | nu
 /// "picar" madera o "talar" piedra) — no se amplía su vocabulario aquí; en vez de eso, se veta
 /// cualquier prosa que prometa una obtención SIN ningún camino mecánico activo este turno, sin
 /// importar qué palabras use para prometerlo. Vocabulario de obtención (encontrar/recoger/
-/// conseguir/añadir a la mochila) — mismo criterio conservador que el resto de la familia: si
+/// conseguir/añadir a la mochila; QA-512: no cuenta «encuentra a/al/su…» —un golpe que conecta con alguien—, ni «no consigue»,
+/// ni «consigue» + infinitivo) — mismo criterio conservador que el resto de la familia: si
 /// ya hay un camino mecánico real este turno (recolección/saqueo/construcción/crafteo), la
 /// obtención es legítima y el guard no se evalúa.
 const ITEM_OBTAINED_CLAIM_REGEX =
-  /\b(encuentr\w*|recog\w*|recolect\w*|consigu\w*|obtien\w*|hall[ao]\w*)\b|añade a (su|sus) (inventario|raciones|mochila|bolsa|zurr[oó]n)/i;
+  /\b(encuentr\w*\b(?!\s+(?:a|al|su|sus)\b)|recog\w*|recolect\w*|(?<!\bno\s)consigu\w*\b(?!\s+\w+(?:ar|er|ir)\b)|obtien\w*|hall[ao]\w*)\b|añade a (su|sus) (inventario|raciones|mochila|bolsa|zurr[oó]n)/i;
 
 export function hasFalsePassiveHarvestClaim(narration: string, newItemName: string | null | undefined, harvestOrLootActiveThisTurn?: boolean): boolean {
   if (harvestOrLootActiveThisTurn || newItemName) return false;
@@ -2948,12 +3203,23 @@ export function hasFalseItemUse(narration: string, possiblyFalseItemUseNames?: s
 // verbo pegado DIRECTAMENTE a hacia/sobre/contra ("se lanza hacia") — "lanza un hachazo brutal
 // contra Gorhorn" (verbo + objeto + preposición) se colaba entero.
 const RESURRECTION_LEAK_REGEX =
-  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
+  /\b(huellas?\s+(recien\w*|frescas?)|rastro\s+reciente|reconoce el paso de|acaba de pasar|sigue\s+(con vida|vivo)|todav[ií]a\s+(con vida|vivo)|reaparece|vuelve a (atacar|aparecer|acercarse)|se acerca (de nuevo|otra vez)|se (lanza|abalanza|arroja)\s+(\w+\s+){0,3}(hacia|sobre|contra)|se (da la vuelta|gira|vuelve)\s+bruscamente|se (incorpora|levanta|pone en pie)|tensos?\s+(los\s+)?musculos|embiste|carga contra|arremete\s+(hacia|contra))\b/i;
 
 export function hasResurrectedDeadNpc(narration: string, possiblyResurrectedNpcNames?: string[]): boolean {
   if (!possiblyResurrectedNpcNames || possiblyResurrectedNpcNames.length === 0) return false;
   const normalizedNames = possiblyResurrectedNpcNames.map(normalizeText);
-  return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames);
+  return sentenceMatchesRegexAndName(narration, RESURRECTION_LEAK_REGEX, normalizedNames) || haySujetoMuertoQueSeMueve(narration, normalizedNames);
+}
+
+/// «El Orco enfurecido se tensa»: el muerto o convaleciente es el SUJETO del verbo (su nombre, con pocas palabras en
+/// medio, justo antes). «Gorhorn se mueve con cautela hacia el cuerpo del Orco» o «apenas se mueve» no cuentan.
+function haySujetoMuertoQueSeMueve(narration: string, normalizedNames: string[]): boolean {
+  const escapar = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return normalizedNames.some((nombre) => {
+    if (!nombre) return false;
+    const re = new RegExp(`\\b${escapar(nombre)}(?:\\s+\\w+){0,4}?\\s+(?<!\\bno\\s)(?<!\\bapenas\\s)(?<!\\bnunca\\s)(?:se\\s+(?:mueve|tensa|yergue)|(?:hace|con)\\s+(?:un\\s+)?gesto\\s+brusco)\\b|\\b${escapar(nombre)}(?:\\s+\\w+){0,6}\\s+al\\s+borde\\s+de\\s+la\\s+escena\\b`);
+    return narration.split(SENTENCE_SPLIT_REGEX).some((frase) => re.test(normalizeText(frase)));
+  });
 }
 
 /// Grupo 3 § Mundo determinista, Capa 3, pieza B (docs/rpgtarkor/lore-mundo/mundo-determinista.md, 2026-08-25)

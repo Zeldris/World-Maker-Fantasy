@@ -429,7 +429,18 @@ function esErrataDeAlias(alias: string, palabra: string): boolean {
 /// A quién le habla el jugador (QA-289, bench 17): «Le pregunto a Ulkha Ketg…» sin comillas respondía el primer NPC
 /// detectado (un orco metido en escena por un hecho de sus huellas). Orden: el citado entre comillas, el que la
 /// acción nombra (nombre entero, nombre de pila y, si los trae, alias), y si no nombra a nadie, el primero.
-export function elegirInterlocutor<T extends { id: string; name: string; aliases?: string[] }>(action: string, explicito: T | null, candidatos: T[]): T | null {
+type ConNombre = { id: string; name: string; aliases?: string[] };
+
+/// ¿La acción nombra a este NPC (nombre completo, de pila o alias)? Lo que `elegirInterlocutor` usa para elegir.
+function nombraNpc(accion: string, nombreNormalizado: (n: string) => boolean, n: ConNombre): boolean {
+  return (
+    nombreNormalizado(n.name) ||
+    nombreNormalizado(n.name.split(' ')[0]!) ||
+    (!!n.aliases && matchNpcAliases(accion, [{ id: n.id, aliases: n.aliases }]).length > 0)
+  );
+}
+
+export function elegirInterlocutor<T extends ConNombre>(action: string, explicito: T | null, candidatos: T[]): T | null {
   if (explicito) return explicito;
   const accion = normalizeText(action);
   const nombra = (nombre: string) => nombre.length >= 4 && matchesAliasBoundary(accion, normalizeText(nombre));
@@ -440,6 +451,28 @@ export function elegirInterlocutor<T extends { id: string; name: string; aliases
     candidatos[0] ??
     null
   );
+}
+
+/// Verbo de habla dirigido («le digo», «le pregunto», «saludo», «me presento»…): la jugadora se dirige a alguien.
+const HABLA_DIRIGIDA_REGEX = /\b(le|les)\s+(digo|pregunto|saludo|contesto|respondo|hablo|susurro|grito|cuento|explico|comento|ofrezco|pido|ruego|doy las gracias)\b|\bsaludo\b|\bme presento\b|\bhablo (con|a)\b/;
+const SALUDO_SUELTO_REGEX = /^[^\p{L}]*(hola|buenas|saludos|salve|buen[oa]s (dias|tardes|noches)|buen dia)\b/u;
+
+/// Revisión de código: `elegirInterlocutor` cae en el primer NPC de la escena si la acción no nombra a nadie, así que
+/// «¿Qué hay tras la puerta? La abro.» o «¡Me lanzo al río!» tenían interlocutor sin dirigirse a nadie. True si el
+/// NPC está interpelado de verdad: citado entre comillas (`explicito`), nombrado, con un verbo de habla dirigido, o
+/// si la acción entera es solo lo dicho (cita, pregunta o saludo) sin otra oración de acción fuera.
+export function npcInterpelado(action: string, npc: ConNombre, explicito = false): boolean {
+  if (explicito) return true;
+  const accion = normalizeText(action);
+  if (nombraNpc(action, (nombre) => nombre.length >= 4 && matchesAliasBoundary(accion, normalizeText(nombre)), npc)) return true;
+  if (HABLA_DIRIGIDA_REGEX.test(accion)) return true;
+  const sinCitas = action.replace(/«[^»]*»|“[^”]*”|"[^"]*"/g, ' ');
+  if (!/\p{L}/u.test(sinCitas)) return true;
+  return sinCitas
+    .split(/(?<=[.!?…])\s+/)
+    .map((o) => o.trim())
+    .filter((o) => /\p{L}/u.test(o))
+    .every((o) => /[¿?]/.test(o) || SALUDO_SUELTO_REGEX.test(normalizeText(o)));
 }
 
 export function matchNpcAliases(text: string, npcs: NpcWithAliases[]): string[] {
@@ -714,6 +747,17 @@ export async function detectNpcsInScene(params: {
     const slugsCompaneros = new Set(companeros.map((c) => c.sourceSlug));
     for (const npc of sinCasar) if (slugsCompaneros.has(npc.slug) && nombraPorPalabraDelNombre(params.action, npc.name)) matchedIds.add(npc.id);
   }
+  // P479: a quien ya se ha tratado en esta partida (tiene `NpcState`) y está aquí se le llama por el nombre de pila
+  // («Le digo a Torgash que…», «…, Ulkha.»), como al compañero; a un desconocido, no (ya filtrado en los candidatos).
+  // Solo el nombre de pila: el apellido de clan («Ketg») casaría con «Hogar Ketg» y metería en escena a todo el clan.
+  // P479/P482 (reabiertos, 2026-11-19): hablar no crea `NpcState`, así que «ya tratado» es también conocido (descubierto
+  // o compañero, `slugsConocidos`): en t13b2-ketg Ulkha y Torgash no tenían `NpcState`, «…, Ulkha.» no la metía en
+  // escena y contestaba el primero de la escena (Torgash) o el turno iba al narrador.
+  const principalesSinCasar = candidateNpcs.filter((npc) => !matchedIds.has(npc.id) && npc.kind === 'PRINCIPAL');
+  const conocidos = await slugsConocidos(prisma, params.saveId, principalesSinCasar.filter((npc) => !encounteredIds.has(npc.id)).map((npc) => npc.slug));
+  for (const npc of principalesSinCasar) {
+    if ((encounteredIds.has(npc.id) || conocidos.has(npc.slug)) && nombraPorPalabraDelNombre(params.action, npc.name.split(/\s+/)[0] ?? '')) matchedIds.add(npc.id);
+  }
   // `npcsRetiredForever` gana SIEMPRE sobre un match por nombre — un sessionFact que menciona al
   // NPC para decir que se fue para siempre no debe reintroducirlo (ver comentario de cabecera).
   const matchedPorNombre = candidateNpcs.filter((npc) => (matchedIds.has(npc.id) || estaEnCombate(npc)) && !retiredForeverSlugs.has(npc.slug));
@@ -801,13 +845,25 @@ export async function slugsConPuntoSoloEnOtraZona(params: { saveId: string; curr
 /// P327 (usuaria, 2026-10-26): ¿nombra el texto a alguien por el nombre con que la jugadora lo ve? «Orco desconocido»
 /// casa con «le regalo pan al orco desconocido» (y «la orca desconocida»); además, «el desconocido» / «la desconocida» a
 /// secas, con su género. «Alguien» (sin raza conocida) nunca: sale en cualquier frase.
-export function nombraPorNombreVisible(texto: string, nombreVisible: string): boolean {
+export function nombraPorNombreVisible(texto: string, nombreVisible: string, permiteRazaSuelta = true): boolean {
   const visible = normalizeText(nombreVisible);
   const m = /^(\S+) desconocid([oa])$/.exec(visible);
   if (!m) return false;
   const t = ` ${normalizeText(texto).replace(/[^\p{L}\s]+/gu, ' ').replace(/\s+/g, ' ')} `;
   if (t.includes(` ${visible} `)) return true;
+  // P448: «saludo al orco» (la raza a secas, con artículo) también lo nombra como lo ve la jugadora.
+  // Solo si ningún otro NPC de la escena comparte esa raza («ataco al orco enfurecido» no es el oculto).
+  if (permiteRazaSuelta && new RegExp(` (?:el|al|del|la|a la|de la) ${m[1]} `).test(t)) return true;
   return m[2] === 'a' ? / la desconocida /.test(t) : / (?:el|al|del) desconocido /.test(t);
+}
+
+/// P448: la raza suelta («el orco») solo nombra al oculto si ningún otro NPC de la escena la lleva (en su raza o en su nombre).
+export function otroNpcComparteRaza(
+  n: { id: string; raza: string | null; genero: string | null },
+  candidatos: { id: string; raza: string | null; name?: string }[],
+): boolean {
+  const raza = normalizeText(nombreOcultoPorRaza(n.raza, n.genero)).split(' ')[0];
+  return candidatos.some((o) => o.id !== n.id && ((n.raza !== null && o.raza === n.raza) || normalizeText(o.name ?? '').split(' ').includes(raza)));
 }
 
 /// P327 (usuaria, 2026-10-26): la jugadora no sabe el nombre de un PRINCIPAL sin descubrir; lo nombra como lo ve («el
@@ -821,11 +877,10 @@ async function ocultoNombradoPorSuVisible(params: {
   action: string;
   saveId: string;
   currentLocationId: string | null;
-  candidatos: { id: string; slug: string; kind: NpcKind; raza: string | null; genero: string | null }[];
+  candidatos: { id: string; slug: string; kind: NpcKind; raza: string | null; genero: string | null; name?: string }[];
   estaEnCombate: (npc: { id: string; slug: string }) => boolean;
   slugsDelModoDinamico: string[];
 }): Promise<string | null> {
-  if (!/desconocid[oa]/.test(normalizeText(params.action))) return null;
   const principales = params.candidatos.filter((n) => n.kind === 'PRINCIPAL');
   if (principales.length === 0) return null;
   const delModo = new Set(params.slugsDelModoDinamico);
@@ -845,7 +900,8 @@ async function ocultoNombradoPorSuVisible(params: {
   const enContacto = [...new Map([...enCombate, ...enModo, ...enZona].map((n) => [n.id, n])).values()];
   if (enContacto.length === 0) return null;
   const conocidos = await slugsConocidos(prisma, params.saveId, enContacto.map((n) => n.slug));
-  const casa = (n: (typeof principales)[number]) => !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero));
+  const casa = (n: (typeof principales)[number]) =>
+    !conocidos.has(n.slug) && nombraPorNombreVisible(params.action, nombreOcultoPorRaza(n.raza, n.genero), !otroNpcComparteRaza(n, params.candidatos));
   for (const grupo of [enCombate, enModo, enZona]) {
     const nombrados = grupo.filter(casa);
     if (nombrados.length === 1) return nombrados[0].id;
@@ -1005,7 +1061,8 @@ function isNegatedMatch(normalized: string, matchIndex: number): boolean {
 /// Verbo de ataque directo (roadmap 2026-07-19: "roadmap 2" de calibración de combate, y
 /// reutilizado por la clasificación tabulada en turn.ts) — mismo regex que la red de seguridad de
 /// `combateIniciado` en turnResolution.ts, vive aquí para no duplicarlo entre los dos módulos.
-const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer/;
+const ATTACK_INTENT_REGEX = /atac|cargo contra|golpe|asalt|hachazo|apunal|dispar|arremet|hiere|hiero|\blacer|\btajos?\b|mandoble|estocada|cuchillada|\bembist|\bembest|\bdescargo (?:\S+ ){0,3}?(?:golpe|golpes|hacha|espada|arma|hachazo|mandoble|tajo|ataque|furia|ira|rabia|fuerza)\b.*\bcontra\b/;
+// P471: «tajo»/«tajos» solo como palabra entera (nunca «atajo», «tajada»); «descargo <golpe/arma> contra» pide ambos (no «descargo el fardo … contra la roca»).
 
 // Auditoría de typo-tolerance (roadmap 2026-07-19, P0.4 de Fable): mismo patrón que
 // matchNpcAliases — solo los stems literales de 5+ letras entran en la tolerancia a erratas;
@@ -1184,8 +1241,9 @@ export function detectsInventoryReviewIntent(action: string): boolean {
 /// instantáneo (fixedInstructions en narrador.ts) — esto es la red de seguridad determinista,
 /// mismo patrón que ya usa `detectsAttackIntent` más arriba (turn.ts fuerza banda "instantanea" si
 /// el clasificador se equivoca). Signos de interrogación/exclamación, comillas de diálogo directo,
-/// o verbos de habla explícitos — cualquiera de los tres basta.
-const DIALOGUE_INTENT_REGEX = /[?¿!¡]|["“”«»]|\bdigo\b|\bpregunt|\bcontest|\brespond|\bhablo\b|\bhablar\b|\bsusurr|\bgrito\b|\bgrita\b|\bsaludo\b|me presento/;
+/// o verbos de habla explícitos — cualquiera de los tres basta. P479: también el imperativo de habla con pronombre
+/// («Cuéntame qué pasó, Ulkha.», «Dime…»); uno de movimiento o de acción («Sígueme», «Dame el hacha») no es diálogo.
+const DIALOGUE_INTENT_REGEX = /[?¿!¡]|["“”«»]|\bdigo\b|\bpregunt|\bcontest|\brespond|\bhablo\b|\bhablar\b|\bsusurr|\bgrito\b|\bgrita\b|\bsaludo\b|me presento|\b(cuentame|cuentanos|cuentamelo|dime|dimelo|dinos|explicame|explicanos|hablame|respondeme|contestame|informame)\b/;
 
 export function detectsDialogueIntent(action: string): boolean {
   return DIALOGUE_INTENT_REGEX.test(normalizeText(action));
@@ -1200,6 +1258,9 @@ const INFLUENCE_INTENT_REGEX = /\bpersuad|\bconvenc|\bintimid|\bamenaz|\bengan|\
 export const VIOLENCE_INTENT_REGEX = /\bmat(o|a|as|amos|ar|are|ara|aras|arte|arlo|arla|aros|alo|ala|ando|en)\b|\bmuer(e|es|as|a)\b|\bmorir(as|a|an|e)?\b|desenvain|\bclav(o|a|as|ando)\b|embist|ensart|degoll|deguell|decapit|\bremat|\bdesafi|destrip|estrangul/;
 
 const CAZA_SUSTANTIVO_REGEX = /\b(la|una|esta|esa|su|tu|mi|vuestra|nuestra)\s+caza\b/gi;
+/// P447: «sirve saber dónde cazar para alimentar al clan» habla de cazar en general, no de cazar a alguien: «cazar» tras
+/// «dónde/cómo/cuándo/para/de/saber…» y sin objeto directo («cazar a/al…») no es búsqueda hostil.
+const CAZAR_GENERAL_REGEX = /\b(?:d[oó]nde|c[oó]mo|cu[aá]ndo|para|de|sobre|saber|aprender|poder|ir a|salir a|que)\s+cazar\b(?!\s+(?:a|al)\b)/gi;
 /// Fase 1 hacia main: «la mata de bayas» es el arbusto, no «matar» (`VIOLENCE_INTENT_REGEX`).
 export const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas|aquellas|las|cada)\s+matas?\b/g;
 
@@ -1210,7 +1271,7 @@ export const MATA_SUSTANTIVO_REGEX = /\b(una|esta|esa|aquella|la|unas|estas|esas
 export function detectsGreetingOrQuestion(action: string): boolean {
   // P306: «le pregunto cómo va la caza» (la frase del hallazgo): «caza» tras artículo o posesivo es el sustantivo,
   // no el verbo de `HOSTILE_SEARCH_REGEX`. Solo se quita para decidir si es saludo; el resto sigue leyendo el texto.
-  const sinCazaSustantivo = action.replace(CAZA_SUSTANTIVO_REGEX, ' ');
+  const sinCazaSustantivo = action.replace(CAZA_SUSTANTIVO_REGEX, ' ').replace(CAZAR_GENERAL_REGEX, ' ');
   return (
     detectsDialogueIntent(action) &&
     !detectsAttackIntent(action) &&
@@ -1407,7 +1468,7 @@ export function npcSceneBlockFor(npc: NpcInScene, playerLevel: number, factionsS
     const loot = npc.saqueado
       ? ' y su cuerpo ya fue registrado (no lleva nada más encima, ya no hay botín que ofrecer)'
       : `, todavía sin registrar. Si esta acción es saquearlo/registrarlo, esto es TODO lo que lleva encima, no existe ningún otro objeto: ${itemsLine(npc.items)}`;
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${nombreOcultoHintFor(npc)}${generoHintFor(npc)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ${npc.role}${npc.faction ? `, ${npc.faction}` : ''}. Ya está ${estado}${loot}. NO lo narres como una amenaza activa: no ataca, no persigue, no "aparece de la nada" — si la escena lo menciona, es solo un cadáver ya visto, un recuerdo o una referencia al pasado, nunca un encuentro nuevo.${npc.condicionFisica === 'CONVALECIENTE' ? ' Sigue tendido en el suelo, sin fuerzas: no se mueve de su sitio, no gesticula ni rechaza nada.' : ''}${nombreOcultoHintFor(npc)}${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   // Bug real jugando en vivo (2026-08-15, "revisar partida" — el Zense Ceniza, fauna sin habla,
@@ -1435,7 +1496,7 @@ LLEVA ENCIMA: ${itemsLine(npc.items)}. Si es derrotado, registrado o comercia, l
 export function npcSceneLineFor(npc: NpcInScene, playerLevel: number): string {
   if (npcYaResuelto(npc)) {
     const estado = npc.condicionFisica === 'MUERTO' ? 'muerto' : 'convaleciente';
-    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ya está ${estado}. NO lo narres como amenaza activa.${generoHintFor(npc)}`;
+    return `PERSONAJE MENCIONADO, YA RESUELTO: ${displayName(npc)} — ya está ${estado}. NO lo narres como amenaza activa: sigue en el suelo, sin fuerzas, no se mueve ni gesticula.${generoHintFor(npc)}`;
   }
   const { label } = difficultyHintFor(npc.level, playerLevel);
   const faunaSinHablaHint = npc.ataqueNatural !== null ? ` ES UN ANIMAL, NO PUEDE HABLAR.` : '';

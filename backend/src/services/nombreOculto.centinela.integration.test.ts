@@ -149,7 +149,7 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
   });
 
   /// Una partida con Zarghul (sin descubrir) en una zona propia; con `conBanda`, un aliado de su facción cerca.
-  async function partida(nombre: string, opciones: { conBanda?: boolean; conOtro?: boolean } = {}): Promise<{ saveId: string; locationId: string }> {
+  async function partida(nombre: string, opciones: { conBanda?: boolean; conOtro?: boolean; slug?: string } = {}): Promise<{ saveId: string; locationId: string }> {
     const location = await prisma.location.create({
       data: { worldId, slug: `test-centinela-${PASADA}-${guardas.locations.length}`, name: 'Zona de Prueba Centinela', region: 'Zona de Pruebas', kind: 'hito', description: 'x', aliases: [`zona de prueba centinela ${guardas.locations.length}`] },
     });
@@ -162,13 +162,13 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
     });
     guardas.saves.push(save.id);
     await prisma.worldState.create({ data: { saveId: save.id, fictionalMinutes: 480 } });
-    await prisma.zonePoint.create({ data: { saveId: save.id, locationId: location.id, tipo: 'NPC', targetSlug: SLUG, x: 400, y: 300 } });
+    await prisma.zonePoint.create({ data: { saveId: save.id, locationId: location.id, tipo: 'NPC', targetSlug: opciones.slug ?? SLUG, x: 400, y: 300 } });
     if (opciones.conBanda) {
       await prisma.zonePoint.create({ data: { saveId: save.id, locationId: location.id, tipo: 'NPC', targetSlug: SLUG_ALIADO, x: 450, y: 300 } });
       aliadoConPunto = true;
     }
     if (opciones.conOtro) await prisma.zonePoint.create({ data: { saveId: save.id, locationId: location.id, tipo: 'NPC', targetSlug: SLUG_OTRO, x: 350, y: 300 } });
-    expect(await prisma.discoveredEntity.count({ where: { saveId: save.id, entityType: 'npc', entitySlug: SLUG } })).toBe(0);
+    expect(await prisma.discoveredEntity.count({ where: { saveId: save.id, entityType: 'npc', entitySlug: opciones.slug ?? SLUG } })).toBe(0);
     return { saveId: save.id, locationId: location.id };
   }
 
@@ -225,15 +225,38 @@ describe('QA-256 — centinela: el nombre de un PRINCIPAL sin descubrir no sale 
     const app = await buildApp();
     const hecho = await turno(app, saveId, 'Saludo al orco desconocido.');
     expect(hecho.type).toBe('done');
-    // Prueba de que el camino se ha recorrido: hubo clasificación, narración y la réplica dedicada del NPC.
+    // Prueba de que el camino se ha recorrido: hubo clasificación y la réplica dedicada del NPC. Un saludo es un turno
+    // de diálogo puro (P464b-P476): sin narrador, con la línea fija del jugador, que `sinFugas` revisa en el diario.
     expect(promptsDesde(desde, 'clasificar').length).toBeGreaterThan(0);
-    expect(promptsDesde(desde, 'narrar').length).toBeGreaterThan(0);
+    expect(promptsDesde(desde, 'narrar').length).toBe(0);
     const replicas = promptsDesde(desde, 'dialogo_npc');
     expect(replicas.length).toBeGreaterThan(0);
     expect(replicas[0]!.texto).toContain('PERSONAJE QUE ERES: Orco desconocido');
+    // Una acción que no es saludo ni pregunta sí pasa por el narrador: su prompt tampoco lo nombra.
+    const convencer = await turno(app, saveId, 'Intento convencer al orco desconocido de que me deje pasar.');
+    expect(convencer.type).toBe('done');
+    expect(promptsDesde(desde, 'narrar').length).toBeGreaterThan(0);
     await diario(saveId);
     await detalle(app, saveId);
     sinFugas(desde);
+    await app.close();
+  }, 60_000);
+
+  it('revisión: la línea fija de un saludo a una oculta dice «a la orca desconocida», no «a La orca desconocida»', async () => {
+    nueva();
+    const base = await prisma.npc.findFirstOrThrow({ where: { worldId, slug: SLUG } });
+    const { id: _id, ...resto } = base;
+    const slugF = `test-centinela-orca-${PASADA}`;
+    const orca = await prisma.npc.create({
+      data: { ...(Object.fromEntries(Object.entries(resto).filter(([, v]) => v !== null)) as object), slug: slugF, name: 'Zarghula Ojonegra', aliases: ['zarghula ojonegra'], genero: 'F', bio: 'Guarda el paso.', personality: 'Suspicaz.' } as never,
+    });
+    guardas.npcs.push(orca.id);
+    const { saveId } = await partida('Gorhorn centinela femenina', { slug: slugF });
+    const app = await buildApp();
+    const hecho = await turno(app, saveId, 'Saludo a la orca desconocida.');
+    expect(hecho.type).toBe('done');
+    const lineas = await diario(saveId);
+    expect(lineas.find((l) => /se dirige/.test(l)) ?? lineas.join(' | ')).toMatch(/se dirige a la orca desconocida\./);
     await app.close();
   }, 60_000);
 

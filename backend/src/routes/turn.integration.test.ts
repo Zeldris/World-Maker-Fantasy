@@ -48,6 +48,8 @@ const narrateAction = vi.fn(async (ctx: { onNarrationChunk?: (d: string) => void
 // classifyAction/narrateAction: sin mockear, `generateQuestResponseNarration` llamaría a Ollama
 // real dentro de un test de integración. Texto fijo predecible, distinto del texto legado (el test
 // de abajo asume EXACTAMENTE el texto legado "acepta la misión" — se actualiza junto con esto).
+// P464: espía de `generateNpcReply` (sigue llamando a la real); el turno de presentación de Gistera no debe pedirla.
+const generateNpcReplyEspia = vi.fn();
 const generateQuestResponseNarration = vi.fn(async (ctx: { characterName: string; questTitle: string; accepted: boolean }) => {
   return `${ctx.characterName} ${ctx.accepted ? 'acepta' : 'rechaza'} la misión: ${ctx.questTitle}.`;
 });
@@ -63,6 +65,10 @@ vi.mock('../services/narrador.js', async (importOriginal) => {
     classifyAction: (...args: unknown[]) => classifyAction(...args),
     narrateAction: (ctx: Parameters<typeof narrateAction>[0]) => narrateAction(ctx),
     generateQuestResponseNarration: (ctx: Parameters<typeof generateQuestResponseNarration>[0]) => generateQuestResponseNarration(ctx),
+    generateNpcReply: (ctx: Parameters<typeof actual.generateNpcReply>[0]) => {
+      generateNpcReplyEspia(ctx);
+      return actual.generateNpcReply(ctx);
+    },
   };
 });
 
@@ -1974,6 +1980,208 @@ describe('newQuestInfo: notificación de misión aceptada', () => {
       payload: { saveId, action, classification, roll, enCombate: true },
     });
     expect(lastNdjsonLine(narrateRes.payload).newQuestInfo).toBeNull();
+  }, 30_000);
+});
+
+// P464 (a): si la acción de la primera conversación con Gistera la NOMBRA, `dialogueTarget` también sale con
+// ella, y la réplica del LLM pisaba el discurso fijo de presentación (sin presentación ni misión).
+describe('P464: la presentación de Gistera Koh no la pisa la réplica del LLM aunque la acción la nombre', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba P464',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+        zonaPosX: 220,
+        zonaPosY: 500,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('«Le digo a Gistera Koh: ¿quién manda...?» narra «Soy Gistera Koh» y la misión, sin pedir dialogo_npc', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const app = await buildApp();
+    // Turno de relleno (mismo motivo que en el test de newQuestOfferInfo de arriba: evitar la acción Nº1).
+    const filler = 'Miro alrededor con calma';
+    const fillerClassify = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action: filler, enCombate: true } })).json();
+    await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action: filler, classification: fillerClassify.classification, roll: fillerClassify.roll, enCombate: true } });
+
+    generateNpcReplyEspia.mockClear();
+    const action = 'Le digo a Gistera Koh: ¿quién manda en el Clan Serhu?';
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } })).json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification: classifyRes.classification, roll: classifyRes.roll, enCombate: true },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const { text: texto } = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } });
+    expect(texto).toContain('Soy Gistera Koh');
+    expect(texto).toContain('Empieza por el que me persigue');
+    expect(generateNpcReplyEspia).not.toHaveBeenCalled();
+  }, 30_000);
+});
+
+// P464 (b), P466, P474, P476: un saludo o una pregunta a un NPC (no Gistera), fuera de combate y sin reputación
+// hostil, no pasa por el narrador: línea fija del jugador y la réplica de `dialogo_npc` detrás.
+describe('P479/P482: a un PRINCIPAL conocido sin NpcState se le habla por su nombre de pila', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu' } });
+    saveId = (await prisma.save.create({
+      data: { userId: await getDefaultUserId(), worldId: world.id, characterName: 'Gorhorn de prueba P482', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor', characterMotivation: 'x', attributes: ATTRS, portraitInitial: 'G', currentLocationId: location.id },
+    })).id;
+    await prisma.worldState.create({ data: { saveId } });
+    // Como en t13b2-ketg: hablar con ellos los descubre, pero no crea `NpcState`.
+    for (const slug of ['ulkha-ketg', 'torgash-ketg']) {
+      await prisma.discoveredEntity.create({ data: { saveId, entityType: 'npc', entitySlug: slug } });
+      await prisma.zonePoint.create({ data: { locationId: location.id, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: slug, cantidad: 1, activo: true } });
+    }
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  async function turno(action: string) {
+    classifyAction.mockResolvedValue({ requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    narrateAction.mockClear();
+    generateNpcReplyEspia.mockClear();
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: classifyRes.classification, roll: classifyRes.roll } });
+    expect(narrateRes.statusCode).toBe(200);
+  }
+
+  it('tras hablar con Torgash, «Ulkha, ¿quién es Gistera?» lo contesta Ulkha (P482)', async () => {
+    await turno('Le pregunto a Torgash Ketg: ¿qué opinas de los Serhu?');
+    await turno('Ulkha, ¿quién es Gistera?');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(generateNpcReplyEspia.mock.calls[0]![0].npc.name).toBe('Ulkha Ketg');
+  }, 60_000);
+
+  it('«Cuéntame qué pasó con los Maktor, Ulkha.» va sin narrador y lo contesta Ulkha (P479)', async () => {
+    await turno('Cuéntame qué pasó con los Maktor, Ulkha.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(generateNpcReplyEspia.mock.calls[0]![0].npc.name).toBe('Ulkha Ketg');
+  }, 30_000);
+});
+
+describe('Turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'campamento-serhu' } });
+    const save = await prisma.save.create({
+      data: {
+        userId,
+        worldId: world.id,
+        characterName: 'Gorhorn de prueba P464b',
+        characterArchetype: 'guerrero',
+        characterOrigin: 'Clan Maktor',
+        characterMotivation: 'x',
+        attributes: ATTRS,
+        portraitInitial: 'G',
+        currentLocationId: location.id,
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  async function turno(action: string) {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'voluntad', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    const app = await buildApp();
+    narrateAction.mockClear();
+    generateNpcReplyEspia.mockClear();
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    const narrateRes = await app.inject({
+      method: 'POST',
+      url: '/turn/narrate',
+      payload: { saveId, action, classification: classifyRes.classification, roll: classifyRes.roll },
+    });
+    expect(narrateRes.statusCode).toBe(200);
+    const { text } = await prisma.logEntry.findFirstOrThrow({ where: { saveId, channel: 'CHARACTER', isPlayerAction: false, isSystemMessage: false }, orderBy: { createdAt: 'desc' } });
+    return text;
+  }
+
+  it('«Le digo a Ulkha Ketg: ¿qué te trae por aquí?» no llama a narrateAction y sí una vez a generateNpcReply', async () => {
+    const texto = await turno('Le digo a Ulkha Ketg: ¿qué te trae por aquí?');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(texto.startsWith('Gorhorn de prueba P464b le pregunta a')).toBe(true);
+    expect(texto).toContain('responde:');
+  }, 30_000);
+
+  it('P479: con Ulkha y Torgash en escena, «Le digo a Torgash que quiero saber qué opina de él.» es diálogo puro con Torgash', async () => {
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    for (const slug of ['ulkha-ketg', 'torgash-ketg']) {
+      const npc = await prisma.npc.findFirstOrThrow({ where: { worldId: world.id, slug } });
+      await prisma.npcState.upsert({ where: { saveId_npcId_scope: { saveId, npcId: npc.id, scope: "" } }, create: { saveId, npcId: npc.id, scope: '', condicionFisica: 'ILESO' }, update: {} });
+      const loc = await prisma.save.findUniqueOrThrow({ where: { id: saveId }, select: { currentLocationId: true } });
+      await prisma.zonePoint.create({ data: { locationId: loc.currentLocationId!, saveId, x: 50, y: 50, tipo: 'NPC', targetSlug: slug, cantidad: 1, activo: true } });
+    }
+    const texto = await turno('Le digo a Torgash que quiero saber qué opina de él.');
+    expect(narrateAction).not.toHaveBeenCalled();
+    expect(generateNpcReplyEspia).toHaveBeenCalledTimes(1);
+    expect(texto).toContain('responde:');
+  }, 30_000);
+
+  it('revisión: una pregunta o un grito de otra acción, con Ulkha presente sin nombrarla, sí pasa por narrateAction', async () => {
+    for (const accion of ['¿Qué hay tras la puerta? La abro.', '¡Me lanzo al río!']) {
+      await turno(accion);
+      expect(narrateAction, accion).toHaveBeenCalledTimes(1);
+      expect(generateNpcReplyEspia.mock.calls.length, accion).toBeLessThanOrEqual(1);
+    }
+  }, 30_000);
+
+  it('revisión: con una tirada en el turno, un saludo a Ulkha Ketg pasa por narrateAction (la tirada se narra)', async () => {
+    classifyAction.mockResolvedValue({ requiereTirada: true, atributo: 'carisma', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0 });
+    const app = await buildApp();
+    narrateAction.mockClear();
+    const action = 'Le digo a Ulkha Ketg: ¿qué te trae por aquí?';
+    const classifyRes = (await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action } })).json();
+    // El clasificador no tira para un saludo (P306): la tirada llega en el cuerpo de /turn/narrate, como la manda el cliente.
+    const roll = { attribute: 'carisma', value: 8, roll: 12, result: 20, difficulty: 8, success: true, gradoExito: 'claro' };
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification: classifyRes.classification, roll } });
+    expect(res.statusCode).toBe(200);
+    expect(narrateAction).toHaveBeenCalledTimes(1);
+  }, 30_000);
+
+  it('«Intento convencer a Ulkha Ketg de que me deje pasar» (no es saludo ni pregunta) sí pasa por narrateAction', async () => {
+    await turno('Intento convencer a Ulkha Ketg de que me deje pasar');
+    expect(narrateAction).toHaveBeenCalledTimes(1);
   }, 30_000);
 });
 
@@ -10013,5 +10221,59 @@ describe('Dos rondas de combate seguidas comparten el prefijo del prompt del nar
       expect(n).toBeGreaterThan(a.indexOf(estable));
     }
     expect(a.indexOf('RESULTADO DEL INTERCAMBIO')).toBeGreaterThan(a.indexOf('INVENTARIO ACTUAL'));
+  }, 30_000);
+});
+
+describe('P471: el combate 1v1 sobrevive a un turno sin intercambio', () => {
+  let saveId: string;
+
+  beforeAll(async () => {
+    const userId = await getDefaultUserId();
+    const world = await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } });
+    const location = await prisma.location.findFirstOrThrow({ where: { worldId: world.id, slug: 'hondonada-del-eco' } });
+    const save = await prisma.save.create({
+      data: {
+        userId, worldId: world.id, characterName: 'Gorhorn P471', characterArchetype: 'guerrero', characterOrigin: 'Clan Maktor',
+        characterMotivation: 'Recuperar el honor de los Maktor', attributes: ATTRS, portraitInitial: 'G',
+        currentLocationId: location.id, pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'],
+      },
+    });
+    saveId = save.id;
+    await prisma.worldState.create({ data: { saveId } });
+  });
+
+  afterAll(async () => {
+    await prisma.save.delete({ where: { id: saveId } });
+  });
+
+  it('un turno en combate sin intercambio y sin combateIniciado del modelo mantiene al rival agresivo en pendingCombatNpcSlugs', async () => {
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockImplementationOnce(async () => ({ narration: 'El orco gruñe.', newFacts: [] }));
+    const app = await buildApp();
+    const action = 'Observo al orco y recupero el aliento.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+    expect(res.statusCode).toBe(200);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
+  }, 30_000);
+
+  it('con posición en la cuadrícula y el rival sin ZonePoint en la casilla del jugador, sigue pendiente', async () => {
+    await prisma.save.update({ where: { id: saveId }, data: { zonaPosX: 220, zonaPosY: 220, pendingCombatNpcSlugs: ['orco-enfurecido-hondonada'] } });
+    classifyAction.mockResolvedValue({
+      requiereTirada: false, atributo: 'destreza', dificultad: 8, razon: 'x', banda: 'instantanea', duracionEstimadaMinutos: 0,
+    });
+    narrateAction.mockImplementationOnce(async () => ({ narration: 'El orco gruñe.', newFacts: [] }));
+    const app = await buildApp();
+    const action = 'Observo al orco y recupero el aliento.';
+    const classifyRes = await app.inject({ method: 'POST', url: '/turn/classify', payload: { saveId, action, enCombate: true } });
+    const { classification, roll } = classifyRes.json();
+    const res = await app.inject({ method: 'POST', url: '/turn/narrate', payload: { saveId, action, classification, roll, enCombate: true } });
+    expect(res.statusCode).toBe(200);
+    const saveAfter = await prisma.save.findUniqueOrThrow({ where: { id: saveId } });
+    expect(saveAfter.pendingCombatNpcSlugs).toEqual(['orco-enfurecido-hondonada']);
   }, 30_000);
 });

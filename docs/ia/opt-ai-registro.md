@@ -12,7 +12,7 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `gen_ai.request.model` | texto | Modelo pedido |
 | `gen_ai.request.max_tokens` | entero | `num_predict` o equivalente |
 | `gen_ai.request.temperature` | número | |
-| `gen_ai.usage.input_tokens` | entero | Tokens del prompt (Ollama: `prompt_eval_count`) |
+| `gen_ai.usage.input_tokens` | entero | Tokens del prompt (Ollama: `prompt_eval_count`; cuenta el prompt entero aunque salga de la caché de prefijo: lo reaprovechado lo estima `medir-ia.py`, columna `reaprov_pct`, `QA-341`) |
 | `gen_ai.usage.output_tokens` | entero | Tokens generados (Ollama: `eval_count`) |
 | `gen_ai.response.finish_reason` | texto | `stop`, `length`, `error`… |
 | `app.task` | texto | Tarea del proyecto (en Tarkor: `narrar`, `narrar_respaldo`, `clasificar`, `sugerir`, `dialogo_npc`, `combate`, `modo_dinamico`, `resumen`, `prompts_imagen`, `embedding`, `rag`; `calentar` es el calentamiento al arrancar y se excluye del análisis) |
@@ -28,6 +28,10 @@ Una línea JSON por llamada, en el archivo que diga `IA_REGISTRO` (sin la variab
 | `app.prefill_ms` | número | Lectura del prompt |
 | `app.decode_ms` | número | Generación |
 | `app.ttft_ms` | número | Primera palabra (solo en streaming) |
+| `app.prompt_chars` | número | Caracteres de `system` + `prompt` (QA-502) |
+| `app.via` | texto | Por dónde resolvió el turno: `dialogo_puro`, `narrar`, `combate_encuentro`, `gistera`, `saqueo`, `construccion`, `cosecha`, `crafteo`, `curacion`, `hambre_sed`, `descanso_bloqueado` (QA-510; no en `/turn/classify`) |
+| `app.interlocutor` | texto | Slug del NPC al que se habla este turno, si lo hay (QA-510) |
+| `app.prefijo_comun_chars` | número | Caracteres iniciales que comparte con la llamada anterior al mismo modelo: dónde se corta el prefijo reaprovechable (QA-502) |
 | `app.truncated` | booleano | `input_tokens` ≥ `num_ctx` o caracteres del prompt / 4 > `num_ctx` (el prompt se recortó; Ollama cuenta los tokens ya recortados) |
 | `app.error` | texto | Mensaje si la llamada falló |
 | `app.rag.query` | texto | Consulta del RAG (solo `retrieval`) |

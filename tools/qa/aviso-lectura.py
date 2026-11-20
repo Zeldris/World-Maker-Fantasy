@@ -38,8 +38,8 @@ TRAMOS = re.compile(r'&&|\|\||[;|\n]')
 # QA-366 (`/gw-opt-tokens` de UX-41): el diff de un roadmap entero (5,6k en un tramo, 325k arrastrados) en vez de la
 # entrada de cada tarea, como ya pedía QA-334. `--stat`, `--name-only`… dan poco y no avisan.
 DIFF_ROADMAP = re.compile(r'\bgit\s+(diff|show|log\s+-p)\b(?!.*--(stat|name-only|name-status|shortstat|numstat)).*roadmap[\w.-]*\.md')
-AVISO_ROADMAP = ('roadmap*.md: python3 .claude/gw/scripts/roadmap.py show <id> (la entrada de cada tarea tocada, '
-                 'no el diff del roadmap; QA-334, QA-366)')
+AVISO_ROADMAP = ('roadmap*.md: python3 tools/roadmap/ver.py <id> (la entrada de cada tarea tocada, '
+                 'no el diff del roadmap; QA-334, QA-366, QA-370)')
 
 
 def heredocs_en_su_tramo(orden: str) -> str:

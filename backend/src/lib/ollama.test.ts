@@ -87,6 +87,16 @@ describe('num_ctx efectivo e intento en el registro', () => {
     vi.doUnmock('../config/env.js');
   });
 
+  it('una llamada sin bloques entre dos con los mismos bloques hace que la segunda apunte «otra», no «ninguno»', async () => {
+    const { generar, registrarLlamada } = await preparar([], 'num_ctx 4096');
+    const bloques = [{ nombre: 'a', texto: 'x' }, { nombre: 'b', texto: 'y' }];
+    await generar({ model: 'q:prefijo', prompt: 'xy', bloques });
+    await generar({ model: 'q:prefijo', prompt: 'dialogo' });
+    await generar({ model: 'q:prefijo', prompt: 'xy', bloques });
+    expect(registrarLlamada.mock.calls[0][0].prefijoBloque).toBe('inicio');
+    expect(registrarLlamada.mock.calls[2][0].prefijoBloque).toBe('otra');
+  });
+
   it('sin num_ctx en el Modelfile, lee context_length de /api/ps a los 4 s y lo usa en las llamadas siguientes', async () => {
     const { generar, registrarLlamada } = await preparar([{ name: 'q:1.5b', context_length: 4096 }]);
     await generar({ model: 'q:1.5b', prompt: 'x'.repeat(20_000), intento: 3 });

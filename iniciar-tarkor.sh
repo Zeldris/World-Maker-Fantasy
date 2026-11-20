@@ -18,8 +18,8 @@ git -C "$DIR" config core.hooksPath .githooks 2>/dev/null || true
 LOGS="$DIR/logs"
 mkdir -p "$LOGS"
 
-export PATH="$HOME/.local/ollama/bin:$PATH"
-export LD_LIBRARY_PATH="$HOME/.local/ollama/lib/ollama:$LD_LIBRARY_PATH"
+export PATH="$HOME/ollama-bin/bin:$PATH"
+export LD_LIBRARY_PATH="$HOME/ollama-bin/lib/ollama:$LD_LIBRARY_PATH"
 
 echo "Arrancando Tarkor..."
 echo
