@@ -247,7 +247,7 @@ export async function cargarLoreParaReplica(worldId: string, accion: string, npc
     prisma.$queryRaw<{ title: string; text: string }[]>`
       SELECT DISTINCT ON (title) title, text FROM "LoreChunk"
       WHERE "worldId" = ${worldId} AND NOT (tags && ${excludeTags}::text[])
-      ORDER BY title
+      ORDER BY title, "createdAt"
     `,
     15_000,
     'cargarLoreParaReplica',
