@@ -84,3 +84,9 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 ## Pendientes leves de la revisión de bloque de la ronda local 2 (2026-11-19)
 
 - `npcScene.ts` P479 (~358): un PRINCIPAL ya conocido se reconoce por la primera palabra de su nombre (≥4 letras): si es un título o palabra común («Vieja Ulma», «Hermano X»), «busco a la vieja del pozo» lo mete en escena; un nombre de pila de menos de 4 letras («Kor») nunca casa.
+
+## Pendientes leves de la revisión de bloque de la ronda local 2 (2026-11-20)
+
+- `iaRegistro.ts` `lineaDeLaDiferencia` (~170): si el bloque nuevo solo pierde la cola, `prefijo_linea` apunta a la última línea (igual) y no a la quitada; con `i = 0` y texto que empieza por `\n` da la segunda línea.
+- `iaRegistro.ts` (~175): `prefijo_linea` guarda los primeros 48 caracteres de la línea; en líneas largas (PERSONAJES AQUÍ…, INVENTARIO…) la diferencia queda más allá: guardar una ventana alrededor de la diferencia o su columna.
+- `iniciar-tarkor.sh`, `actualizar-mundo.sh`, `generar-dataset-dpo.sh`: Ollama fijo en `~/ollama-bin` sin respaldo a `~/.local/ollama` (como hace `ia-ronda.sh`) y `docs/arquitectura/04-decisiones-tecnicas.md:154` sigue con la ruta vieja.
