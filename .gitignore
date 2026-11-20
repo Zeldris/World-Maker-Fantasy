@@ -17,6 +17,8 @@ logs/
 !.claude/settings.json
 !.claude/hooks/
 !.claude/skills/
+# gw-opt-tokens 2026-11-20: el subagente ligero gw-worker (QA-332) quedaba fuera de git y nunca llegaba a las sesiones.
+!.claude/agents/
 # Galivelop-workflow (piloto, 2026-10-22): su config, sus scripts y la marca de revisión van en el repo.
 !.claude/gw.json
 !.claude/gw/
