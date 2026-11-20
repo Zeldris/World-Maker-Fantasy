@@ -29,7 +29,6 @@ import { tiradaDeHuida } from '../../services/tiradaDeHuida.js';
 import { guardarSlugsDeCombate } from '../../services/combateDesde.js';
 import { ataquePendienteDeApertura } from '../../services/npcCombatAbilities.js';
 import { datosDeHuidaDeZona } from '../../services/entradasZona.js';
-import { cancelarRecalentados, recalentarSiDesalojado } from '../../services/calentarNarrador.js';
 
 /// "Modo dinámico" (2026-08-27, Pieza 4 de "Dinamismo del mundo") — mini-flujo acotado ofrecido
 /// al final de un turno normal (`dynamicModeOffer`, turnResolution.ts), nunca lo interrumpe. Estas
@@ -266,13 +265,6 @@ function combateNpcShape(target: { slug: string; name: string; condicionFisica: 
 }
 
 export async function dynamicModeRoutes(app: FastifyInstance) {
-  // QA-514: cada vuelta usa el modelo del narrador (`modo_dinamico`): al empezar corta el recalentado pendiente y, al
-  // responder, devuelve el prefijo de la partida a la caché de Ollama si la vuelta lo pisó.
-  app.addHook('onRequest', async () => cancelarRecalentados());
-  app.addHook('onResponse', async (request) => {
-    const id = (request.params as { id?: string } | undefined)?.id;
-    if (id) void recalentarSiDesalojado(id);
-  });
   /// Primera vuelta — el jugador pulsó "Interactuar" sobre la oferta que ya vio en el `done` del
   /// turno anterior. `tipo`/`targetName` vienen del body (mismo criterio que `quests/aceptar`
   /// recibe `title`/`description`: el frontend reenvía lo que YA le devolvió el turno, sin que el

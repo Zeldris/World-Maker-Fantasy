@@ -1,5 +1,5 @@
 import { env } from '../config/env.js';
-import { cacheEmpiezaPor, ollamaGenerate } from '../lib/ollama.js';
+import { ollamaGenerate } from '../lib/ollama.js';
 import { prisma } from '../lib/prisma.js';
 import { isTurnInFlight } from './turnLock.js';
 
@@ -26,7 +26,6 @@ export function tocaCalentar(saveId: string, ahora = Date.now()): boolean {
 /// calentarla al recargar.
 export async function guardarPrefijoNarrador(saveId: string, texto: string): Promise<void> {
   ultimoCalentamientoPorPartida.set(saveId, Date.now());
-  prefijoPorPartida.set(saveId, texto);
   await prisma.prefijoNarrador.upsert({ where: { saveId }, create: { saveId, texto }, update: { texto } });
 }
 
@@ -48,47 +47,7 @@ export async function calentarNarradorDePartida(saveId: string): Promise<boolean
   return true;
 }
 
-/// QA-514 (`/gw-opt-ai` de la ronda local 2): Ollama tiene una sola caché de prefijo por modelo, y `dialogo_npc`,
-/// `modo_dinamico` y `resumen` usan el del narrador: el `narrar` siguiente salía con 0 caracteres reaprovechados y
-/// 24-58 s de prefill (10-12 s con caché). Al acabar un turno (o una vuelta del modo dinámico, o un resumen), si la
-/// última petición a ese modelo no empezaba por el prefijo estable de la partida, se le vuelve a mandar en segundo
-/// plano. El turno siguiente lo cancela al empezar (`cancelarRecalentados`): una réplica rápida no espera a un
-/// calentamiento que su propia llamada iba a pisar. Cancela los de todas las partidas: con una sola caché por modelo,
-/// el turno de otra partida la pisa igual, y uno sin cancelar ocuparía la cola de Ollama hasta 2 min.
-/// En memoria además de en la base: `guardarPrefijoNarrador` no se espera, y al soltar el turno puede no haber escrito.
-const prefijoPorPartida = new Map<string, string>();
-const recalentadoEnCurso = new Map<string, AbortController>();
-
-/// Devuelve si lo mandó. No lanza: si falla o se cancela, el turno siguiente solo pierde el ahorro.
-export async function recalentarSiDesalojado(saveId: string): Promise<boolean> {
-  if (isTurnInFlight(saveId) || recalentadoEnCurso.has(saveId)) return false;
-  const texto =
-    prefijoPorPartida.get(saveId) ??
-    (await prisma.prefijoNarrador.findUnique({ where: { saveId }, select: { texto: true } }).catch(() => null))?.texto;
-  if (!texto || cacheEmpiezaPor(env.ollamaModelNarrador, texto) || isTurnInFlight(saveId)) return false;
-  const controller = new AbortController();
-  recalentadoEnCurso.set(saveId, controller);
-  ultimoCalentamientoPorPartida.set(saveId, Date.now());
-  try {
-    await ollamaGenerate({ model: env.ollamaModelNarrador, prompt: texto, maxTokens: 1, timeoutMs: 120_000, keepAlive: '1h', tarea: 'recalentar', signal: controller.signal });
-    return true;
-  } catch (err) {
-    if (!controller.signal.aborted) console.warn(`[narrador] no se recalentó el prefijo (saveId=${saveId}): ${err instanceof Error ? err.message : err}`);
-    return false;
-  } finally {
-    if (recalentadoEnCurso.get(saveId) === controller) recalentadoEnCurso.delete(saveId);
-  }
-}
-
-/// Al empezar un turno de cualquier partida: corta los recalentados en la cola o en curso.
-export function cancelarRecalentados(): void {
-  for (const controller of recalentadoEnCurso.values()) controller.abort();
-  recalentadoEnCurso.clear();
-}
-
 /// Solo para tests: olvida los calentamientos recientes.
 export function olvidarPrefijoEnCacheParaTests(): void {
   ultimoCalentamientoPorPartida.clear();
-  prefijoPorPartida.clear();
-  recalentadoEnCurso.clear();
 }

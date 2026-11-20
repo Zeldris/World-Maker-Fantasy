@@ -3,7 +3,6 @@ import { ollamaGenerate } from '../lib/ollama.js';
 import { env } from '../config/env.js';
 import { randomPacingDelayMs } from '../config/pacing.js';
 import { createInFlightClaimSet } from '../lib/inFlightClaimSet.js';
-import { recalentarSiDesalojado } from './calentarNarrador.js';
 
 /// Memoria de partida por capítulos (docs/producto/01-analisis-producto.md § "Resumen/Memoria de partida",
 /// docs/mecanicas/10-niveles-xp-reino.md § 3.2/§ 7): cada N acciones del jugador, el backend (no el modelo)
@@ -83,8 +82,6 @@ export async function scheduleChapterSummaryGeneration(saveId: string, character
     console.warn(`[capitulo] generación de resumen en segundo plano falló (saveId=${saveId}):`, err);
   } finally {
     chapterClaims.release(saveId);
-    // QA-514: el resumen usa el modelo del narrador y le pisa la caché del prefijo de la partida.
-    void recalentarSiDesalojado(saveId);
   }
 }
 

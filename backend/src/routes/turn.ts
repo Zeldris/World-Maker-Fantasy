@@ -43,7 +43,6 @@ import { characterSummaryFor } from '../services/characterSummary.js';
 import { entornoTemporalFor } from '../services/worldClock.js';
 import { loadSessionFacts } from '../services/worldFacts.js';
 import { claimTurnInFlight, releaseTurnInFlight } from '../services/turnLock.js';
-import { cancelarRecalentados, recalentarSiDesalojado } from '../services/calentarNarrador.js';
 import {
   detectsUnequippedWeaponClaim,
   wrongWeaponNarrationFor,
@@ -594,10 +593,7 @@ export async function turnRoutes(app: FastifyInstance) {
     if (!saveId || !action) {
       return reply.status(400).send({ error: 'Faltan campos: saveId, action' });
     }
-    if (!preview) {
-      abrirTurnoIa(saveId); // QA-162: id de turno del registro de opt-ai
-      cancelarRecalentados(); // QA-514: el turno no espera detrás del recalentado del anterior
-    }
+    if (!preview) abrirTurnoIa(saveId); // QA-162: id de turno del registro de opt-ai
 
     const save = await prisma.save.findUnique({
       where: { id: saveId },
@@ -1402,7 +1398,6 @@ export async function turnRoutes(app: FastifyInstance) {
       // que el frontend esperase minutos un resultado que nunca va a llegar.
       return reply.status(409).send({ error: 'Ya hay un turno resolviéndose para esta partida — espera a que termine.', locked: true });
     }
-    cancelarRecalentados(); // QA-514
 
     const sessionFacts = await loadSessionFacts(save.id);
     const timeLabel = save.worldState?.fictionalDateLabel ?? 'Día 1, mañana';
@@ -1649,8 +1644,6 @@ export async function turnRoutes(app: FastifyInstance) {
       releaseTurnInFlight(saveId);
       reply.raw.end();
     }
-    // QA-514: si `dialogo_npc` (u otra tarea del modelo del narrador) pisó su caché, el prefijo de la partida vuelve a ella mientras se lee.
-    void recalentarSiDesalojado(saveId);
     // UX-35: el turno no espera al día. Con la narración ya entregada, el mundo de la partida avanza
     // los días que haya cruzado; sus noticias llegan en el siguiente refresco. El turno siguiente
     // y las acciones de la partida (`POST /saves/:id/…`) esperan a que acabe, así nunca se cruzan en la base.

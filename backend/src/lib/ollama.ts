@@ -53,8 +53,6 @@ export interface OllamaGenerateOptions {
   bloques?: BloquePrompt[];
   /// Muestreo extra de Ollama (`options`), p. ej. el del narrador (QA-289). Sin él, manda el Modelfile.
   muestreo?: { min_p?: number; repeat_penalty?: number; repeat_last_n?: number };
-  /// QA-514: cancela la llamada desde fuera (en la cola o en curso), p. ej. el recalentado del narrador cuando llega el turno siguiente.
-  signal?: AbortSignal;
 }
 
 export interface OllamaGenerateResult {
@@ -116,7 +114,6 @@ interface OllamaRawStats {
 /// Error que ve el llamador y que se registra: el AbortError del timeout se traduce a un mensaje claro.
 function traducirError(err: unknown, options: OllamaGenerateOptions): Error {
   if (err instanceof Error && err.name === 'AbortError') {
-    if (options.signal?.aborted) return new Error(`Llamada a Ollama cancelada (${options.tarea ?? options.model})`);
     return new Error(`Ollama no respondió en ${options.timeoutMs}ms (modelo ${options.model}) — probable cuelgue.`);
   }
   return err instanceof Error ? err : new Error(String(err));
@@ -160,38 +157,6 @@ function vigilarCtx(options: OllamaGenerateOptions): void {
 }
 
 /// `num_ctx` que recibe la llamada: el suyo o el del Modelfile (mismo valor para el registro y para el caso).
-/// QA-514: Ollama guarda una sola caché de prefijo por modelo cargado: la de la última petición que le llegó. Esto
-/// recuerda el `system` y el `prompt` de esa petición para saber si el prefijo del narrador sigue en ella.
-const ultimaPeticionPorModelo = new Map<string, { system?: string; prompt: string }>();
-
-/// ¿La última petición a `model` empezaba por `prefijo` (sin `system`, como el narrador)? Sin ninguna, `false`.
-export function cacheEmpiezaPor(model: string, prefijo: string): boolean {
-  const ultima = ultimaPeticionPorModelo.get(model);
-  return !!ultima && !ultima.system && ultima.prompt.startsWith(prefijo);
-}
-
-/// Solo para tests.
-export function olvidarUltimasPeticionesParaTests(): void {
-  ultimaPeticionPorModelo.clear();
-}
-
-/// Controlador de la llamada: corta por `timeoutMs` y por la `signal` de fuera. Lanza si la `signal` ya se disparó.
-function controlDeLlamada(options: OllamaGenerateOptions): { controller?: AbortController; limpiar: () => void } {
-  if (options.signal?.aborted) throw new Error(`Llamada a Ollama cancelada (${options.tarea ?? options.model})`);
-  if (!options.timeoutMs && !options.signal) return { limpiar: () => {} };
-  const controller = new AbortController();
-  const timer = options.timeoutMs ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
-  const alCancelar = () => controller.abort();
-  options.signal?.addEventListener('abort', alCancelar, { once: true });
-  return {
-    controller,
-    limpiar: () => {
-      if (timer) clearTimeout(timer);
-      options.signal?.removeEventListener('abort', alCancelar);
-    },
-  };
-}
-
 const numCtxDe = (options: OllamaGenerateOptions) => options.numCtx ?? ctxEfectivo(options.model);
 
 /// Registro opt-ai de una llamada a /api/generate (no hace nada sin IA_REGISTRO).
@@ -250,10 +215,10 @@ function registrarCasoGenerate(options: OllamaGenerateOptions, salida: string): 
 export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<OllamaGenerateResult> {
   const queueTimeoutMs = queueTimeoutFor(options);
   return ollamaQueue.enqueue(async () => {
-    const { controller, limpiar } = controlDeLlamada(options);
+    const controller = options.timeoutMs ? new AbortController() : undefined;
+    const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
     const inicio = Date.now();
     vigilarCtx(options);
-    ultimaPeticionPorModelo.set(options.model, { system: options.system, prompt: options.prompt });
 
     try {
       // use_mlock/num_thread (roadmap de velocidad, 2026-07-19, revisado 2026-09-14): options.*
@@ -286,13 +251,11 @@ export async function ollamaGenerate(options: OllamaGenerateOptions): Promise<Ol
       registrarCasoGenerate(options, raw.response);
       return { text: raw.response, raw };
     } catch (err) {
-      // QA-514: cortada o fallida, no se sabe qué prefijo dejó en la caché de Ollama.
-      ultimaPeticionPorModelo.delete(options.model);
       const traducido = traducirError(err, options);
       registrarGenerate(options, undefined, inicio, { error: traducido.message });
       throw traducido;
     } finally {
-      limpiar();
+      if (timer) clearTimeout(timer);
     }
   }, queueTimeoutMs);
 }
@@ -309,10 +272,10 @@ export async function ollamaGenerateStream(
 ): Promise<OllamaGenerateResult> {
   const queueTimeoutMs = queueTimeoutFor(options);
   return ollamaQueue.enqueue(async () => {
-    const { controller, limpiar } = controlDeLlamada(options);
+    const controller = options.timeoutMs ? new AbortController() : undefined;
+    const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : undefined;
     const inicio = Date.now();
     vigilarCtx(options);
-    ultimaPeticionPorModelo.set(options.model, { system: options.system, prompt: options.prompt });
     let ttftMs: number | undefined;
 
     try {
@@ -376,13 +339,11 @@ export async function ollamaGenerateStream(
       if (terminado) registrarCasoGenerate(options, fullText);
       return { text: fullText, raw: lastRaw };
     } catch (err) {
-      // QA-514: cortada o fallida, no se sabe qué prefijo dejó en la caché de Ollama.
-      ultimaPeticionPorModelo.delete(options.model);
       const traducido = traducirError(err, options);
       registrarGenerate(options, undefined, inicio, { ttftMs, error: traducido.message });
       throw traducido;
     } finally {
-      limpiar();
+      if (timer) clearTimeout(timer);
     }
   }, queueTimeoutMs);
 }
