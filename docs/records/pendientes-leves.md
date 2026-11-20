@@ -90,3 +90,7 @@ Del PR de `QA-289`, revisión de bloque (2026-11-14):
 Los dos de `iaRegistro.ts`, cerrados con ~~`QA-520`~~ ✅ 2026-11-20.
 
 - `iniciar-tarkor.sh`, `actualizar-mundo.sh`, `generar-dataset-dpo.sh`: Ollama fijo en `~/ollama-bin` sin respaldo a `~/.local/ollama` (como hace `ia-ronda.sh`) y `docs/arquitectura/04-decisiones-tecnicas.md:154` sigue con la ruta vieja.
+
+## Pendientes leves de la revisión de bloque de la ronda local 3 (2026-11-20)
+
+- `iaRegistro.ts` (`ventanaDeLinea`, ~177-191): con la cola cortada a mitad de línea, `prefijo_linea` da la línea vieja entera con `−` (no solo lo que se fue); `'X\nB'` → `'\nB'` da `''` (el test qa520-c lo fija) en vez de `−X`; y la ventana puede partir un par sustituto UTF-16.

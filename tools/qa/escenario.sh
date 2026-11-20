@@ -86,12 +86,28 @@ INDICE="${ESCENARIO_INDICE:-$DIR/README.md}"
 # QA-310: relanza el juego con el perfil de IA y el registro con que corría (los guarda arrancar-juego.sh); sin ellos,
 # la tanda con Ollama real dejaba de escribir en logs/ia/. Lo que venga en el entorno manda. El archivo lleva el id de
 # arranque del sistema en su primera línea (perfil-ia.sh): el de una sesión anterior (reinicio sin `--parar`) se ignora.
-relanzar_juego() {
+cargar_perfil_ia() {
   if [ -z "${IA_PERFIL:-}" ] && [ -f logs/juego-ia.env ] &&
     [ "$(head -n1 logs/juego-ia.env)" = "# boot=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || true)" ]; then
     . logs/juego-ia.env
   fi
+}
+
+relanzar_juego() {
+  cargar_perfil_ia
   bash tools/playwright-e2e/arrancar-juego.sh
+}
+
+# QA-521: `arrancar-juego.sh` se para con un Ollama real sin `IA_PERFIL`. `cargar` y `avanzar` lo miran antes de
+# parar el juego: si no, lo paraban, restauraban y el relanzamiento fallaba, con el juego caído a mitad de tanda.
+comprobar_perfil_ia() {
+  cargar_perfil_ia
+  . tools/playwright-e2e/ia-comprobaciones.sh
+  if [ -z "${IA_PERFIL:-}" ] && ia_ollama_real "${OLLAMA_BASE_URL:-http://localhost:11434}"; then
+    echo "Hay un Ollama real y no hay perfil de IA (logs/juego-ia.env falta o es de antes de reiniciar): no paro el juego (QA-521)." >&2
+    echo "Relanza con 'bash tools/qa/deck/juego.sh' y repite la orden." >&2
+    exit 1
+  fi
 }
 
 # P478: con el narrador real cargado (~5 GB), `cargar` bajaba la memoria disponible a ~1.260 MiB más de 30 s y el
@@ -186,6 +202,7 @@ case "${1:-}" in
   cargar)
     nombre="${2:?falta el nombre}"
     [ -f "$DIR/$nombre.dump" ] || { echo "No existe $DIR/$nombre.dump (escenario.sh lista)"; exit 1; }
+    comprobar_perfil_ia
     bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
     descargar_ollama
     psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)" -c "CREATE DATABASE $BASE"
@@ -204,6 +221,7 @@ case "${1:-}" in
   avanzar)
     partida="${2:?falta la partida}"; dias="${3:?faltan los días}"; extra="${4:-}"
     [ -z "$extra" ] || [ "$extra" = "--reparar" ] || { echo "«$extra»: solo se admite --reparar"; exit 2; }
+    comprobar_perfil_ia
     bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
     (cd backend && DATABASE_URL="$URL" DIRECT_URL="$URL" npx tsx src/scripts/avanzarDias.ts "$partida" "$dias" $extra) || { relanzar_juego; recargar_pagina; exit 1; }
     relanzar_juego

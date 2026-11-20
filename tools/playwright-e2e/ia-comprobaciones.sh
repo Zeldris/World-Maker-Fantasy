@@ -63,5 +63,7 @@ print("vacio" if not modelos else ("gpu" if any((m.get("size_vram") or 0) > 0 fo
 # `juego.sh`) y quedaron sin `IA_REGISTRO`. El real responde a /api/version con JSON («"version"»); el simulado
 # (tools/ci/mock-ollama.mjs), con «Ollama is running». Devuelve 0 si en la URL ($1) hay un Ollama real.
 ia_ollama_real() {
-  curl -sf --max-time 3 "${1%/}/api/version" 2>/dev/null | grep -q '"version"'
+  local r  # sin tubería: con `pipefail`, un `grep -q` que acaba antes que curl da SIGPIPE y un falso «no»
+  r="$(curl -sf --max-time 3 "${1%/}/api/version" 2>/dev/null)" || return 1
+  [[ $r == *'"version"'* ]]
 }

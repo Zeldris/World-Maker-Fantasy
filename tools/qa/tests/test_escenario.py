@@ -159,7 +159,23 @@ class Cargar(unittest.TestCase):
         escribir(os.path.join(e2e, 'arrancar-juego.sh'), f'echo "arrancar-juego.sh $*" >> "{d}/llamadas.log"\n')
         escribir(os.path.join(e2e, 'orden.sh'), f'echo "orden.sh $*" >> "{d}/llamadas.log"; cat > "{d}/orden.js"\n')
         escribir(os.path.join(e2e, 'driver.token'), 'clave')
+        shutil.copy(os.path.join(QA, '..', 'playwright-e2e', 'ia-comprobaciones.sh'), os.path.join(e2e, 'ia-comprobaciones.sh'))
         return d
+
+    def test_cargar_y_avanzar_no_paran_el_juego_con_ollama_real_sin_perfil(self):
+        """QA-521: con Ollama real y sin logs/juego-ia.env, parar y relanzar dejaba el juego caído a mitad de tanda."""
+        d = self.driver_falso()
+        ruta = os.path.join(d, 'bin', 'curl')
+        escribir(ruta, f'''#!/bin/bash
+echo "curl $*" >> "{d}/llamadas.log"
+case "$*" in *api/version*) echo '{{"version":"0.12.0"}}' ;; esac
+''')
+        os.chmod(ruta, os.stat(ruta).st_mode | stat.S_IEXEC)
+        for orden in (('cargar', 'uno'), ('avanzar', '1', '2')):
+            r = self.correr(d, *orden)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn('tools/qa/deck/juego.sh', r.stderr)
+            self.assertNotIn('arrancar-juego.sh', leer(os.path.join(d, 'llamadas.log')))
 
     def correr(self, d: str, *args: str, extra_env: dict | None = None):
         env = {**ENV_GIT, 'PATH': os.path.join(d, 'bin') + os.pathsep + os.environ['PATH'], **(extra_env or {})}

@@ -116,8 +116,10 @@ class IaComprobaciones(unittest.TestCase):
 
     def test_ollama_real_por_api_version(self):
         # QA-521: el real da JSON con «version»; el simulado, «Ollama is running»; sin nada escuchando, no es real.
-        self.assertEqual(bash(f"ia_ollama_real '{self.servidor('{\"version\":\"0.12.0\"}')}/'").returncode, 0)
-        self.assertEqual(bash(f"ia_ollama_real '{self.servidor('Ollama is running')}'").returncode, 1)
+        real = self.servidor('{"version":"0.12.0"}')
+        simulado = self.servidor('Ollama is running')
+        self.assertEqual(bash(f"ia_ollama_real '{real}/'").returncode, 0)
+        self.assertEqual(bash(f"ia_ollama_real '{simulado}'").returncode, 1)
         self.assertNotEqual(bash("ia_ollama_real 'http://127.0.0.1:9'").returncode, 0)
 
     def test_arrancar_juego_para_con_ollama_real_sin_perfil(self):
