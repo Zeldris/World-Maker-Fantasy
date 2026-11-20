@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { isWeaklyGrounded, formatLoreForPrompt, titulosPorEntidad, loreParaReplica, type RetrievedLore } from './retrieval.js';
+import { describe, it, expect, vi } from 'vitest';
+
+const queryRaw = vi.fn();
+vi.mock('../lib/prisma.js', () => ({ prisma: { $queryRaw: (...a: unknown[]) => queryRaw(...a) } }));
+
+import { isWeaklyGrounded, formatLoreForPrompt, titulosPorEntidad, loreParaReplica, cargarLoreParaReplica, type RetrievedLore } from './retrieval.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — solo las dos
 // funciones puras; `retrieveLore` depende de Postgres/pgvector real y queda fuera de alcance de
@@ -130,9 +134,14 @@ describe('titulosPorEntidad con un nombre de pila (QA-518)', () => {
   const t = ['Gistera Koh y Uhuld Koh (encuentro del primer turno)', 'Feg Tusha (los Faerus de Hashma)', 'Dentro de Karot Veku — el Ketg', 'Clan Maktor (el clan de Gorhorn) — aniquilado dos veces'];
 
   it('«Gistera» trae «Gistera Koh…»; «Dentro», «Feg» y «Clan» sueltos, no', () => {
-    expect(titulosPorEntidad(t, ['Ulkha, ¿quién es Gistera?'])).toEqual(['Gistera Koh y Uhuld Koh (encuentro del primer turno)']);
-    expect(titulosPorEntidad(t, ['Dentro de la tienda hablo con Feg.'])).toEqual([]);
-    expect(titulosPorEntidad(t, ['Pregunto por el Clan'])).toEqual([]);
+    const o = { nombreDePila: true };
+    expect(titulosPorEntidad(t, ['Ulkha, ¿quién es Gistera?'], o)).toEqual(['Gistera Koh y Uhuld Koh (encuentro del primer turno)']);
+    expect(titulosPorEntidad(t, ['Dentro de la tienda hablo con Feg.'], o)).toEqual([]);
+    expect(titulosPorEntidad(t, ['Pregunto por el Clan'], o)).toEqual([]);
+  });
+
+  it('sin la opción (la recuperación del narrador), el rango 3 está apagado', () => {
+    expect(titulosPorEntidad(t, ['Ulkha, ¿quién es Gistera?'])).toEqual([]);
   });
 });
 
@@ -152,11 +161,36 @@ describe('loreParaReplica (QA-518, P487, P491)', () => {
     expect(loreParaReplica(chunks, 'Hola, ¿qué tal la caza?', 'Ulkha Ketg')).toEqual([]);
   });
 
-  it('como mucho dos, y cada una recortada en un punto antes de 600 caracteres (P491: «Clan Serhu» trae la casta de Ketg)', () => {
+  it('como mucho dos, y cada una recortada en un punto antes de 280 caracteres (P491: «Clan Serhu» trae la casta de Ketg)', () => {
     const lore = loreParaReplica(chunks, 'Le pregunto por su oficio en el Clan Serhu, por Gistera y por el Clan Maktor', 'Tirag Susig');
     expect(lore).toHaveLength(2);
     const serhu = lore.find((l) => l.startsWith('Clan Serhu y la casta de Ketg: Ketg es la casta'))!;
-    expect(serhu.length).toBeLessThanOrEqual('Clan Serhu y la casta de Ketg: '.length + 600);
+    expect(serhu.length).toBeLessThanOrEqual('Clan Serhu y la casta de Ketg: '.length + 280);
     expect(serhu).toMatch(/Serhu\.$/);
+  });
+
+  it('sin las frases de secreto, y corto (P493)', () => {
+    const c = [trozo('Gistera Koh y Uhuld Koh (encuentro)', 'Gistera Koh es una orca criada por Uhuld. Uhuld tramaba en secreto exponer a la casta — sin saberlo, ese descendiente era Gorhorn (secreto que ni Gistera ni Gorhorn conocen). Gistera huyó esa noche. '.repeat(3))];
+    const [l] = loreParaReplica(c, '¿Quién es Gistera?', 'Ulkha Ketg');
+    expect(l).toContain('Gistera Koh es una orca criada por Uhuld.');
+    expect(l).not.toMatch(/secreto|sin saberlo|Gorhorn/);
+    expect(l.length).toBeLessThanOrEqual('Gistera Koh y Uhuld Koh (encuentro): '.length + 280);
+  });
+
+  it('una entrada hecha solo de secretos no entra', () => {
+    expect(loreParaReplica([trozo('Gistera Koh y Uhuld Koh', 'Es un secreto de trama.')], '¿Quién es Gistera?', 'Ulkha Ketg')).toEqual([]);
+  });
+});
+
+// QA-518: con dos NPC en escena, retrieveLore llena sus huecos con las entradas de esos NPC; la réplica busca en todo el lore.
+describe('cargarLoreParaReplica', () => {
+  it('trae Gistera aunque lo recuperado por retrieveLore sean las entradas de los NPC en escena', async () => {
+    queryRaw.mockResolvedValue([
+      { title: "Terk'ikar Ulkha Ketg, del Clan Serhu", text: 'Ulkha manda.' },
+      { title: 'Tirag Susig, cazador', text: 'Tirag caza.' },
+      { title: 'Gistera Koh y Uhuld Koh (encuentro del primer turno)', text: 'Gistera huye con su hijo Uhuld.' },
+    ]);
+    const lore = await cargarLoreParaReplica('w1', 'Ulkha Ketg, ¿quién es Gistera?', 'Ulkha Ketg');
+    expect(lore).toEqual(['Gistera Koh y Uhuld Koh (encuentro del primer turno): Gistera huye con su hijo Uhuld.']);
   });
 });

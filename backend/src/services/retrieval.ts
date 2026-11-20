@@ -157,7 +157,8 @@ const GENERICAS = new Set(['clan', 'casa', 'casta', 'tribu', 'linaje', 'el', 'la
 /// QA-289: títulos cuya entidad nombra el texto. Primero los que el texto nombra enteros (cabeza de dos o
 /// más palabras: «Gorhorn» solo saldría en casi cada turno); detrás, los que son ese nombre con un título
 /// delante («Terk'ikar Ulkha Ketg» con «Ulkha Ketg»), nunca un sitio que solo lo lleva («Campamento del Clan Serhu»).
-export function titulosPorEntidad(titulos: string[], textos: string[]): string[] {
+/// `nombreDePila` (QA-518): enciende el rango 3. Solo la réplica del NPC lo pide; la recuperación del narrador no.
+export function titulosPorEntidad(titulos: string[], textos: string[], opciones: { nombreDePila?: boolean } = {}): string[] {
   const textosN = textos.map(normalizar);
   const nombres = textos.flatMap(nombresPropios);
   const sueltas = textos.flatMap(palabrasSueltas);
@@ -172,7 +173,7 @@ export function titulosPorEntidad(titulos: string[], textos: string[]): string[]
     const [primera, propia] = c.split(' ');
     if (palabras === 2 && GENERICAS.has(primera) && sueltas.includes(propia)) return 2;
     // QA-518 (P487): «¿quién es Gistera?» → «Gistera Koh»: el nombre de pila de una cabeza de dos palabras.
-    return palabras === 2 && !GENERICAS.has(primera) && primera.length >= 4 && sueltas.includes(primera) ? 3 : -1;
+    return opciones.nombreDePila && palabras === 2 && !GENERICAS.has(primera) && primera.length >= 4 && sueltas.includes(primera) ? 3 : -1;
   };
   return titulos
     .map((t) => ({ t, r: rango(t) }))
@@ -209,14 +210,49 @@ export function formatLoreForPrompt(chunks: RetrievedLore[]): string[] {
 }
 
 /// QA-518 (P487, P491): el lore que entra en la réplica de un NPC. Solo el de lo que nombra la frase del jugador (por
-/// título, nunca por cercanía), sin la entrada del propio NPC (ya lleva su trasfondo), como mucho 2 y recortadas.
+/// título, nunca por cercanía), sin la entrada del propio NPC (ya lleva su trasfondo), como mucho 2 y muy recortadas:
+/// el NPC lo cuenta con sus palabras, no lo recita.
 const MAX_LORE_REPLICA = 2;
-const MAX_CHARS_LORE_REPLICA = 600;
+const MAX_CHARS_LORE_REPLICA = 280;
+
+/// Frases que marcan un secreto de trama o un saber oculto («ese descendiente era el propio Gorhorn (secreto que ni
+/// Gistera ni Gorhorn conocen)»): el NPC no puede contarlas, así que la frase entera se quita. Lista corta a propósito;
+/// si un secreto nuevo se cuela con otra fórmula, se añade aquí.
+const MARCA_SECRETO = /secret|sin saberl[oa]|nadie sabe|\bni\b[^.]{0,60}\bconoc|\bocult[oa]|sin revelar|desconoce/i;
+
+/// Solo las frases públicas de un trozo de lore.
+function soloPublico(texto: string): string {
+  return texto
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .filter((f) => !MARCA_SECRETO.test(f))
+    .join(' ');
+}
 
 export function loreParaReplica(chunks: RetrievedLore[], accion: string, npcName: string): string[] {
   const propio = normalizar(npcName);
-  const nombrados = titulosPorEntidad(chunks.map((c) => c.title), [accion]).filter((t) => !` ${normalizar(t)} `.includes(` ${propio} `));
-  return nombrados.slice(0, MAX_LORE_REPLICA).map((t) => `${t}: ${recortar(chunks.find((c) => c.title === t)!.text, MAX_CHARS_LORE_REPLICA)}`);
+  const nombrados = titulosPorEntidad(chunks.map((c) => c.title), [accion], { nombreDePila: true }).filter((t) => !` ${normalizar(t)} `.includes(` ${propio} `));
+  return nombrados
+    .slice(0, MAX_LORE_REPLICA)
+    .map((t) => ({ t, texto: soloPublico(chunks.find((c) => c.title === t)!.text) }))
+    .filter((x) => x.texto !== '')
+    .map((x) => `${x.t}: ${recortar(x.texto, MAX_CHARS_LORE_REPLICA)}`);
+}
+
+/// Como `loreParaReplica`, pero buscando entre TODO el lore del mundo (un trozo por título, sin embeddings): lo que
+/// recupera `retrieveLore` se llena con las entradas de los NPC en escena y dejaría fuera lo que nombra el jugador.
+export async function cargarLoreParaReplica(worldId: string, accion: string, npcName: string, excludeTags: string[] = []): Promise<string[]> {
+  const filas = await withQueryTimeout(
+    prisma.$queryRaw<{ title: string; text: string }[]>`
+      SELECT DISTINCT ON (title) title, text FROM "LoreChunk"
+      WHERE "worldId" = ${worldId} AND NOT (tags && ${excludeTags}::text[])
+      ORDER BY title
+    `,
+    15_000,
+    'cargarLoreParaReplica',
+  );
+  return loreParaReplica(filas.map((f) => ({ ...f, distance: 0 })), accion, npcName);
 }
 
 /// Corta en el último punto antes del tope (si queda al menos la mitad); si no, en el tope con «…».

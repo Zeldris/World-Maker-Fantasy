@@ -32,7 +32,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
 import { guardarPrefijoNarrador } from './calentarNarrador.js';
 import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, lineaDialogoDelJugador, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
-import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded, loreParaReplica } from './retrieval.js';
+import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded, cargarLoreParaReplica } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { DEFAULT_KINGDOM_STATS, kingdomStatsParaCliente } from './kingdomTick.js';
@@ -5088,7 +5088,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
         replicaAnterior: ultimaReplica(lastNarration?.text),
         nombresConocidos: await nombresDelMundo(worldId),
-        lore: loreParaReplica(retrieved, action, dialogueTarget.name),
+        lore: await cargarLoreParaReplica(worldId, action, dialogueTarget.name, excludeTags).catch(() => []),
       });
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);

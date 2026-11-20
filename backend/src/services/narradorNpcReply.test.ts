@@ -32,6 +32,7 @@ describe('generateNpcReply (fase 1 hacia main, P327)', () => {
     await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién es Gistera?', sessionFacts: ['Gorhorn llega.'], lore: ['Gistera Koh y Uhuld Koh: Gistera huye con su hijo.'] });
     const { prompt } = ollamaGenerate.mock.calls[0]![0] as { prompt: string };
     expect(prompt).toMatch(/LO QUE SABES DEL MUNDO \(nunca digas que no lo conoces;[^\n]*desde tu lado: lo de otro clan, pueblo o raza es ajeno[^\n]*\):\n- Gistera Koh y Uhuld Koh: Gistera huye con su hijo\./);
+    expect(prompt).toMatch(/1-2 frases[^\n]*sin recitarlo[^\n]*no inventes/);
     expect(prompt.indexOf('Gorhorn llega.')).toBeLessThan(prompt.indexOf('LO QUE SABES DEL MUNDO'));
     await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Hola', sessionFacts: [] });
     expect((ollamaGenerate.mock.calls[1]![0] as { prompt: string }).prompt).not.toContain('LO QUE SABES DEL MUNDO');
