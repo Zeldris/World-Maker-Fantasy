@@ -234,6 +234,23 @@ describe('prefijoBloque (QA-507)', () => {
     expect(JSON.parse(lineaRegistro({ operation: 'text_completion', prefijoBloque: 'hechos', prefijoLinea: '- ESTADO' }, 'deck'))['app.prefijo_linea']).toBe('- ESTADO');
   });
 
+  it('con la cola perdida, un `\\n` al principio o una línea larga, apunta a la diferencia (QA-520)', () => {
+    const h = (t: string) => [{ nombre: 'hechos', texto: t }];
+    const linea = (modelo: string, antes: string, despues: string) => {
+      prefijoBloqueYLinea(modelo, h(antes));
+      return prefijoBloqueYLinea(modelo, h(despues)).linea;
+    };
+    expect(linea('qa520-a', 'A\nB\nC', 'A\nB')).toBe('−C');
+    expect(linea('qa520-b', 'A\nB\nC', 'A\nB\n')).toBe('−C');
+    expect(linea('qa520-c', 'X\nB', '\nB')).toBe('');
+    expect(linea('qa520-d', 'A\nB', 'A\nB\nC')).toBe('C');
+    const largo = 'PERSONAJES AQUÍ: ' + 'Ulkha Ketg, Tirag Susig, Torgash Ketg, ';
+    const l = linea('qa520-e', largo + 'Gorhorn.', largo + 'Ozgar.')!;
+    expect(l.length).toBeLessThanOrEqual(48);
+    expect(l).toContain('…');
+    expect(l).toContain('Ozgar');
+  });
+
   it('va al registro como app.prefijo_bloque y sin bloques no se escribe', () => {
     expect(JSON.parse(lineaRegistro({ operation: 'text_completion', prefijoBloque: 'hechos' }, 'deck'))['app.prefijo_bloque']).toBe('hechos');
     expect('app.prefijo_bloque' in JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))).toBe(false);

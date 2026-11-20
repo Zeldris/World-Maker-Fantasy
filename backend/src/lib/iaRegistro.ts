@@ -167,12 +167,28 @@ export function prefijoBloqueYLinea(modelo: string, bloques: BloquePrompt[]): { 
 }
 
 const LARGO_LINEA = 48;
+/// QA-520: si el bloque nuevo solo pierde la cola, la línea es la del anterior que se fue, con `−` delante; y si la
+/// diferencia cae más allá de `LARGO_LINEA`, se guarda el comienzo de la línea, `…` y una ventana alrededor de ella.
 function lineaDeLaDiferencia(anterior: string, nuevo: string): string {
   let i = 0;
   while (i < anterior.length && i < nuevo.length && anterior.charCodeAt(i) === nuevo.charCodeAt(i)) i++;
-  const inicio = nuevo.lastIndexOf('\n', i - 1) + 1;
-  const fin = nuevo.indexOf('\n', inicio);
-  return nuevo.slice(inicio, fin < 0 ? undefined : fin).slice(0, LARGO_LINEA);
+  // Si el corte o el añadido empieza justo en un `\n`, la diferencia es la línea que va tras él.
+  if (i === nuevo.length) return '−' + ventanaDeLinea(anterior, anterior[i] === '\n' ? i + 1 : i, LARGO_LINEA - 1);
+  if (i === anterior.length && nuevo[i] === '\n') i++;
+  return ventanaDeLinea(nuevo, i, LARGO_LINEA);
+}
+
+const ANTES_DE_LA_DIFERENCIA = 8;
+function ventanaDeLinea(texto: string, i: number, largo: number): string {
+  // Con i = 0, `lastIndexOf('\n', -1)` mira la posición 0: un texto que empieza por `\n` daría la segunda línea.
+  const inicio = i === 0 ? 0 : texto.lastIndexOf('\n', i - 1) + 1;
+  const fin = texto.indexOf('\n', inicio);
+  const linea = texto.slice(inicio, fin < 0 ? undefined : fin);
+  const columna = i - inicio;
+  if (linea.length <= largo || columna < largo - ANTES_DE_LA_DIFERENCIA) return linea.slice(0, largo);
+  const cabeza = Math.floor(largo / 2) - 4;
+  const desde = columna - ANTES_DE_LA_DIFERENCIA;
+  return linea.slice(0, cabeza) + '…' + linea.slice(desde, desde + largo - cabeza - 1);
 }
 
 /// Una llamada a este modelo sin bloques: la siguiente con bloques apunta `otra` (el prefijo previo no era el suyo).
