@@ -1,6 +1,6 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "pendingFile": "docs/records/pendientes-leves.md",
   "schemaVersion": 1,
   "language": "es",

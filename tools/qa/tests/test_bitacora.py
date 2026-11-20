@@ -14,9 +14,14 @@ def flujo(*args: str) -> subprocess.CompletedProcess:
 
 
 def comprobar(texto: str, *args: str) -> subprocess.CompletedProcess:
-    ruta = os.path.join(carpeta(), 'traspaso.md')
+    # En un repo de prueba sin commits: desde la v0.8.1 (D135), `check` compara las filas con la bitácora de HEAD,
+    # y desde el repo de WMF las del traspaso real «desaparecerían» del texto de prueba.
+    repo = carpeta()
+    git(repo, 'init', '-q')
+    config_gw(repo)
+    ruta = os.path.join(repo, 'traspaso.md')
     escribir(ruta, texto)
-    return flujo('check', ruta, *args)
+    return flujo('--root', repo, 'check', ruta, *args)
 
 
 class Bitacora(unittest.TestCase):

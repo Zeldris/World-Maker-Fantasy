@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.0 -->
+<!-- galivelop-workflow v0.8.1 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
