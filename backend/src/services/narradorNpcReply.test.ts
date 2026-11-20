@@ -26,6 +26,17 @@ describe('generateNpcReply (fase 1 hacia main, P327)', () => {
     expect(prompt).not.toMatch(/Ugrak/);
   });
 
+  // QA-518 (P487): con el lore de lo nombrado, el NPC no dice «no conozco a nadie con ese nombre».
+  it('el lore de lo nombrado entra en el prompt, tras los hechos; sin lore, ni el bloque', async () => {
+    const npc = { name: 'Ulkha Ketg', role: 'Terk\'ikar', personality: '', bio: '' };
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién es Gistera?', sessionFacts: ['Gorhorn llega.'], lore: ['Gistera Koh y Uhuld Koh: Gistera huye con su hijo.'] });
+    const { prompt } = ollamaGenerate.mock.calls[0]![0] as { prompt: string };
+    expect(prompt).toMatch(/LO QUE SABES DEL MUNDO[^\n]*nunca digas que no lo conoces\):\n- Gistera Koh y Uhuld Koh: Gistera huye con su hijo\./);
+    expect(prompt.indexOf('Gorhorn llega.')).toBeLessThan(prompt.indexOf('LO QUE SABES DEL MUNDO'));
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Hola', sessionFacts: [] });
+    expect((ollamaGenerate.mock.calls[1]![0] as { prompt: string }).prompt).not.toContain('LO QUE SABES DEL MUNDO');
+  });
+
   it('sin nombre oculto, el prompt lleva su nombre', async () => {
     await generateNpcReply({ npc: { name: 'Ugrak Tuerto', role: 'guardián', personality: '', bio: '' }, characterName: 'Gorhorn', action: 'Hola', sessionFacts: [] });
     const { prompt } = ollamaGenerate.mock.calls[0]![0] as { prompt: string };

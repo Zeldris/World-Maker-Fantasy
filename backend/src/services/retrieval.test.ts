@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isWeaklyGrounded, formatLoreForPrompt, titulosPorEntidad, type RetrievedLore } from './retrieval.js';
+import { isWeaklyGrounded, formatLoreForPrompt, titulosPorEntidad, loreParaReplica, type RetrievedLore } from './retrieval.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — solo las dos
 // funciones puras; `retrieveLore` depende de Postgres/pgvector real y queda fuera de alcance de
@@ -121,5 +121,42 @@ describe('titulosPorEntidad', () => {
     expect(titulosPorEntidad(t, ['hablo de los maktor'])).toEqual([]);
     expect(titulosPorEntidad(t, ['Hablo con la Casa de Piedra'])).toEqual([]);
     expect(titulosPorEntidad(t, ['Pienso en Ketg'])).toEqual(['Casa Ketg']);
+  });
+});
+
+// QA-518 (P487): «¿quién es Gistera?» con Ulkha en escena. Un nombre de pila trae la cabeza de dos palabras que empieza
+// por él; ni una genérica («Clan»), ni una palabra corta, ni una cabeza de tres palabras.
+describe('titulosPorEntidad con un nombre de pila (QA-518)', () => {
+  const t = ['Gistera Koh y Uhuld Koh (encuentro del primer turno)', 'Feg Tusha (los Faerus de Hashma)', 'Dentro de Karot Veku — el Ketg', 'Clan Maktor (el clan de Gorhorn) — aniquilado dos veces'];
+
+  it('«Gistera» trae «Gistera Koh…»; «Dentro», «Feg» y «Clan» sueltos, no', () => {
+    expect(titulosPorEntidad(t, ['Ulkha, ¿quién es Gistera?'])).toEqual(['Gistera Koh y Uhuld Koh (encuentro del primer turno)']);
+    expect(titulosPorEntidad(t, ['Dentro de la tienda hablo con Feg.'])).toEqual([]);
+    expect(titulosPorEntidad(t, ['Pregunto por el Clan'])).toEqual([]);
+  });
+});
+
+describe('loreParaReplica (QA-518, P487, P491)', () => {
+  const trozo = (title: string, text: string): RetrievedLore => ({ title, text, distance: 0.5 });
+  const chunks = [
+    trozo("Terk'ikar Ulkha Ketg, del Clan Serhu", 'Ulkha manda el Clan Serhu.'),
+    trozo('Clan Maktor (el clan de Gorhorn) — aniquilado dos veces', 'Los Maktor cayeron dos veces.'),
+    trozo('Gistera Koh y Uhuld Koh (encuentro del primer turno)', 'Gistera huye con su hijo Uhuld.'),
+    trozo('Clan Serhu y la casta de Ketg', 'Ketg es la casta que manda en el Clan Serhu. '.repeat(30)),
+    trozo('Las Llanuras del Viento Rojo', 'Arena roja.'),
+  ];
+
+  it('solo lo que nombra la frase del jugador, nunca lo semántico ni la entrada del propio NPC', () => {
+    expect(loreParaReplica(chunks, 'Ulkha Ketg, ¿quién es Gistera?', 'Ulkha Ketg')).toEqual(['Gistera Koh y Uhuld Koh (encuentro del primer turno): Gistera huye con su hijo Uhuld.']);
+    expect(loreParaReplica(chunks, 'Cuéntame qué pasó con los Maktor, Ulkha.', 'Ulkha Ketg')).toEqual(['Clan Maktor (el clan de Gorhorn) — aniquilado dos veces: Los Maktor cayeron dos veces.']);
+    expect(loreParaReplica(chunks, 'Hola, ¿qué tal la caza?', 'Ulkha Ketg')).toEqual([]);
+  });
+
+  it('como mucho dos, y cada una recortada en un punto antes de 600 caracteres (P491: «Clan Serhu» trae la casta de Ketg)', () => {
+    const lore = loreParaReplica(chunks, 'Le pregunto por su oficio en el Clan Serhu, por Gistera y por el Clan Maktor', 'Tirag Susig');
+    expect(lore).toHaveLength(2);
+    const serhu = lore.find((l) => l.startsWith('Clan Serhu y la casta de Ketg: Ketg es la casta'))!;
+    expect(serhu.length).toBeLessThanOrEqual('Clan Serhu y la casta de Ketg: '.length + 600);
+    expect(serhu).toMatch(/Serhu\.$/);
   });
 });

@@ -170,7 +170,9 @@ export function titulosPorEntidad(titulos: string[], textos: string[]): string[]
     if (nombres.some((n) => contiene(c, n) && palabras - n.split(' ').length <= 1)) return 1;
     // QA-513: «los Maktor» → «Clan Maktor»: la palabra propia de una cabeza de dos palabras con genérica delante.
     const [primera, propia] = c.split(' ');
-    return palabras === 2 && GENERICAS.has(primera) && sueltas.includes(propia) ? 2 : -1;
+    if (palabras === 2 && GENERICAS.has(primera) && sueltas.includes(propia)) return 2;
+    // QA-518 (P487): «¿quién es Gistera?» → «Gistera Koh»: el nombre de pila de una cabeza de dos palabras.
+    return palabras === 2 && !GENERICAS.has(primera) && primera.length >= 4 && sueltas.includes(primera) ? 3 : -1;
   };
   return titulos
     .map((t) => ({ t, r: rango(t) }))
@@ -204,4 +206,23 @@ export function formatLoreForPrompt(chunks: RetrievedLore[]): string[] {
     total += line.length;
   }
   return result;
+}
+
+/// QA-518 (P487, P491): el lore que entra en la réplica de un NPC. Solo el de lo que nombra la frase del jugador (por
+/// título, nunca por cercanía), sin la entrada del propio NPC (ya lleva su trasfondo), como mucho 2 y recortadas.
+const MAX_LORE_REPLICA = 2;
+const MAX_CHARS_LORE_REPLICA = 600;
+
+export function loreParaReplica(chunks: RetrievedLore[], accion: string, npcName: string): string[] {
+  const propio = normalizar(npcName);
+  const nombrados = titulosPorEntidad(chunks.map((c) => c.title), [accion]).filter((t) => !` ${normalizar(t)} `.includes(` ${propio} `));
+  return nombrados.slice(0, MAX_LORE_REPLICA).map((t) => `${t}: ${recortar(chunks.find((c) => c.title === t)!.text, MAX_CHARS_LORE_REPLICA)}`);
+}
+
+/// Corta en el último punto antes del tope (si queda al menos la mitad); si no, en el tope con «…».
+function recortar(texto: string, max: number): string {
+  const t = texto.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const punto = t.lastIndexOf('. ', max);
+  return punto >= max / 2 ? t.slice(0, punto + 1) : `${t.slice(0, max).trimEnd()}…`;
 }

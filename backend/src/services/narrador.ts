@@ -964,6 +964,8 @@ export interface NpcReplyContext {
   replicaAnterior?: string;
   /// P420: nombres propios del mundo (`nombresDelMundo`), para no inventar pueblos ni personajes.
   nombresConocidos?: Set<string>;
+  /// QA-518: lore de lo que nombra la frase del jugador (`loreParaReplica`), para no negar lo que su pueblo sabe.
+  lore?: string[];
 }
 
 const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
@@ -1382,7 +1384,7 @@ Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNO
 
 LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más). Donde pone «(tú)» habla de ti: cuéntalo en primera persona («yo…»), nunca como si fuera otra persona:
 ${factsBlock(hechos)}
-
+${ctx.lore?.length ? `\nLO QUE SABES DEL MUNDO (lo sabe cualquiera de tu pueblo: si viene a cuento, háblalo con tus palabras, sin recitarlo ni añadir detalles; nunca digas que no lo conoces):\n${ctx.lore.map((l) => `- ${l}`).join('\n')}\n` : ''}
 ${quien} te acaba de decir: "${accion}"
 
 ${ctx.replicaAnterior ? `\nTu réplica anterior fue ${ctx.replicaAnterior}: no empieces igual ni repitas sus frases.\n` : ''}
