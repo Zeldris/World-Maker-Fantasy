@@ -309,6 +309,31 @@ describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
     expect(repiteTodasLasFrases('Ulkha mira a Gorhorn con una expresión seria.', undefined)).toBe(false);
   });
 
+  // P251 (QA-526): quién manda llega a la réplica, delante del lore; sin verdad ni lore, ni el bloque.
+  it('la verdad de la escena entra en lo que sabe del mundo, delante del lore', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ reply: '«Manda Ulkha.»' }) });
+    const npc = { name: 'Torgash Ketg', role: "Kort'ikar del Clan Serhu", personality: '', bio: '' };
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién manda en el Clan Serhu?', sessionFacts: [], verdad: ['En Clan Serhu manda Ulkha Ketg.'], lore: ['Clan Serhu y la casta de Ketg: rival de los Maktor.'] });
+    const { prompt } = ollamaGenerate.mock.calls[0]![0] as { prompt: string };
+    expect(prompt).toMatch(/LO QUE SABES DEL MUNDO[^\n]*:\n- En Clan Serhu manda Ulkha Ketg\.\n- Clan Serhu y la casta de Ketg/);
+    ollamaGenerate.mockClear();
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién manda?', sessionFacts: [], verdad: ['En Clan Serhu manda Ulkha Ketg.'] });
+    expect((ollamaGenerate.mock.calls[0]![0] as { prompt: string }).prompt).toContain('- En Clan Serhu manda Ulkha Ketg.');
+  });
+
+  // P496: la réplica anterior de otro NPC no se le pasa como suya.
+  it('replicaDe da la última réplica solo si la presenta este NPC', async () => {
+    const { replicaDe } = await import('./narrador.js');
+    const torgash = 'Gorhorn le habla a Torgash. Torgash Ketg responde: «Soy yo, Kort\'ikar del Clan Serhu.»';
+    expect(replicaDe(torgash, { name: 'Tirag Susig' })).toBeUndefined();
+    expect(replicaDe(torgash, { name: 'Torgash Ketg' })).toBe('«Soy yo, Kort\'ikar del Clan Serhu.»');
+    expect(replicaDe('Gorhorn se acerca. Ulkha frunce el ceño: «Vete.»', { name: 'Ulkha Ketg' })).toBe('«Vete.»');
+    expect(replicaDe('Gorhorn saluda. La orca desconocida responde: «¿Qué quieres?»', { name: 'Ulkha Ketg', nombreVisible: 'Orca desconocida' })).toBe('«¿Qué quieres?»');
+    expect(replicaDe('Gorhorn pregunta y ella responde: «No.»', { name: 'Ulkha Ketg' })).toBeUndefined();
+    expect(replicaDe(undefined, { name: 'Ulkha Ketg' })).toBeUndefined();
+  });
+
   it('la réplica que empieza igual que la anterior se pide otra vez; el eco se quita', async () => {
     const { generateNpcReply, empiezaIgual, ultimaReplica } = await import('./narrador.js');
     expect(empiezaIgual('«¿Qué sabes tú de mi clan?»', '«¿Qué sabes tú de ella?»')).toBe(true);

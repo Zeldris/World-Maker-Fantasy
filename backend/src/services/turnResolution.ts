@@ -31,7 +31,7 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
 import { guardarPrefijoNarrador } from './calentarNarrador.js';
-import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, lineaDialogoDelJugador, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, replicaDe, unirReplica, lineaDialogoDelJugador, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
 import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded, cargarLoreParaReplica } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
@@ -42,7 +42,7 @@ import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
 import { fijarViaTurnoIa } from '../lib/iaRegistro.js';
 import { appendSessionFacts, loadFactsKnownBy, selectRelevantFacts } from './worldFacts.js';
-import { bloqueMemoria } from './cronista/memoriaNarrador.js';
+import { bloqueMemoria, verdadDeEscena } from './cronista/memoriaNarrador.js';
 import { nombresDelMundo } from './nombresDelMundo.js';
 import { closeItemQuests, completeNpcTargetQuests, grantQuestRewardItems, idsDeRecompensas, recompensasComoObjetosNuevos, questRewardNarrationFor, GISTERA_DESPEDIDA_NARRATION, type QuestCompletedInfo } from './questResolution.js';
 import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveFoundingOutcome, parseFactionsStatus, FACTION_REP_PEACE_DELTA, REGION_OWNING_FACTIONS, type FoundingOutcome, type FactionRepChangeInfo } from './reputation.js';
@@ -5086,9 +5086,13 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         characterName,
         action,
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
-        replicaAnterior: ultimaReplica(lastNarration?.text),
+        replicaAnterior: replicaDe(lastNarration?.text, dialogueTarget),
         nombresConocidos: await nombresDelMundo(worldId),
         lore: await cargarLoreParaReplica(worldId, action, dialogueTarget.name, excludeTags).catch(() => []),
+        verdad: await verdadDeEscena(prisma, {
+          saveId,
+          npcs: npcsInScene.map((n) => ({ id: n.id, name: n.name, faction: n.faction, muerto: n.condicionFisica === 'MUERTO' })),
+        }).catch(() => []),
       });
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);

@@ -92,8 +92,10 @@ export function componer(secciones: { titulo: string; lineas: string[] }[], tope
 
 // ─────────────────────────── Secciones ───────────────────────────
 
-/// CR-21: la verdad obligatoria de esta escena.
-export async function verdadObligatoria(db: Db, e: Escena): Promise<string[]> {
+/// CR-21 y P251 (QA-526): muertos de la escena y quién manda en las facciones de sus NPC. Es lo que de la verdad
+/// obligatoria va también a la réplica de un NPC (`generateNpcReply`): sin ello, a «¿quién manda en el Clan Serhu?»
+/// Torgash contestaba «Soy yo» (0/10 en `dialogo-casos.jsonl`; con la línea, 5/5).
+export async function verdadDeEscena(db: Db, e: Pick<Escena, 'saveId' | 'npcs'>): Promise<string[]> {
   const lineas: string[] = [];
   const muertos = e.npcs.filter((n) => n.muerto);
   if (muertos.length) lineas.push(`Muertos: ${muertos.map((n) => n.name).join(', ')}. No pueden hablar, actuar ni aparecer vivos.`);
@@ -107,6 +109,13 @@ export async function verdadObligatoria(db: Db, e: Escena): Promise<string[]> {
       if (l) lineas.push(`En ${f.name} manda ${l.name}.`);
     }
   }
+  return lineas;
+}
+
+/// CR-21: la verdad obligatoria de esta escena.
+export async function verdadObligatoria(db: Db, e: Escena): Promise<string[]> {
+  const lineas = await verdadDeEscena(db, e);
+  const nombresFaccion = [...new Set(e.npcs.map((n) => n.faction).filter((f): f is string => !!f))];
 
   const implicadas = [...nombresFaccion, ...(e.region ? (REGION_OWNING_FACTIONS[e.region] ?? []) : [])];
   if (implicadas.length) {

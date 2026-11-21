@@ -966,6 +966,8 @@ export interface NpcReplyContext {
   nombresConocidos?: Set<string>;
   /// QA-518: lore de lo que nombra la frase del jugador (`loreParaReplica`), para no negar lo que su pueblo sabe.
   lore?: string[];
+  /// P251 (QA-526): muertos de la escena y quién manda en sus facciones (`verdadDeEscena`), delante del lore.
+  verdad?: string[];
 }
 
 const PRESENTA_EN_ACCION = /\b(me llamo|soy|mi nombre es|llámame|llamadme|me dicen|me conocen como)\b/i;
@@ -1208,6 +1210,19 @@ export function ultimaReplica(narracion?: string): string | undefined {
   return narracion?.match(/«[^«»]*»(?![\s\S]*«)/)?.[0];
 }
 
+/// P496: la última réplica de la narración solo si la dijo este NPC: la frase que la presenta («Torgash Ketg responde:»)
+/// lo nombra (nombre, nombre visible o una parte de ≥ 4 letras). Sin hablante claro, nada: mejor sin la guarda de
+/// repetición que con la réplica de otro (Tirag recibía la de Torgash y contestaba «No soy Torgash Ketg»).
+export function replicaDe(narracion: string | undefined, npc: { name: string; nombreVisible?: string }): string | undefined {
+  const cita = ultimaReplica(narracion);
+  if (!narracion || !cita) return undefined;
+  const antes = narracion.slice(0, narracion.lastIndexOf(cita));
+  const frase = antes.slice(Math.max(...['.', '!', '?', '»', '\n'].map((c) => antes.lastIndexOf(c))) + 1);
+  const nombres = [npc.name, npc.nombreVisible].filter((n): n is string => !!n);
+  const partes = [...nombres, ...nombres.flatMap((n) => n.split(/\s+/)).filter((t) => t.length >= 4)];
+  return partes.some((n) => contieneNombre(frase, n)) ? cita : undefined;
+}
+
 /// P411: a una pregunta al orco, la narración acababa con Ulkha y la réplica iba sin hablante: parecía de ella. Une la
 /// narración (ya sin citas) y la réplica: la réplica va entre «…» (bench 20: llegaba sin comillas); si la narración la
 /// presenta sin acabar la frase («y ella responde»), con dos puntos; si su última frase no nombra a quien contesta, con
@@ -1377,6 +1392,7 @@ export async function generateNpcReply(ctx: NpcReplyContext): Promise<string> {
   const hechos = (conoce ? ctx.sessionFacts : ctx.sessionFacts.map((h) => sinNombreDelJugador(h, ctx.characterName))).map((h) => marcarTu(h, ctx.npc.name));
   const quien = conoce ? ctx.characterName : 'El forastero (no sabes cómo se llama: no le des ningún nombre)';
   const accion = conoce ? ctx.action : sinNombreDelJugador(ctx.action, ctx.characterName);
+  const saber = [...(ctx.verdad ?? []), ...(ctx.lore ?? [])];
   // Fase 1 hacia main (P327): con el nombre oculto, el modelo no ve el real (no puede decir lo que no sabe).
   const prompt = `PERSONAJE QUE ERES: ${ctx.npc.nombreVisible ?? ctx.npc.name} — ${ctx.npc.role}.
 Personalidad: ${sinNombreReal(ctx.npc.personality, ctx.npc)}
@@ -1384,7 +1400,7 @@ Trasfondo: ${sinNombreReal(ctx.npc.bio, ctx.npc)}${ctx.npc.nombreVisible ? `\nNO
 
 LO QUE HAS VISTO U OÍDO (solo esto sabes de lo ocurrido; no lo contradigas ni sepas nada más). Donde pone «(tú)» habla de ti: cuéntalo en primera persona («yo…»), nunca como si fuera otra persona:
 ${factsBlock(hechos)}
-${ctx.lore?.length ? `\nLO QUE SABES DEL MUNDO (nunca digas que no lo conoces; si viene a cuento, respóndelo en 1-2 frases con tus palabras, sin recitarlo; no inventes lo que aquí no diga: de eso, lo que sabes es poco o nada; y siempre desde tu lado: lo de otro clan, pueblo o raza es ajeno, de oídas, nunca «nuestro» ni «nos»):\n${ctx.lore.map((l) => `- ${l}`).join('\n')}\n` : ''}
+${saber.length ? `\nLO QUE SABES DEL MUNDO (nunca digas que no lo conoces; si viene a cuento, respóndelo en 1-2 frases con tus palabras, sin recitarlo; no inventes lo que aquí no diga: de eso, lo que sabes es poco o nada; y siempre desde tu lado: lo de otro clan, pueblo o raza es ajeno, de oídas, nunca «nuestro» ni «nos»):\n${saber.map((l) => `- ${l}`).join('\n')}\n` : ''}
 ${quien} te acaba de decir: "${accion}"
 
 ${ctx.replicaAnterior ? `\nTu réplica anterior fue ${ctx.replicaAnterior}: no empieces igual ni repitas sus frases.\n` : ''}
