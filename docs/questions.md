@@ -65,3 +65,24 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: parar ya
 - Answer: ok
 - Answered: 2026-11-21
+
+## Q-8
+- Refs: P251, QA-526
+- Status: open
+- Asked: 2026-11-21
+- Question: Arreglo de P251: a) pasar a generateNpcReply solo las líneas «En <facción> manda <líder>» (y los muertos) de verdadObligatoria, como un punto más de «LO QUE SABES DEL MUNDO»; b) pasar el bloque de verdad entero (guerras, etiquetas, compañeros: más tokens y más riesgo de recitar)
+- Recommendation: a
+
+## Q-9
+- Refs: P251, QA-526
+- Status: open
+- Asked: 2026-11-21
+- Question: Tirag esquiva la pregunta (4/5) aun con la verdad delante: a) vale, en su carácter: su caso solo exige que no se invente otro líder; b) exigir que diga Ulkha
+- Recommendation: a
+
+## Q-10
+- Refs: P496
+- Status: open
+- Asked: 2026-11-21
+- Question: P496, la réplica anterior de otro NPC en el prompt: a) arreglarlo junto a P251 (la guarda de repetición solo con la última réplica del mismo NPC), con test en rojo; b) dejarlo para otra sesión
+- Recommendation: a
