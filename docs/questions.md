@@ -47,3 +47,17 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: Cerrar como diseño (P467) la parte de «forastero», y comprobar en la próxima tanda, con registro, que tras «Soy Gorhorn» Torgash usa el nombre
 - Answer: a
 - Answered: 2026-11-20
+
+## Q-6
+- Refs: QA-361
+- Status: open
+- Asked: 2026-11-21
+- Question: La L4 no arranca: con bge-m3, la guarda rag-eval de arrancar-juego.sh falla en 3 casos obligatorios (Vaelira/Kelife resumen ES y EN, y «quién manda en el Clan Serhu» en inglés; el mismo resultado del cierre del GVE, 0.815). ¿a) tarea nueva: mirar esos 3 casos y arreglar el índice/búsqueda o rebajarlos a no obligatorios, y luego jugar; b) variable de pruebas para saltar la guarda y jugar ya; c) volver a nomic para esta ronda?
+- Recommendation: a) tarea de arreglo pequeña en esta rama antes de la L4
+
+## Q-7
+- Refs: QA-361
+- Status: open
+- Asked: 2026-11-21
+- Question: ¿Paro Ollama y el vigilante mientras tanto (ia-ronda.sh parar) para liberar memoria?
+- Recommendation: parar ya
