@@ -2,7 +2,8 @@
 """Banco de calidad por pares para `gw-scout-updates` (docs/scout/banco/README.md). Solo biblioteca estándar.
 
 Uso:
-  banco-calidad.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--url U] [--api ollama|openai]
+  banco-calidad.py generar <casos.jsonl> --modelo M --salida <salidas.jsonl> [--semillas 1,2,3] [--url U] [--api ollama|openai]
+  banco-calidad.py comprobar <casos.jsonl> <salidas.jsonl> [--json]
   banco-calidad.py pares <salidas.jsonl> <salidas.jsonl> [...] --casos <casos.jsonl> --salida <pares.jsonl> --clave <clave.json> [--semilla N]
   banco-calidad.py juzgar <pares.jsonl> --juez M --rubrica <rubrica.md> --salida <veredictos.jsonl> [--url U] [--api ...]
   banco-calidad.py resumen <pares.jsonl> <clave.json> <veredictos.jsonl> [--json] [--detalle]
@@ -10,7 +11,11 @@ Uso:
 Casos: una línea por caso, {"id", "system"?, "prompt", "contexto"?, "opciones"?: {"temperature", "num_ctx",
 "max_tokens", "format"}}; `format` es el JSON Schema de las llamadas estructuradas. Con Ollama va siempre `think: false`. `contexto` es lo que ve el juez (p. ej. la acción del jugador); sin él, los últimos 1500 caracteres
 del prompt.
-generar: una línea por caso, {"caso", "modelo", "salida", "ms"} o {"caso", "modelo", "error"}.
+generar: una línea por caso, {"caso", "modelo", "salida", "ms"} o {"caso", "modelo", "error"}; con --semillas, una por
+caso y semilla (`seed` de Ollama), con "semilla" en la fila.
+comprobar (QA-526, sin juez): por caso, cuántas salidas cumplen `debe_contener` (alguno de sus textos) y ninguno de
+`no_debe_contener` (sin distinguir mayúsculas). Sale con 1 si un caso con `debe_pasar` (por defecto true) tiene alguna
+salida que no cumple o ninguna salida; los de `debe_pasar: false` solo se informan.
 pares: por caso y por cada pareja de modelos, dos pares a ciegas (A como X y B como X), barajados; los nombres solo
 van en la clave.
 juzgar: el juez responde {"ganador": "X"|"Y"|"empate", "motivo"}; un par cuya llamada falla sale con "error" y no
@@ -46,7 +51,7 @@ def llamar_http(url, api, modelo, system, prompt, opciones, formato_json=False, 
         cuerpo = {'model': modelo, 'prompt': prompt, 'stream': False, 'think': False, 'options': {}}
         if system:
             cuerpo['system'] = system
-        for k in ('temperature', 'num_ctx'):
+        for k in ('temperature', 'num_ctx', 'seed'):
             if k in opciones:
                 cuerpo['options'][k] = opciones[k]
         if 'max_tokens' in opciones:
@@ -59,7 +64,7 @@ def llamar_http(url, api, modelo, system, prompt, opciones, formato_json=False, 
     else:
         mensajes = ([{'role': 'system', 'content': system}] if system else []) + [{'role': 'user', 'content': prompt}]
         cuerpo = {'model': modelo, 'messages': mensajes}
-        for k in ('temperature', 'max_tokens'):
+        for k in ('temperature', 'max_tokens', 'seed'):
             if k in opciones:
                 cuerpo[k] = opciones[k]
         if formato_json:
@@ -73,19 +78,49 @@ def llamar_http(url, api, modelo, system, prompt, opciones, formato_json=False, 
     return datos['response'] if api == 'ollama' else datos['choices'][0]['message']['content']
 
 
-def generar(casos, modelo, llamar):
+def generar(casos, modelo, llamar, semillas=None):
     filas = []
     for c in casos:
-        inicio = time.monotonic()
-        try:
-            salida = llamar(modelo, c.get('system'), c['prompt'], c.get('opciones'))
-            filas.append({'caso': c['id'], 'modelo': modelo, 'salida': salida.strip(),
-                          'ms': round((time.monotonic() - inicio) * 1000)})
-        except Exception as e:  # un caso fallido no tumba la tanda
-            filas.append({'caso': c['id'], 'modelo': modelo, 'error': str(e)})
-        print('%s %s %s' % (modelo, c['id'], 'error' if 'error' in filas[-1] else '%d ms' % filas[-1]['ms']),
-              file=sys.stderr)
+        for semilla in semillas or [None]:
+            opciones = dict(c.get('opciones') or {})
+            extra = {}
+            if semilla is not None:
+                opciones['seed'] = semilla
+                extra = {'semilla': semilla}
+            inicio = time.monotonic()
+            try:
+                salida = llamar(modelo, c.get('system'), c['prompt'], opciones or None)
+                filas.append({'caso': c['id'], 'modelo': modelo, **extra, 'salida': salida.strip(),
+                              'ms': round((time.monotonic() - inicio) * 1000)})
+            except Exception as e:  # un caso fallido no tumba la tanda
+                filas.append({'caso': c['id'], 'modelo': modelo, **extra, 'error': str(e)})
+            print('%s %s%s %s' % (modelo, c['id'], '' if semilla is None else ' s%s' % semilla,
+                                  'error' if 'error' in filas[-1] else '%d ms' % filas[-1]['ms']), file=sys.stderr)
     return filas
+
+
+def cumple(caso, salida):
+    texto = salida.lower()
+    debe = caso.get('debe_contener') or []
+    if debe and not any(d.lower() in texto for d in debe):
+        return False
+    return not any(n.lower() in texto for n in caso.get('no_debe_contener') or [])
+
+
+def comprobar(casos, salidas):
+    """Por caso: {"caso", "debe_pasar", "cumplen", "total", "errores", "fallos": [salidas que no cumplen]}."""
+    res = []
+    for c in casos:
+        mias = [f for f in salidas if f.get('caso') == c['id']]
+        buenas = [f for f in mias if 'salida' in f]
+        fallos = [f['salida'] for f in buenas if not cumple(c, f['salida'])]
+        res.append({'caso': c['id'], 'debe_pasar': c.get('debe_pasar', True), 'cumplen': len(buenas) - len(fallos),
+                    'total': len(buenas), 'errores': len(mias) - len(buenas), 'fallos': fallos})
+    return res
+
+
+def comprobar_falla(res):
+    return any(r['debe_pasar'] and (r['total'] == 0 or r['fallos']) for r in res)
 
 
 def contexto(caso):
@@ -227,6 +262,11 @@ def main(argv=None):
     g.add_argument('casos')
     g.add_argument('--modelo', required=True)
     g.add_argument('--salida', required=True)
+    g.add_argument('--semillas', help='lista separada por comas: una salida por caso y semilla')
+    k = sub.add_parser('comprobar')
+    k.add_argument('casos')
+    k.add_argument('salidas')
+    k.add_argument('--json', action='store_true')
     p = sub.add_parser('pares')
     p.add_argument('salidas', nargs='+')
     p.add_argument('--casos', required=True)
@@ -253,7 +293,20 @@ def main(argv=None):
         def llamar(modelo, system, prompt, opciones, formato_json=False):
             return llamar_http(a.url, a.api, modelo, system, prompt, opciones, formato_json)
     if a.orden == 'generar':
-        escribir_jsonl(a.salida, generar(leer_jsonl(a.casos), a.modelo, llamar))
+        semillas = [int(x) for x in a.semillas.split(',')] if a.semillas else None
+        escribir_jsonl(a.salida, generar(leer_jsonl(a.casos), a.modelo, llamar, semillas))
+    elif a.orden == 'comprobar':
+        res = comprobar(leer_jsonl(a.casos), leer_jsonl(a.salidas))
+        if a.json:
+            print(json.dumps(res, ensure_ascii=False, indent=1))
+        else:
+            for r in res:
+                marca = 'ok' if not r['fallos'] and r['total'] else ('FALLA' if r['debe_pasar'] else 'falla (informativo)')
+                print('%-36s %d/%d %s%s' % (r['caso'], r['cumplen'], r['total'], marca,
+                                            ' · %d errores' % r['errores'] if r['errores'] else ''))
+                for f in r['fallos']:
+                    print('    %s' % f[:200])
+        sys.exit(1 if comprobar_falla(res) else 0)
     elif a.orden == 'pares':
         lista, clave = pares([leer_jsonl(s) for s in a.salidas], leer_jsonl(a.casos), a.semilla)
         escribir_jsonl(a.salida, lista)

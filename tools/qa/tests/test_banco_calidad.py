@@ -17,6 +17,30 @@ class BancoTest(unittest.TestCase):
         self.assertEqual(filas[0]['salida'], 'hola')
         self.assertEqual(filas[1], {'caso': 'c2', 'modelo': 'm', 'error': 'caído'})
 
+    def test_generar_con_semillas(self):
+        vistas = []
+
+        def llamar(modelo, system, prompt, opciones):
+            vistas.append(opciones)
+            return 's%d' % opciones['seed']
+        filas = banco.generar([{'id': 'c', 'prompt': 'p', 'opciones': {'temperature': 0.4}}], 'm', llamar, [1, 2])
+        self.assertEqual([(f['semilla'], f['salida']) for f in filas], [(1, 's1'), (2, 's2')])
+        self.assertEqual(vistas, [{'temperature': 0.4, 'seed': 1}, {'temperature': 0.4, 'seed': 2}])
+
+    def test_comprobar(self):
+        casos = [{'id': 'a', 'debe_contener': ['Ulkha'], 'no_debe_contener': ['soy yo']},
+                 {'id': 'b', 'debe_contener': ['Ulkha'], 'debe_pasar': False},
+                 {'id': 'c', 'debe_contener': ['x']}]
+        salidas = [{'caso': 'a', 'salida': 'Manda ULKHA Ketg.'}, {'caso': 'a', 'salida': 'Soy yo, y Ulkha.'},
+                   {'caso': 'a', 'error': 'caído'}, {'caso': 'b', 'salida': 'Soy yo.'}]
+        res = {r['caso']: r for r in banco.comprobar(casos, salidas)}
+        self.assertEqual((res['a']['cumplen'], res['a']['total'], res['a']['errores']), (1, 2, 1))
+        self.assertEqual(res['a']['fallos'], ['Soy yo, y Ulkha.'])
+        self.assertEqual(res['c']['total'], 0)
+        self.assertTrue(banco.comprobar_falla(banco.comprobar(casos[:1], salidas)))
+        self.assertTrue(banco.comprobar_falla(banco.comprobar(casos[2:], salidas)))  # sin salidas también falla
+        self.assertFalse(banco.comprobar_falla(banco.comprobar(casos[1:2], salidas)))  # informativo
+
     def tandas(self):
         return [[{'caso': c, 'modelo': m, 'salida': '%s-%s' % (m, c)} for c in ('c1', 'c2')] for m in ('a', 'b')]
 
