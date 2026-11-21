@@ -163,10 +163,10 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 
 
 
-1. 2026-11-20 — QA-521: arrancar-juego.sh se para con un Ollama real sin IA_PERFIL (falta verlo en la Deck)
-2. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
+1. 2026-11-21 — QA-327, QA-328, QA-329, QA-330, QA-331, QA-336, QA-344, QA-351, QA-358, QA-359, QA-360, QA-361: tareas del GVE (claude/gve-rag) traídas a la ronda local 3 por merge; detalle en Hecho recientemente y en roadmap-front.md
+2. 2026-11-20 — QA-521: arrancar-juego.sh se para con un Ollama real sin IA_PERFIL (falta verlo en la Deck)
+3. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
    QA-352, QA-353, QA-354, QA-355, QA-356, QA-370, QA-503, QA-505, QA-506, QA-507, QA-508, QA-510, QA-512,
    QA-513, QA-515, QA-516 (detalle en `roadmap-front.md` y el PR #104)
-3. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
-4. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos
-5. 2026-11-20 — QA-514: cerrada sin recalentado; la tanda A/B L7 mostró que con Ollama 0.34.2 dialogo_npc no desaloja al narrador (narrar tras diálogo 10-22 s de prefill frente a 24-26 s con recalentado); revert del código
+4. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
+5. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos
