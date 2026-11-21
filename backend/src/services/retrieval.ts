@@ -295,12 +295,50 @@ function soloPublico(texto: string): string {
 
 export function loreParaReplica(chunks: RetrievedLore[], accion: string, npcName: string): string[] {
   const propio = normalizar(npcName);
-  const nombrados = titulosPorEntidad(chunks.map((c) => c.title), [accion], { nombreDePila: true }).filter((t) => !` ${normalizar(t)} `.includes(` ${propio} `));
+  const nombrados = titulosPorEntidad(chunks.map((c) => c.title), [accion], { nombreDePila: true })
+    .filter((t) => !` ${normalizar(t)} `.includes(` ${propio} `))
+    .slice(0, MAX_LORE_REPLICA);
+  // QA-525 (P272): con una sola entrada nombrada, el tope de las dos; el prompt nunca pasa del máximo de antes.
+  const tope = MAX_CHARS_LORE_REPLICA * (MAX_LORE_REPLICA - nombrados.length + 1);
   return nombrados
-    .slice(0, MAX_LORE_REPLICA)
-    .map((t) => ({ t, texto: soloPublico(chunks.find((c) => c.title === t)!.text) }))
+    .map((t) => ({ t, texto: frasesQueCasan(soloPublico(chunks.find((c) => c.title === t)!.text), accion, npcName, tope) }))
     .filter((x) => x.texto !== '')
-    .map((x) => `${x.t}: ${recortar(x.texto, MAX_CHARS_LORE_REPLICA)}`);
+    .map((x) => `${x.t}: ${x.texto}`);
+}
+
+/// Palabras de la pregunta que no dicen de qué se habla («cuéntame qué pasó»): no cuentan para elegir frases.
+const VACIAS_REPLICA = new Set(
+  'que quien quienes como cuando donde cual cuales porque para pero sobre esto esta este eso esos esas aqui alli hola cuentame dime sabes sabe paso pasa pasaron hizo hace digo pregunto entre desde hasta tiene tienen tienes ellos ellas usted the what who how when where about tell happened'.split(' '),
+);
+
+/// QA-525 (P272): las frases de `texto` que comparten palabra con la pregunta van primero (la de los Goirntes, aunque
+/// sea la tercera); el hueco que quede se llena con las anteriores por su orden, y salen en el orden del texto. Si
+/// ninguna casa o ninguna cabe entera, el recorte de siempre.
+function frasesQueCasan(texto: string, accion: string, npcName: string, max: number): string {
+  const t = texto.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const delNpc = new Set(normalizar(npcName).split(' '));
+  const buscadas = normalizar(accion)
+    .split(' ')
+    .filter((p) => p.length >= 4 && !VACIAS_REPLICA.has(p) && !delNpc.has(p))
+    .map((p) => p.slice(0, 5));
+  const frases = t.split(/(?<=[.!?])\s+/);
+  const casa = (f: string) => normalizar(f).split(' ').some((p) => buscadas.some((b) => p.startsWith(b)));
+  const marcadas = frases.map((f, i) => ({ f, i, c: casa(f) }));
+  const ultima = marcadas.reduce((u, x) => (x.c ? x.i : u), -1);
+  if (ultima < 0) return recortar(t, max);
+  // El relleno, solo de lo que va antes de la última que casa (el contexto): lo de después es otro tema
+  // («Gorhorn es el único superviviente», que el NPC no puede atar al forastero).
+  const orden = marcadas.filter((x) => x.i <= ultima).sort((a, b) => Number(b.c) - Number(a.c) || a.i - b.i);
+  const elegidas: typeof orden = [];
+  let total = 0;
+  for (const x of orden) {
+    if (total + x.f.length + 1 > max) continue;
+    elegidas.push(x);
+    total += x.f.length + 1;
+  }
+  if (!elegidas.length) return recortar(t, max);
+  return elegidas.sort((a, b) => a.i - b.i).map((x) => x.f).join(' ');
 }
 
 /// Como `loreParaReplica`, pero buscando entre TODO el lore del mundo (un trozo por título, sin embeddings): lo que

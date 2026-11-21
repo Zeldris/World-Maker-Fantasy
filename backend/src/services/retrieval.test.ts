@@ -4,6 +4,7 @@ const queryRaw = vi.fn();
 vi.mock('../lib/prisma.js', () => ({ prisma: { $queryRaw: (...a: unknown[]) => queryRaw(...a) } }));
 
 import { isWeaklyGrounded, formatLoreForPrompt, titulosPorEntidad, loreParaReplica, cargarLoreParaReplica, type RetrievedLore } from './retrieval.js';
+import { loreChunks } from '../scripts/loreChunks.js';
 
 // Cobertura nueva (auditoría 2026-08-03, "análisis completo backend/frontend") — solo las dos
 // funciones puras; `retrieveLore` depende de Postgres/pgvector real y queda fuera de alcance de
@@ -175,6 +176,17 @@ describe('loreParaReplica (QA-518, P487, P491)', () => {
     expect(l).toContain('Gistera Koh es una orca criada por Uhuld.');
     expect(l).not.toMatch(/secreto|sin saberlo|Gorhorn/);
     expect(l.length).toBeLessThanOrEqual('Gistera Koh y Uhuld Koh (encuentro): '.length + 280);
+  });
+
+  // QA-525 (P272): con el texto real, el recorte desde el principio dejaba solo «Clan de las Llanuras… Sufrió dos golpes»,
+  // sin Kadrog ni los Goirntes. Con una sola entrada nombrada, entran las frases que casan con la pregunta.
+  it('una sola entrada: las frases que casan con la pregunta, aunque vayan tarde (P272)', () => {
+    const maktor = loreChunks.find((c) => c.title.startsWith('Clan Maktor'))!;
+    const [l] = loreParaReplica([trozo(maktor.title, maktor.text)], 'Le digo a Ulkha Ketg: ¿Qué pasó con los Maktor?', 'Ulkha Ketg');
+    expect(l).toContain('Goirntes');
+    expect(l).toContain('Clan de las Llanuras del Viento Rojo');
+    expect(l).not.toContain('único superviviente');
+    expect(l.length).toBeLessThanOrEqual(`${maktor.title}: `.length + 2 * 280);
   });
 
   it('una entrada hecha solo de secretos no entra', () => {
