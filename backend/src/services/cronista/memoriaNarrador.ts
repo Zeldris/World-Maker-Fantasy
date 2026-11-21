@@ -92,6 +92,15 @@ export function componer(secciones: { titulo: string; lineas: string[] }[], tope
 
 // ─────────────────────────── Secciones ───────────────────────────
 
+/// P497 (QA-526): quién manda, con su cargo y el artículo de su género. Con «manda Ulkha Ketg» a secas, Torgash la
+/// llamaba «mi hermano» o «el Kort'ikar»; «manda Ulkha Ketg, la Terk'ikar del Clan Serhu» dice qué es y que es ella.
+export function lineaDeMando(faccion: string, lider: { name: string; role?: string | null; genero?: string | null }): string {
+  const cargo = (lider.role ?? '').trim().replace(/[\s.]+$/, '');
+  if (!cargo) return `En ${faccion} manda ${lider.name}.`;
+  const articulo = lider.genero === 'F' ? 'la ' : lider.genero === 'M' ? 'el ' : '';
+  return `En ${faccion} manda ${lider.name}, ${articulo}${cargo}.`;
+}
+
 /// CR-21 y P251 (QA-526): muertos de la escena y quién manda en las facciones de sus NPC. Es lo que de la verdad
 /// obligatoria va también a la réplica de un NPC (`generateNpcReply`): sin ello, a «¿quién manda en el Clan Serhu?»
 /// Torgash contestaba «Soy yo» (0/10 en `dialogo-casos.jsonl`; con la línea, 5/5).
@@ -103,10 +112,10 @@ export async function verdadDeEscena(db: Db, e: Pick<Escena, 'saveId' | 'npcs'>)
   const nombresFaccion = [...new Set(e.npcs.map((n) => n.faction).filter((f): f is string => !!f))];
   if (nombresFaccion.length) {
     const facciones = await db.faction.findMany({ where: { saveId: e.saveId, name: { in: nombresFaccion }, disueltaEn: null }, select: { name: true, liderNpcId: true } });
-    const lideres = await db.npc.findMany({ where: { id: { in: facciones.map((f) => f.liderNpcId).filter((x): x is string => !!x) } }, select: { id: true, name: true } });
+    const lideres = await db.npc.findMany({ where: { id: { in: facciones.map((f) => f.liderNpcId).filter((x): x is string => !!x) } }, select: { id: true, name: true, role: true, genero: true } });
     for (const f of facciones) {
       const l = lideres.find((n) => n.id === f.liderNpcId);
-      if (l) lineas.push(`En ${f.name} manda ${l.name}.`);
+      if (l) lineas.push(lineaDeMando(f.name, l));
     }
   }
   return lineas;

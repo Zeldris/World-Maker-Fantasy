@@ -322,6 +322,15 @@ describe('gesto repetido y réplica sin hablante (QA-289, P411)', () => {
     expect((ollamaGenerate.mock.calls[0]![0] as { prompt: string }).prompt).toContain('- En Clan Serhu manda Ulkha Ketg.');
   });
 
+  // P497: la línea de mando dice el cargo y, con el artículo, si es ella o él.
+  it('lineaDeMando lleva el cargo y el artículo del género; sin cargo, la línea de siempre', async () => {
+    const { lineaDeMando } = await import('./cronista/memoriaNarrador.js');
+    expect(lineaDeMando('Clan Serhu', { name: 'Ulkha Ketg', role: "Terk'ikar del Clan Serhu", genero: 'F' })).toBe("En Clan Serhu manda Ulkha Ketg, la Terk'ikar del Clan Serhu.");
+    expect(lineaDeMando('Clan Maktor', { name: 'Gorgath', role: 'Jefe de guerra. ', genero: 'M' })).toBe('En Clan Maktor manda Gorgath, el Jefe de guerra.');
+    expect(lineaDeMando('Clan Serhu', { name: 'Ulkha Ketg', role: "Terk'ikar", genero: null })).toBe("En Clan Serhu manda Ulkha Ketg, Terk'ikar.");
+    expect(lineaDeMando('Clan Serhu', { name: 'Ulkha Ketg', role: '' })).toBe('En Clan Serhu manda Ulkha Ketg.');
+  });
+
   // P496: la réplica anterior de otro NPC no se le pasa como suya.
   it('replicaDe da la última réplica solo si la presenta este NPC', async () => {
     const { replicaDe } = await import('./narrador.js');

@@ -14,8 +14,8 @@ del prompt.
 generar: una línea por caso, {"caso", "modelo", "salida", "ms"} o {"caso", "modelo", "error"}; con --semillas, una por
 caso y semilla (`seed` de Ollama), con "semilla" en la fila.
 comprobar (QA-526, sin juez): por caso, cuántas salidas cumplen `debe_contener` (alguno de sus textos) y ninguno de
-`no_debe_contener` (sin distinguir mayúsculas). Sale con 1 si un caso con `debe_pasar` (por defecto true) tiene alguna
-salida que no cumple o ninguna salida; los de `debe_pasar: false` solo se informan.
+`no_debe_contener` (sin distinguir mayúsculas). Sale con 1 si un caso con `debe_pasar` (por defecto true) no tiene
+salidas o cumplen menos de `umbral` (fracción, por defecto 1: todas); los de `debe_pasar: false` solo se informan.
 pares: por caso y por cada pareja de modelos, dos pares a ciegas (A como X y B como X), barajados; los nombres solo
 van en la clave.
 juzgar: el juez responde {"ganador": "X"|"Y"|"empate", "motivo"}; un par cuya llamada falla sale con "error" y no
@@ -114,13 +114,14 @@ def comprobar(casos, salidas):
         mias = [f for f in salidas if f.get('caso') == c['id']]
         buenas = [f for f in mias if 'salida' in f]
         fallos = [f['salida'] for f in buenas if not cumple(c, f['salida'])]
-        res.append({'caso': c['id'], 'debe_pasar': c.get('debe_pasar', True), 'cumplen': len(buenas) - len(fallos),
+        res.append({'caso': c['id'], 'debe_pasar': c.get('debe_pasar', True), 'umbral': c.get('umbral', 1),
+                    'cumplen': len(buenas) - len(fallos),
                     'total': len(buenas), 'errores': len(mias) - len(buenas), 'fallos': fallos})
     return res
 
 
 def comprobar_falla(res):
-    return any(r['debe_pasar'] and (r['total'] == 0 or r['fallos']) for r in res)
+    return any(r['debe_pasar'] and (r['total'] == 0 or r['cumplen'] < r['umbral'] * r['total']) for r in res)
 
 
 def contexto(caso):
@@ -301,7 +302,8 @@ def main(argv=None):
             print(json.dumps(res, ensure_ascii=False, indent=1))
         else:
             for r in res:
-                marca = 'ok' if not r['fallos'] and r['total'] else ('FALLA' if r['debe_pasar'] else 'falla (informativo)')
+                pasa = r['total'] and r['cumplen'] >= r['umbral'] * r['total']
+                marca = 'ok' if pasa else ('FALLA' if r['debe_pasar'] else 'falla (informativo)')
                 print('%-36s %d/%d %s%s' % (r['caso'], r['cumplen'], r['total'], marca,
                                             ' · %d errores' % r['errores'] if r['errores'] else ''))
                 for f in r['fallos']:

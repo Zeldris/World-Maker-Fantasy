@@ -12,12 +12,12 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (21): P49, P66, P252, P262, P272, P310, P464, P466, P472, P474, P476, P477, P478,
-  P479, P481, P483, P484, P486, P490, P492, P497.
+- **Pendientes** (20): P49, P66, P252, P262, P272, P310, P464, P466, P472, P474, P476, P477, P478,
+  P479, P481, P483, P484, P486, P490, P492.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (15): P70, P131, P180, P243, P245, P253, P306, P414, P382, P429, P443,
   P451, P469, P470, P471.
-- **Arreglados, sin comprobar jugando** (5): P251, P266, P273, P494, P496.
+- **Arreglados, sin comprobar jugando** (6): P251, P266, P273, P494, P496, P497.
 - **Comprobados jugando** (408): P1, P2, P3, P4, P6, P7, P8, P9, P11, P12, P13, P14, P15, P17, P18,
   P19, P20, P21, P24, P26, P27, P28, P29, P31, P32, P33, P35, P36, P37, P38, P39, P41, P42, P43,
   P45, P46, P47, P50, P51, P53, P54, P55, P56, P57, P58, P60, P61, P62, P63, P64, P65, P67, P68,
@@ -557,4 +557,4 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P494 | Tanda L8 de la ronda local 2 (2026-11-20, proceso): el registro de IA (`IA_REGISTRO`) no guarda el texto del prompt y `IA_CASOS` no está en `juego-ia.env`: para ver qué lore entra en una réplica hay que relanzar el juego con `IA_CASOS` a mano (una pasada de más en la L8). Además, `systemd-inhibit` solo existe en el host: va por `tools/qa/host.sh` | Arreglado (QA-519: IA_CASOS junto a IA_REGISTRO en perfil-ia.sh; runbook) |
 | P495 | Tanda L2 de la ronda local 3 (2026-11-20, mv-hondonada-hostiles, combate1v1:orco-enfurecido-hondonada, Ollama real), visto al revisar P485: en fase Ataque «Esquivar» sigue desactivada tras 45 s con 62 de energía (coste 5), así que no es la energía; y todas las acciones del combate se apagan mientras el narrador escribe. Por confirmar si Esquivar es solo de la fase de defensa (diseño) y si el apagado durante la narración debe avisar de por qué | no aplica: no es bug (tanda P495, 2026-11-20, Ollama real). Esquivar se usa en Ataque (77→72 de energía) y en Defensa; lo que se vio en L2 era `busy` mientras narraba (≈50-60 s): CombatPanel.tsx:874/:1084 apagan todo sin aviso propio en el panel, solo el HUD «El narrador escribe». Si el panel debe decir por qué, lo decide Álvaro |
 | P496 | Ronda local 3 L4 (2026-11-21, Ollama real, t13b2-ketg): en el prompt de dialogo_npc de Tirag (16:50:47), «Tu réplica anterior fue…» es la de Torgash (otro NPC): la guarda de repetición toma la última réplica sin mirar quién habló; en QA-526 una salida de Tirag dice «No soy Torgash Ketg» | arreglado (QA-526, replicaDe: la réplica anterior solo si la presenta ese NPC; test con rojo sin el arreglo). Falta jugarlo en la Deck |
-| P497 | QA-526 (2026-11-21, Deck, dialogo-casos.jsonl): con «En Clan Serhu manda Ulkha Ketg.» en la réplica, Torgash dice Ulkha pero le inventa sexo y cargo («mi hermano», «el Kort'ikar», «mi sucesor», «a él»): la línea no lleva título ni género. Propuesta: «manda la Terk'ikar Ulkha Ketg» (rol del líder) en verdadDeEscena, medido con los mismos casos | pendiente |
+| P497 | QA-526 (2026-11-21, Deck, dialogo-casos.jsonl): con «En Clan Serhu manda Ulkha Ketg.» en la réplica, Torgash dice Ulkha pero le inventa sexo y cargo («mi hermano», «el Kort'ikar», «mi sucesor», «a él»): la línea no lleva título ni género. Propuesta: «manda la Terk'ikar Ulkha Ketg» (rol del líder) en verdadDeEscena, medido con los mismos casos | arreglado sin jugar (QA-526, 2026-11-21): lineaDeMando, «En Clan Serhu manda Ulkha Ketg, la Terk'ikar del Clan Serhu.» (cargo y artículo del género); Torgash 4/5 (queda 1/5 «mi hermano»), Tirag 5/5; por jugar en la Deck |

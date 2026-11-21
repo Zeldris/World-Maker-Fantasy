@@ -40,6 +40,8 @@ class BancoTest(unittest.TestCase):
         self.assertTrue(banco.comprobar_falla(banco.comprobar(casos[:1], salidas)))
         self.assertTrue(banco.comprobar_falla(banco.comprobar(casos[2:], salidas)))  # sin salidas también falla
         self.assertFalse(banco.comprobar_falla(banco.comprobar(casos[1:2], salidas)))  # informativo
+        self.assertFalse(banco.comprobar_falla(banco.comprobar([{**casos[0], 'umbral': 0.5}], salidas)))  # 1 de 2
+        self.assertTrue(banco.comprobar_falla(banco.comprobar([{**casos[0], 'umbral': 0.6}], salidas)))
 
     def tandas(self):
         return [[{'caso': c, 'modelo': m, 'salida': '%s-%s' % (m, c)} for c in ('c1', 'c2')] for m in ('a', 'b')]
