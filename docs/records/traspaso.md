@@ -15,7 +15,7 @@ cada commit.**
 | **Último commit en `main`** | PR #103 de `claude/wonderful-volta-662qt8` (2026-11-19, `2b7ff9ba`, CI en verde): flujo Galivelop-workflow v0.8.1; antes, PR #102 (`docs/metrics/` como contenido, retro `QA-511`), PR #100 de `claude/marca-imagenes` y PR #99. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/ronda-local-2`** | PR abierto a `main`: https://github.com/Zeldris/World-Maker-Fantasy/pull/104 (2026-11-20, ronda local 2: L1-L8, ~~QA-509~~…~~QA-519~~, retro aprobada); se fusiona con el CI en verde. Al fusionarse, rama terminada. Quedan P311, P485, P491, P492, P493 (jugar con Ollama real) y `QA-520` (barrido de `iaRegistro.ts`) para otra rama. |
-| **Tarea en curso · `claude/ronda-local-3`** | 🚧 Ronda local 3 (Deck, Ollama real): L1-L3 jugadas; ✅ P493, ~~QA-520~~, ~~QA-521~~. tarkor_juego reindexado con bge-m3. L4 bloqueada por la guarda rag-eval (3 debe_pasar fallan con bge-m3). Q-6 a: QA-522 en curso (subagente): diagnosticar los 3 casos y arreglar la búsqueda o rebajarlos. Q-7: Ollama parado. Siguiente: cerrar QA-522 y jugar la L4 (P272, P251, P479, P466, P474, P262, P492). |
+| **Tarea en curso · `claude/ronda-local-3`** | QA-522 hecha: casos RAG con bge-m3 (Serhu: +esperado «Clan Serhu y la casta de Ketg»; Vaelira aldeas flotantes: debe_pasar false). rag-eval en tarkor_juego: recall@4 0,818, MRR 0,657, fallan 0. L4 desbloqueada. Siguiente: jugar la L4. |
 | **Tarea en curso · `claude/gve-rag`** | ✅ GVE T10-T12 corridas en la Deck (2026-11-21, logs/gve/cierre.sh sobre 60cc6b6c, bge-m3): ~~QA-361~~ T12 da R7, caché M5 bge-m3 con paridad 0, ~~QA-359~~ T10 (semilla estable, 0 de 470 poco_anclado con 0,75), ~~QA-360~~ N1-N4 (N4 con umbral 0,53, decisión de Álvaro). Siguiente: pasar los resultados al GVE; PR a main de esta rama si Álvaro lo pide; luego merge en claude/ronda-local-3 (en pausa por el índice bge-m3). |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
 | **Tarea en curso · `claude/wonderful-volta-662qt8`** | PR a main: flujo Galivelop-workflow v0.8.1 (gw-update 0.8.0 → 0.8.1, 2026-11-19). Fases 1-3 hechas (revisión trivial, 0 hallazgos; retro decidida: C1-C3 para gw-harvest, C4 aplazada, C5 la aplica la usuaria). Al fusionarse, rama terminada. Sigue pendiente IMG-59 en la Deck. |
@@ -163,10 +163,10 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 
 
 
-1. 2026-11-21 — QA-327, QA-328, QA-329, QA-330, QA-331, QA-336, QA-344, QA-351, QA-358, QA-359, QA-360, QA-361: tareas del GVE (claude/gve-rag) traídas a la ronda local 3 por merge; detalle en Hecho recientemente y en roadmap-front.md
-2. 2026-11-20 — QA-521: arrancar-juego.sh se para con un Ollama real sin IA_PERFIL (falta verlo en la Deck)
-3. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
+1. 2026-11-21 — QA-522: casos RAG con bge-m3 (Serhu +esperado; Vaelira a no obligatorio), rag-eval fallan 0
+2. 2026-11-21 — QA-327, QA-328, QA-329, QA-330, QA-331, QA-336, QA-344, QA-351, QA-358, QA-359, QA-360, QA-361: tareas del GVE (claude/gve-rag) traídas a la ronda local 3 por merge; detalle en Hecho recientemente y en roadmap-front.md
+3. 2026-11-20 — QA-521: arrancar-juego.sh se para con un Ollama real sin IA_PERFIL (falta verlo en la Deck)
+4. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
    QA-352, QA-353, QA-354, QA-355, QA-356, QA-370, QA-503, QA-505, QA-506, QA-507, QA-508, QA-510, QA-512,
    QA-513, QA-515, QA-516 (detalle en `roadmap-front.md` y el PR #104)
-4. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
-5. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos
+5. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
