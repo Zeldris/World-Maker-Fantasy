@@ -127,3 +127,6 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
   del narrador tras `dialogo_npc` (`QA-514`, tras `QA-509`). Descartado por memoria en la Deck: `OLLAMA_NUM_PARALLEL=2`.
 - Aprobadas el 2026-11-19, tanda L4 (no se vuelven a proponer): falsos positivos de las guardas de combate P488/P489 (`QA-517`),
   lore de la entidad nombrada en `dialogo_npc` (`QA-518`, la última) y la medida del corte en `hechos` en `QA-509`.
+- Aprobadas el 2026-11-21, ronda local 3 L3-L5 (no se vuelven a proponer): un solo modelo de embeddings, hechos con bge-m3 (`QA-523`),
+  qwen entero en la GPU, bge-m3 Q8_0 solo si hace falta (`QA-524`), `rag-eval` por el trozo con la respuesta (`QA-525`) y casos
+  fijos de `dialogo_npc` para lo `ignored` (`QA-526`). Descartado: `OLLAMA_MAX_LOADED_MODELS=4` (más memoria y qwen seguiría partido).
