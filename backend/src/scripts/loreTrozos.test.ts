@@ -18,4 +18,23 @@ describe('trozosParaIndexar (QA-167)', () => {
       expect(trozosParaIndexar(text).join(' ').replace(/\s+/g, ' ')).toBe(text.replace(/\s+/g, ' ').trim());
     }
   });
+
+  it('solape (QA-330): repite las últimas frases del trozo anterior que caben, nunca el trozo entero', () => {
+    const texto = 'Uno uno. Dos dos. Tres tres. Cuatro cuatro.';
+    expect(trozosParaIndexar(texto, 20)).toEqual(['Uno uno. Dos dos.', 'Tres tres.', 'Cuatro cuatro.']);
+    expect(trozosParaIndexar(texto, 20, 10)).toEqual(['Uno uno. Dos dos.', 'Dos dos. Tres tres.', 'Tres tres. Cuatro cuatro.']);
+    expect(trozosParaIndexar(texto, 20, 9)).toEqual(['Uno uno. Dos dos.', 'Dos dos. Tres tres.', 'Cuatro cuatro.']);
+    expect(trozosParaIndexar('Frase larga del todo. Otra.', 10, 9)).toEqual(['Frase larga del todo.', 'Otra.']);
+  });
+
+  it('con solape, cada trozo es un tramo seguido del fragmento y el último acaba donde el fragmento', () => {
+    for (const { text } of loreChunks) {
+      const plano = text.replace(/\s+/g, ' ').trim();
+      const trozos = trozosParaIndexar(text, 400, 120).map((t) => t.replace(/\s+/g, ' '));
+      expect(trozos.every((t) => plano.includes(t))).toBe(true);
+      expect(plano.endsWith(trozos.at(-1)!)).toBe(true);
+      expect(plano.startsWith(trozos[0])).toBe(true);
+    }
+  });
 });
+

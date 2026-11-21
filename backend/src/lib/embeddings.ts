@@ -7,7 +7,8 @@ import { nsToMs, registrarLlamada } from './iaRegistro.js';
 /// (embedQueue, roadmap de velocidad 2026-07-19) separada de classify/narrate — es un modelo
 /// pequeño que no compite de verdad por RAM, y compartir la cola de concurrencia-1 solo
 /// serializaba el RAG detrás de generaciones de 30-220s sin necesidad.
-export async function embed(text: string): Promise<number[]> {
+/// `modelo`: por defecto OLLAMA_MODEL_EMBEDDINGS; el lore puede usar otro (`RAG_MODELO`, `QA-351`).
+export async function embed(text: string, modelo: string = env.ollamaModelEmbeddings): Promise<number[]> {
   return embedQueue.enqueue(async () => {
     // 30s: embeber nunca ha tardado más de ~2s en pruebas reales — un timeout corto aquí
     // detecta rápido si Ollama se ha quedado colgado antes de perder tiempo en clasificar/narrar.
@@ -18,7 +19,7 @@ export async function embed(text: string): Promise<number[]> {
       registrarLlamada({
         operation: 'embeddings',
         provider: 'ollama',
-        model: env.ollamaModelEmbeddings,
+        model: modelo,
         inputTokens: raw?.prompt_eval_count,
         task: 'embedding',
         keepAlive: env.ollamaKeepAlive,
@@ -34,7 +35,7 @@ export async function embed(text: string): Promise<number[]> {
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          model: env.ollamaModelEmbeddings,
+          model: modelo,
           input: text,
           // A diferencia de classifyAction, aquí NO forzamos keep_alive '0': es un modelo pequeño
           // (274MB), convivir con los otros dos no supone presión real de RAM, y descargarlo cada

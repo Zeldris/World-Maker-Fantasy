@@ -73,6 +73,9 @@ model World {
   lethality    Lethality
   /// Tema de color por mundo (accent300-600, accent2 300-600) — mismo shape que WorldTheme en el frontend.
   theme        Json
+  /// Con qué se construyó el índice del lore (`QA-330`): modelo, trozo, solapamiento, prefijos y plantilla.
+  /// Lo escribe `reindex-lore`; `rag-eval` lo compara con su corrida.
+  loreIndice   Json?
   createdAt    DateTime     @default(now())
 
   saves            Save[]
@@ -1520,12 +1523,16 @@ model LoreChunk {
   /// solo como metadato de depuración/trazabilidad hacia el .md de origen.
   tags      String[]
   sourceDoc String
-  /// nomic-embed-text produce vectores de 768 dimensiones. Tipo no soportado nativamente por
+  /// nomic-embed-text produce vectores de 768 dimensiones; sin dimensión fija para poder medir otro
+  /// modelo (`RAG_MODELO`, QA-351: bge-m3 da 1024). Tipo no soportado nativamente por
   /// Prisma Client — se escribe/lee con SQL crudo ($executeRaw/$queryRaw) en lib/embeddings.ts.
-  embedding Unsupported("vector(768)")?
+  embedding Unsupported("vector")?
+  /// Texto completo de título + trozo para la búsqueda híbrida (QA-351), lo llena reindex-lore.
+  busqueda  Unsupported("tsvector")?
   createdAt DateTime                    @default(now())
 
   @@index([worldId])
+  @@index([busqueda], type: Gin)
 }
 
 /// Habilidad guardada: un prompt reutilizable que el jugador puede lanzar directo al chat.

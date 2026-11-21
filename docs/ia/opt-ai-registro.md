@@ -45,8 +45,35 @@ prompt). El archivo del registro no se comparte ni se pega sin limpiarlo antes.
 ## Casos del RAG (`rag-casos.jsonl`)
 
 Una línea por caso: `{"id": "…", "pregunta": "…", "esperados": ["<id o fuente del trozo>", …], "region": "<región, opcional>", "origen": "P-número o
-semilla", "causa": "ausente|no_recuperado|ignorado|null", "debe_pasar": true}`. `region` (opcional): la región del jugador; la consulta sale como en el juego (`pregunta — región`, con el lore del otro continente excluido). `debe_pasar` (opcional): si el caso no sale en el top-k, `npm run rag-eval` termina con código 1. En Tarkor el id de trozo de `esperados` es su título en `loreChunks.ts` (los UUID de BD cambian en cada reindexado). El script de evaluación devuelve por caso el puesto del
+semilla", "causa": "ausente|no_recuperado|ignorado|null", "debe_pasar": true}`. `causa` es obligatoria (`QA-328`): null si el caso no falló o es semilla; con un caso mal formado (sin `causa`, `pregunta` o `esperados`, o con el id repetido), `npm run rag-eval` sale con 2 y dice cuál. `region` (opcional): la región del jugador; la consulta sale como en el juego (`pregunta — región`, con el lore del otro continente excluido). `debe_pasar` (opcional): si el caso no sale en el top-k, `npm run rag-eval` termina con código 1. En Tarkor el id de trozo de `esperados` es su título en `loreChunks.ts` (los UUID de BD cambian en cada reindexado). El script de evaluación devuelve por caso el puesto del
 primer trozo esperado y, en total, recall@k y MRR.
+
+`npm run rag-eval -- --json` (`QA-329`, para el GVE) saca por stdout un solo objeto JSON y el informe de texto por
+stderr; los códigos de salida son los mismos (0, 1 si falla un `debe_pasar`, 2 si no puede evaluar). Forma
+(`salidaJson`, `ragEval.ts`): `config` (`modelo` y su `digest` de `/api/tags`, null con el Ollama simulado;
+`topK`, `trozo`, `solapamiento`, `prefijo_consulta`, `prefijo_documento`, `texto_embebido` (plantilla),
+`forma_consulta`, y de extras el filtro de región, `index`, `index_matches`, `commit`, `commit_dirty` y
+`cases_file`), `indice_hash` (`sha256:<hex>` del contenido del índice, calculado por `reindex-lore`; null si el índice
+es anterior), `casos` (por caso: `id`, `idioma`, `par` (id del gemelo en el otro idioma, recíproco; null si no está en la corrida), `pair_id`, `origen`, `causa`, `debe_pasar`, `pregunta`, `consulta`
+(la enviada), `esperados`, `devueltos` con `titulo` y `distancia` en orden, `puesto` (1 = primero, null si no sale) y
+`pasa`) y `resumen` (`k`, `n`, `recall`, `mrr`, `fallan_obligatorios`). El hash cubre el modelo y, por fila indexada, el
+par (título, texto embebido exacto), ordenado; nunca los UUID.
+
+Mandos del RAG (`QA-330`, `src/lib/ragConfig.ts`): `RAG_TAM_TROZO`, `RAG_SOLAPE`, `RAG_PREFIJO_CONSULTA`,
+`RAG_PREFIJO_DOCUMENTO` y `RAG_PLANTILLA`, o los argumentos `--tam-trozo`, `--solape`, `--prefijo-consulta`,
+`--prefijo-documento`, `--plantilla` y `--prefijos-nomic`, iguales en `reindex-lore` y `rag-eval`. `reindex-lore`
+guarda la configuración en `World.loreIndice`; `rag-eval` sale con 2 si la suya no casa (salvo `--ignorar-indice`) y la
+saca en `config.index` e `index_matches`. Para comparar: `npm run reindex-lore -- --tam-trozo 250 --prefijos-nomic` y
+`npm run rag-eval -- --json --tam-trozo 250 --prefijos-nomic`.
+
+Casos generados (`QA-331`): `npm run rag-generar-casos -- --semilla 42 --borradores-a 12` (modelo por `--modelo`, por
+defecto `OLLAMA_MODEL_SUGERENCIAS`) pide 2-3 preguntas por fragmento de `loreChunks.ts`, en pareja es/en, y descarta las
+que copian 4 palabras seguidas del fragmento. Escribe en `backend/ia/`: `rag-casos-b.jsonl` (origen B, no
+obligatorios; `rag-eval` los suma por defecto), `rag-casos-reserva.jsonl` (~15 % aparte: no se mira al ajustar el
+RAG; se evalúa con `--casos ia/rag-casos-reserva.jsonl`), `rag-casos-a-borradores.jsonl` (para que la usuaria acepte
+los A y los pase a `rag-casos.jsonl`) y `rag-casos-generacion.json` (modelo, digest, semilla, temperatura, prompt,
+commit y recuentos, para reproducirlo). Todo caso lleva `lang` (`es`/`en`) y `pair_id`, y cada pareja, los mismos
+esperados; `rag-eval` sale con 2 si no. Solo sale del lore indexado, nunca de partidas reales.
 
 ## Medidas por tanda
 

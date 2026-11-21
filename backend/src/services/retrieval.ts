@@ -1,11 +1,13 @@
 import { prisma } from '../lib/prisma.js';
 import { embed, toVectorLiteral } from '../lib/embeddings.js';
 import { registrarLlamada } from '../lib/iaRegistro.js';
+import { CONFIG_TEXTO_COMPLETO, configRag, fusionRrf, textoConsulta } from '../lib/ragConfig.js';
 
 export interface RetrievedLore {
   title: string;
   text: string;
-  /// Distancia coseno de pgvector (0 = idéntico, ~1 = sin relación, hasta 2 = opuesto).
+  /// Distancia coseno de pgvector (0 = idéntico, ~1 = sin relación, hasta 2 = opuesto). En la búsqueda híbrida, la del
+  /// mejor trozo del título por vector (el orden es el de la fusión, no el de la distancia).
   distance: number;
 }
 
@@ -39,6 +41,8 @@ const RELEVANCE_THRESHOLD = 0.75;
 /// QA-167: cada fragmento tiene varias filas (una por trozo, con el texto entero; ver loreTrozos.ts), así que se
 /// queda con la más cercana de cada título antes de cortar en `topK`. `LoreChunk` no tiene índice vectorial (255 filas
 /// en Tarkor, búsqueda de ~8 ms): si se le pone uno, el `DISTINCT ON` impide usarlo y habría que deduplicar fuera.
+/// QA-327: `title` desempata dos distancias iguales, para que dos corridas den el mismo orden (el GVE compara corridas).
+/// Dentro de un título, el `DISTINCT ON` ya es fijo: todas sus filas guardan el mismo texto.
 /// Bajado de 6 a 4 (2026-07-17): con 6 fragmentos, narrar pasaba de ~30-140s a 170-220s+ (y dos
 /// veces se colgó del todo) — el prefill de un prompt ~3x más largo cuesta caro en esta CPU.
 export async function retrieveLore(
@@ -54,12 +58,13 @@ export async function retrieveLore(
   let embedMs: number | undefined;
   let inicioBusqueda: number | undefined;
   try {
-    const vector = embed(query);
+    const cfg = configRag();
+    const vector = embed(textoConsulta(cfg, query), cfg.modelo);
     const queryLiteral = toVectorLiteral(await vector);
     embedMs = Date.now() - inicio;
     inicioBusqueda = Date.now();
 
-    const rows = await withQueryTimeout(
+    const rows = cfg.busqueda === 'hibrida' ? await busquedaHibrida(query, queryLiteral, worldId, topK, excludeTags) : await withQueryTimeout(
       prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
         SELECT title, text, distance FROM (
           SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
@@ -68,7 +73,7 @@ export async function retrieveLore(
             AND NOT (tags && ${excludeTags}::text[])
           ORDER BY title, embedding <=> ${queryLiteral}::vector
         ) mejores
-        ORDER BY distance
+        ORDER BY distance, title
         LIMIT ${topK}
       `,
       15_000,
@@ -182,31 +187,89 @@ export function titulosPorEntidad(titulos: string[], textos: string[], opciones:
     .map((x) => x.t);
 }
 
+/// Búsqueda híbrida (`QA-351`, R5): la lista por vector (todos los títulos, por su trozo más cercano) y la de texto
+/// completo (los títulos con algún trozo que comparte una palabra con la consulta, por su trozo de más `ts_rank`),
+/// fusionadas con RRF. La consulta de texto es la misma que se embebe, sin prefijo, y sus palabras se buscan con OR
+/// (con AND, una pregunta larga casi nunca casaría entera). Necesita `LoreChunk.busqueda`, que llena `reindex-lore`.
+async function busquedaHibrida(
+  query: string,
+  queryLiteral: string,
+  worldId: string,
+  topK: number,
+  excludeTags: string[],
+): Promise<RetrievedLore[]> {
+  const porVector = await withQueryTimeout(
+    prisma.$queryRaw<{ title: string; text: string; distance: number }[]>`
+      SELECT title, text, distance FROM (
+        SELECT DISTINCT ON (title) title, text, embedding <=> ${queryLiteral}::vector AS distance
+        FROM "LoreChunk"
+        WHERE "worldId" = ${worldId}
+          AND NOT (tags && ${excludeTags}::text[])
+        ORDER BY title, embedding <=> ${queryLiteral}::vector
+      ) mejores
+      ORDER BY distance, title
+    `,
+    15_000,
+    'retrieveLore (vector)',
+  );
+  const porTexto = await withQueryTimeout(
+    prisma.$queryRaw<{ title: string }[]>`
+      WITH q AS (
+        SELECT NULLIF(replace(plainto_tsquery(${CONFIG_TEXTO_COMPLETO}::regconfig, ${query})::text, ' & ', ' | '), '') AS t
+      )
+      SELECT title FROM (
+        SELECT DISTINCT ON (title) title, ts_rank(busqueda, q.t::tsquery) AS rango
+        FROM "LoreChunk", q
+        WHERE "worldId" = ${worldId}
+          AND NOT (tags && ${excludeTags}::text[])
+          AND q.t IS NOT NULL
+          AND busqueda @@ q.t::tsquery
+        ORDER BY title, ts_rank(busqueda, q.t::tsquery) DESC
+      ) mejores
+      ORDER BY rango DESC, title
+    `,
+    15_000,
+    'retrieveLore (texto)',
+  );
+  const porTitulo = new Map(porVector.map((r) => [r.title, r]));
+  return fusionRrf([porVector.map((r) => r.title), porTexto.map((r) => r.title)], topK).flatMap(({ title }) => {
+    const fila = porTitulo.get(title);
+    return fila ? [fila] : [];
+  });
+}
+
 /// True si ninguno de los fragmentos recuperados es realmente relevante — la acción pregunta
 /// por algo que nuestro lore no cubre (p. ej. "busca un lugar seguro para acampar": no tenemos
 /// ningún hecho sobre qué hace seguro un sitio concreto). Señal para relajar la regla de "no
 /// inventes" en ese turno — hipótesis de la usuaria, 2026-07-18: pedirle al modelo algo concreto
 /// y a la vez prohibirle inventar sin darle material real puede ser lo que provocaba el cuelgue
 /// reproducible visto en pruebas con esa acción exacta.
-/// Mira el más cercano de todos (QA-289: los que entran por nombre van primero sin ser los más cercanos).
-export function isWeaklyGrounded(chunks: RetrievedLore[]): boolean {
-  return chunks.length === 0 || Math.min(...chunks.map((c) => c.distance)) > RELEVANCE_THRESHOLD;
+/// Mira el más cercano de todos (QA-289: los que entran por nombre van primero sin ser los más cercanos, y la
+/// búsqueda híbrida ordena por RRF). `umbral` (`QA-360`, solo `rag-eval --narrar`): otro umbral; por defecto, el de siempre.
+export function isWeaklyGrounded(chunks: RetrievedLore[], umbral: number = RELEVANCE_THRESHOLD): boolean {
+  return chunks.length === 0 || Math.min(...chunks.map((c) => c.distance)) > umbral;
 }
 
 /// Tope de caracteres total, independiente de topK — red de seguridad para que el prompt nunca
 /// crezca sin control aunque algún fragmento salga muy largo (p. ej. las biografías de personajes).
-const MAX_LORE_CHARS = 1400;
+export const MAX_LORE_CHARS = 1400;
 
-export function formatLoreForPrompt(chunks: RetrievedLore[]): string[] {
-  const result: string[] = [];
+/// Los fragmentos que entran en el prompt: los primeros que caben en `maxChars` (siempre entra el primero). `maxChars`
+/// (`QA-360`, solo `rag-eval --narrar`): otro tope; por defecto, `MAX_LORE_CHARS`.
+export function loreQueEntra(chunks: RetrievedLore[], maxChars: number = MAX_LORE_CHARS): RetrievedLore[] {
+  const result: RetrievedLore[] = [];
   let total = 0;
   for (const chunk of chunks) {
     const line = `${chunk.title}: ${chunk.text}`;
-    if (total + line.length > MAX_LORE_CHARS && result.length > 0) break;
-    result.push(line);
+    if (total + line.length > maxChars && result.length > 0) break;
+    result.push(chunk);
     total += line.length;
   }
   return result;
+}
+
+export function formatLoreForPrompt(chunks: RetrievedLore[], maxChars: number = MAX_LORE_CHARS): string[] {
+  return loreQueEntra(chunks, maxChars).map((chunk) => `${chunk.title}: ${chunk.text}`);
 }
 
 /// QA-518 (P487, P491): el lore que entra en la réplica de un NPC. Solo el de lo que nombra la frase del jugador (por

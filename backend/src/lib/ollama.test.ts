@@ -221,3 +221,23 @@ describe('muestreo extra en la petición', () => {
     expect(body.options).toMatchObject({ num_predict: 300, min_p: 0.05, repeat_penalty: 1.05 });
   });
 });
+
+// QA-359: `seed` (solo `rag-eval --narrar`) va en options de Ollama si se pasa; sin él, la petición es la de siempre.
+describe('seed en ollamaGenerate (QA-359)', () => {
+  const peticion = async (extra: { seed?: number; temperature?: number }) => {
+    vi.resetModules();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ response: 'x', done_reason: 'stop' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { ollamaGenerate: generar } = await import('./ollama.js');
+    await generar({ model: 'm', prompt: 'p', ...extra });
+    return JSON.parse(fetchMock.mock.calls[0][1].body as string).options as Record<string, unknown>;
+  };
+
+  it('con seed y temperatura 0, los dos en options', async () => {
+    expect(await peticion({ seed: 42, temperature: 0 })).toMatchObject({ seed: 42, temperature: 0 });
+  });
+
+  it('sin seed, options no lo lleva', async () => {
+    expect(await peticion({ temperature: 0.5 })).not.toHaveProperty('seed');
+  });
+});

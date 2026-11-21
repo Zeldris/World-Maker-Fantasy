@@ -27,6 +27,9 @@ export interface OllamaGenerateOptions {
   /// precisión, no creatividad — "sangre roja y calefacción" huele a sampling demasiado caliente
   /// en un 7B Q4. Bajarlo solo para narración de combate, dejar la exploración en su temperatura normal.
   temperature?: number;
+  /// Semilla del muestreo (Ollama `seed`), para repetir una generación (`rag-eval --narrar`, `QA-359`). Si se omite no se
+  /// envía, como siempre.
+  seed?: number;
   /// Tope duro de tiempo real (ms). Visto en pruebas: a veces Ollama se queda genuinamente
   /// colgado (probablemente el motor de gramática del `format` JSON entra en bucle con ciertos
   /// prompts) y nunca responde — sin esto, setupFetch.ts desactiva TODOS los timeouts de fetch
@@ -81,6 +84,7 @@ function buildRequestBody(options: OllamaGenerateOptions, stream: boolean) {
       num_thread: 8,
       ...(options.maxTokens ? { num_predict: options.maxTokens } : {}),
       ...(options.temperature !== undefined ? { temperature: options.temperature } : {}),
+      ...(options.seed !== undefined ? { seed: options.seed } : {}),
       ...(options.forceCpu ? { num_gpu: 0 } : {}),
       ...(options.numCtx ? { num_ctx: options.numCtx } : {}),
       ...options.muestreo,
