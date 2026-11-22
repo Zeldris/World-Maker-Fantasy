@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.8.2 -->
 # Helek Sirik — motor y producto
 
 Vocabulario del motor del juego y del producto. El lore canónico vive en `docs/rpgtarkor/` y no se

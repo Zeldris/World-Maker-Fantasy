@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.8.2 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -42,6 +42,8 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - Commit + push (`bash .claude/gw/scripts/push.sh <rama>`, en segundo plano: reintenta si falla por red y da por
   subido solo lo que `git ls-remote` confirma) en cada punto estable: **nunca más de 30-45 minutos sin subir**, y **la bitácora en el mismo commit** que el trabajo. Algo a
   medias o en rojo se sube igual, con `WIP:` delante y en la bitácora qué falla y por qué.
+- **No se hace un commit solo para el ledger de métricas** (`docs/metrics/ledger.jsonl`), aunque un gancho lo pida:
+  lo lleva el `pre-commit` del siguiente commit de trabajo.
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`): el cambio
   puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.

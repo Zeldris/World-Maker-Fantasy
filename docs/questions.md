@@ -23,21 +23,27 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-3
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-22
 - Question: gw-update 0.8.1→0.8.2: ¿aplico apply.py --update (scripts, skills, ganchos y agentes del flujo)?
 - Recommendation: sí: 111 archivos del flujo sin cambios locales, más gw.json a 0.8.2 y alta de .claude/agents/gw-reviewer.md
+- Answer: ok
+- Answered: 2026-11-22
 
 ## Q-4
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-22
 - Question: ¿Añado a REVIEW.md la regla nueva: el código que lee lo que escribe un agente o una persona lleva un test con una muestra real?
 - Recommendation: sí: añadirla a REVIEW.md tal cual y subir su marca a v0.8.2
+- Answer: ok
+- Answered: 2026-11-22
 
 ## Q-5
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-22
 - Question: ¿Añado a AGENTS.md la regla de la plantilla de no hacer commits solo para el ledger de métricas?
 - Recommendation: sí: añadir a AGENTS.md (Relevos) que no se hace un commit solo para el ledger de métricas; lo lleva el pre-commit del siguiente commit de trabajo
+- Answer: ok
+- Answered: 2026-11-22
