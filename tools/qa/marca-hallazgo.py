@@ -85,6 +85,7 @@ def sin_citas(estado: str) -> str:
 
 REABIERTO = re.compile(r'\breabiert[oa]s?\b', re.I)
 FECHA = r'(\d{4}-\d{2}-\d{2})'
+CIERRE_FINAL = re.compile(r'[\s*]*(✅|no aplica|→ roadmap|va al roadmap|pasa al roadmap)')
 COMPROBADO = re.compile(r'comprobad[oa]s? (jugando|en vivo)|✅ comprobado\b|jugado ✓', re.I)
 
 
@@ -106,8 +107,12 @@ def grupo(estado: str) -> str:
     Lo que queda de un arreglo va tras «pendiente:» o «falta:», o lo marca «en parte» (con o sin paréntesis);
     lo jugado, «comprobado jugando», «comprobado en vivo» o «✅ comprobado»; lo que no se puede jugar y se cierra
     con su razón, «no jugable» (cierre del 3.3). «Reabierto» solo cuenta si no le sigue un ✅: manda el último
-    estado (QA-92)."""
+    estado (QA-92). QA-352: si el último tramo (tras el último « · ») empieza por ✅ o por un cierre sin arreglo,
+    el grupo sale solo de ese tramo: el historial de delante («en parte», «falta:», «combates reabiertos») no manda."""
     t = sin_citas(estado)
+    tramos = t.split(' · ')
+    if len(tramos) > 1 and CIERRE_FINAL.match(tramos[-1].lower()):
+        return grupo(tramos[-1])
     bajo = t.lower()
     if reabierto_vigente(t):
         return 'pendiente'

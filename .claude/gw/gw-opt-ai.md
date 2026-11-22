@@ -107,5 +107,23 @@ inhibidor de suspensión, y dice qué queda en pie («Nada en pie» = cerrado).
 - `keep_alive` 1h en `resumen` y en el calentamiento (`QA-161`); captura remota apagada en las tandas (`QA-160`).
 - Aprobadas el 2026-11-11 (no se vuelven a proponer): prefijo estable entre rondas de combate (`QA-307`), `keep_alive`
   30 min del Cronista (`QA-308`), casos fijos del clasificador (`QA-309`), registro tras `escenario.sh cargar` (`QA-310`).
+- Aprobadas el 2026-11-12: el hecho del golpe al final del prompt (`QA-326`) y la cola de noche robusta del generador (`IMG-44`: reintento, `handle-power-key`, temperatura por imagen). Ya hecho: vigilante de `qwen21` a 1000 MB y el botón de encendido de KDE sin acción. El tope de consumo de la APU (10-12 W) **no** se vuelve a proponer: solo si la Deck se apaga por calor.
 - Aprobadas el 2026-11-14 (no se vuelven a proponer): calentar con el prompt de la partida al abrirla (`QA-339`),
   resultado del golpe como campo obligatorio en combate (`QA-340`), tokens de prompt reaprovechados en el registro (`QA-341`).
+- Aprobadas el 2026-11-15 (no se vuelven a proponer): tope de 400 tokens del 1.er intento en combate (`QA-347`) y calentar
+  con el prompt de combate al reabrir en combate (`QA-348`).
+- Aprobadas el 2026-11-15, grupo 3 (no se vuelven a proponer): Ollama en su scope y vigilante de memoria en la ronda (`QA-353`),
+  P475 como caso de `clasificar-eval` (`QA-354`), falso positivo del guard «jugador acertando» (`QA-355`), sin la apertura
+  entera como turno anterior (`QA-356`) y turnos de exploración y combate por separado en `medir-ia.py` (`QA-357`).
+- Aprobadas el 2026-11-16, grupo 5 (no se vuelven a proponer): intento 2 con el mismo prefijo (`QA-501`), medir el corte del
+  prefijo entre turnos y conservar `logs/ollama.log` (`QA-502`), memoria de la caché de prompts de `llama-server` (`QA-503`).
+- Aprobadas el 2026-11-17, comprobación del grupo 5 (no se vuelven a proponer): pista en positivo en defensa sin acierto (`QA-504`),
+  impacto anticipado en la guarda (`QA-505`, medido tras `QA-504`), P479 en `clasificar-eval` (`QA-506`) y primer bloque que cambia del prompt (`QA-507`).
+- Aprobadas el 2026-11-17, tanda de comprobación (no se vuelven a proponer): `QA-505` ampliada al sustantivo «impacto», el rival sigue
+  en pie en defensa sin acierto (`QA-508`), bloques estables del combate antes de `hechos` (`QA-509`, la última y con bench) y vía e
+  interlocutor del turno en el registro (`QA-510`).
+- Aprobadas el 2026-11-19, ronda local 2 L1-L3 (no se vuelven a proponer): falsos positivos de la guarda de objeto sin camino
+  (`QA-512`, con `QA-505`), P272 por la palabra propia del título en `titulosPorEntidad` (`QA-513`) y recalentar el prefijo
+  del narrador tras `dialogo_npc` (`QA-514`, tras `QA-509`). Descartado por memoria en la Deck: `OLLAMA_NUM_PARALLEL=2`.
+- Aprobadas el 2026-11-19, tanda L4 (no se vuelven a proponer): falsos positivos de las guardas de combate P488/P489 (`QA-517`),
+  lore de la entidad nombrada en `dialogo_npc` (`QA-518`, la última) y la medida del corte en `hechos` en `QA-509`.

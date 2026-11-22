@@ -288,6 +288,7 @@ export async function restartSaveTransactionBody(
   await tx.droppedItem.deleteMany(dePartida);
   await tx.liveTeacherCapture.deleteMany(dePartida);
   await tx.almacenLimite.deleteMany(dePartida);
+  await tx.prefijoNarrador.deleteMany(dePartida); // QA-339: el prefijo calentado de la partida anterior
   await tx.worldState.update({
     where: { saveId: save.id },
     data: { fictionalDateLabel, fictionalMinutes: 480, agenda: [], factionsStatus: {}, mundoClonadoEn: null },

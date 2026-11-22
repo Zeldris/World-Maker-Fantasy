@@ -45,6 +45,7 @@ const {
   detectsUnresolvedDialogueTargetClaim,
   unresolvedDialogueTargetNarrationFor,
   detectsGiftToNpcClaim,
+  giftToAbsentNpcNarrationFor,
   giftRecipientIndex,
   giftToNpcNarrationFor,
 } = await import('./playerActionValidation.js');
@@ -208,6 +209,42 @@ describe('detectsAbsentSceneNpcClaim', () => {
     ]) {
       expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['orco-enfurecido-hondonada']))?.name).toBe('Torgash');
     }
+  });
+
+  // P480: Ulkha acababa de nombrar a Gogorath (en el catálogo, no en escena) y la pregunta por él cortaba el turno.
+  describe('P480: el ausente dentro de lo dicho a un presente es el tema', () => {
+    beforeEach(() => {
+      findManyNpc.mockReset().mockResolvedValue([
+        { slug: 'ulkha-ketg', name: 'Ulkha Ketg', aliases: ['ulkha ketg'] },
+        { slug: 'gogorath', name: 'Gogorath', aliases: [] },
+      ]);
+    });
+
+    it('no dispara tras «:», entre comillas, dentro de ¿…? ni tras «quién es/era»', async () => {
+      for (const accion of [
+        'Le pregunto a Ulkha Ketg: ¿Quién era Gogorath?',
+        'Le digo a Ulkha Ketg: Háblame de Gogorath.',
+        'Le digo a Ulkha Ketg «cuéntame algo de Gogorath».',
+        'Le digo a Ulkha Ketg "háblame de Gogorath".',
+        'Le pregunto a Ulkha Ketg ¿qué fue de Gogorath?',
+        'Le pregunto a Ulkha Ketg quién era Gogorath.',
+      ]) {
+        expect(await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']), accion).toBeNull();
+      }
+    });
+
+    it('revisión: lo dicho tras «:» acaba en el fin de oración; un ausente en otra oración sigue bloqueando', async () => {
+      for (const accion of ['Le digo a Ulkha Ketg: espera aquí. Luego ataco a Gogorath', 'Le digo a Ulkha Ketg: «Espera aquí». Luego ataco a Gogorath', 'Le digo a Ulkha Ketg: espera aquí! Ataco a Gogorath']) {
+        expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']))?.name, accion).toBe('Gogorath');
+      }
+      expect(await detectsAbsentSceneNpcClaim('Le digo a Ulkha Ketg: «Hola. ¿Y Gogorath?»', 'world1', 'save1', ['ulkha-ketg'])).toBeNull();
+    });
+
+    it('sigue disparando si el ausente es el destinatario o el objetivo de la acción', async () => {
+      for (const accion of ['Ataco a Gogorath.', 'Le pregunto a Gogorath: ¿Quién eres?', 'Le pregunto a Gogorath: ¿Y tú, Ulkha Ketg?', 'Le digo a Gogorath que ataco.']) {
+        expect((await detectsAbsentSceneNpcClaim(accion, 'world1', 'save1', ['ulkha-ketg']))?.name, accion).toBe('Gogorath');
+      }
+    });
   });
 
   it('sin la misión del Orco ACTIVA: el mismo texto SÍ se bloquea (el Orco no está disponible sin la quest)', async () => {
@@ -629,12 +666,20 @@ describe('detectsGiftToNpcClaim (P241)', () => {
 
   it('«Le entrego mi pan a Gistera» sin pan en el inventario: dice qué no tiene', () => {
     const claim = detectsGiftToNpcClaim('Le entrego mi pan a Gistera Koh.', inventario, npcs);
-    expect(claim).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+    expect(claim).toMatchObject({ itemEnInventario: null, itemTexto: 'pan' });
     expect(giftToNpcNarrationFor(claim!, 'Gistera Koh', true)).toBe('No tienes pan en el inventario, así que no hay nada que entregar.');
   });
 
+  it('P468: el destinatario ausente no se cuela en el objeto y queda nombrado', () => {
+    const claim = detectsGiftToNpcClaim('Le regalo a Gistera una ración de viaje', inventario, ['Corredor de Cauce']);
+    expect(claim).toMatchObject({ itemEnInventario: null, itemTexto: 'racion de viaje', destinatarioNombrado: 'Gistera' });
+    expect(giftToNpcNarrationFor(claim!, 'el Corredor de Cauce', false)).toBe('No tienes racion de viaje en el inventario, así que no hay nada que entregar.');
+    expect(giftToAbsentNpcNarrationFor('Gistera')).toContain('Gistera no está aquí');
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera una ración de viaje', ['Ración de viaje'], ['Corredor de Cauce'])).toMatchObject({ itemEnInventario: 'Ración de viaje', destinatarioNombrado: 'Gistera' });
+  });
+
   it('con solo el nombre de pila del destinatario, «No tienes» no lo arrastra', () => {
-    expect(detectsGiftToNpcClaim('Le regalo a Gistera mi pan.', inventario, npcs)).toEqual({ itemEnInventario: null, itemTexto: 'pan' });
+    expect(detectsGiftToNpcClaim('Le regalo a Gistera mi pan.', inventario, npcs)).toMatchObject({ itemEnInventario: null, itemTexto: 'pan' });
   });
 
   it('«doy» solo cuenta si lo que se da está en el inventario (le doy un golpe / doy gracias no son regalos)', () => {
@@ -664,7 +709,7 @@ describe('detectsGiftToNpcClaim (P241)', () => {
   });
 
   it('la frase remite al botón Entregar solo si el NPC lo tiene; si no, dice que no acepta entregas', () => {
-    const claim = { itemEnInventario: 'Cuchillo de pedernal', itemTexto: 'cuchillo de pedernal' };
+    const claim = { itemEnInventario: 'Cuchillo de pedernal', itemTexto: 'cuchillo de pedernal', destinatarioNombrado: null };
     expect(giftToNpcNarrationFor(claim, 'la compañera', true)).toContain('botón Entregar');
     const sinBoton = giftToNpcNarrationFor(claim, 'Gistera Koh', false);
     expect(sinBoton).toContain('no acepta entregas');
@@ -680,6 +725,9 @@ describe('giftRecipientIndex (P441)', () => {
   it('con el nombre completo sigue funcionando', () => {
     expect(giftRecipientIndex('Le doy el Tótem Maktor a Tirag Susig', npcs)).toBe(1);
   });
+  it('P468: «para Ulkha» nombra al destinatario por su nombre de pila', () => {
+    expect(giftRecipientIndex('Le doy la piel para Ulkha', [['Tótem de Guerra'], ['Ulkha Ketg']])).toBe(1);
+  });
   it('sin destinatario nombrado devuelve -1', () => {
     expect(giftRecipientIndex('Le doy el Tótem Maktor', npcs)).toBe(-1);
   });
@@ -688,5 +736,23 @@ describe('giftRecipientIndex (P441)', () => {
   });
   it('un nombre con punto no casa de más (el «.» no es comodín)', () => {
     expect(giftRecipientIndex('Le doy el pan a Maraxsol', [['Mara.Sol']])).toBe(-1);
+  });
+});
+
+describe('P448: levantar la mano no es construir', () => {
+  it('«Levanto la mano y le saludo» no es una construcción desconocida; «levanto una torre» sí', () => {
+    expect(detectsUnknownConstructionClaim('Levanto la mano y le saludo en son de paz')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Me levanto y saludo al orco')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Levanto una Torre de Cristal')).toBe(true);
+  });
+});
+
+describe('P475: levantarse (el NPC) no es construir', () => {
+  it('preguntar o pedir a un NPC que se levante/se siente no es una construcción desconocida', () => {
+    expect(detectsUnknownConstructionClaim('Le pregunto al Orco enfurecido si puede levantarse')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Le pido a Torgash que se levante')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Le digo al orco que se levante del suelo')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Le pido al orco que levante la mano')).toBe(false);
+    expect(detectsUnknownConstructionClaim('Levanto una Torre de Cristal')).toBe(true);
   });
 });

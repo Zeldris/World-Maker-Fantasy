@@ -121,9 +121,12 @@ Una ronda coge **un bloque** de la matriz de cobertura y lo cierra entero, sin s
    `IA_REGISTRO=$PWD/backend/ia/registro-<fecha>.jsonl IA_PERFIL=deck bash tools/playwright-e2e/arrancar-juego.sh`
    En la Deck, Ollama con `bash tools/qa/host.sh bash tools/qa/deck/ia-ronda.sh arrancar` (iGPU y sin suspensión),
    y **al acabar la ronda, `ia-ronda.sh parar`**: baja el juego y Ollama, y dice si queda algo en pie (`QA-313`).
+   Ollama va en su propio scope de systemd y arranca un vigilante de memoria (`vigilante-memoria.sh`, que para la ronda entera, registro en
+   `logs/vigilante-memoria.log`) que para la tanda si MemAvailable < 1.500 MiB más de 30 s (`QA-353`).
    En la Deck, `bash tools/qa/host.sh bash tools/qa/deck/juego.sh` lo pone solo (`deck` y `logs/ia/<fecha>.jsonl`, `QA-192`).
    Sin `IA_PERFIL`, `arrancar-juego.sh` levanta solo el Ollama simulado (:11434) si nada responde allí, también tras `escenario.sh cargar`; `--parar` lo baja.
    QA-310: `arrancar-juego.sh` apunta el `IA_PERFIL` y el `IA_REGISTRO` del arranque en `logs/juego-ia.env`; `escenario.sh cargar` y `avanzar` relanzan con ellos (un `--parar` entero lo borra), así la tanda sigue escribiendo en `logs/ia/`.
+   QA-519 (P494): con `IA_REGISTRO` y sin `IA_CASOS`, los casos van junto al registro (`logs/ia/<fecha>.casos.jsonl`, con el system y el prompt enteros de cada llamada): ahí se ve qué lore entra en una réplica, sin relanzar el juego. `systemd-inhibit` solo existe en el host: siempre por `tools/qa/host.sh` (como `ia-ronda.sh arrancar`).
    **Montura de pruebas** (solo para probar «Viajar» y las interrupciones de viaje, P46/P47/P321; nunca en producción): `bash tools/qa/host.sh env WMF_MONTURA_PRUEBAS=1 bash tools/qa/deck/juego.sh` (o `WMF_MONTURA_PRUEBAS=1` delante de `arrancar-juego.sh`); la jugadora cuenta como con montura hasta que CR-57 la dé de verdad.
    (`IA_REGISTRO` con ruta absoluta: el servidor corre en `backend/`; el script completa una relativa. `IA_PERFIL`: `deck`,
    `cpu`, `gpu8` o `gpu12`, según la máquina; con él, el script comprueba GPU y `rag-eval` y para si fallan, `QA-141`). Al acabar la tanda, una línea en

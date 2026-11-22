@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { companerosDeCombate } from '../../services/combateCompaneros.js';
 import { renombrarHabilidadesDePartida } from '../../services/habilidadesRenombradas.js';
 import { prisma } from '../../lib/prisma.js';
+import { calentarNarradorDePartida } from '../../services/calentarNarrador.js';
 import { startingAbilitiesFor } from '../../services/startingAbilities.js';
 import { maxCombatAbilitiesFor } from '../../services/progression.js';
 import { energiaMaxFor } from '../../services/energy.js';
@@ -50,6 +51,10 @@ export async function detailRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>('/saves/:id', async (request, reply) => {
+    // QA-339: al abrir la partida, su último prefijo del narrador a la caché de Ollama, sin esperar.
+    void calentarNarradorDePartida(request.params.id)
+      .then((mandado) => mandado && request.log.info(`Narrador precalentado con el prefijo de la partida ${request.params.id}.`))
+      .catch((err) => request.log.warn(`Calentar el narrador de la partida falló (no bloquea): ${err instanceof Error ? err.message : err}`));
     // Ventana de 24h de juego (rework 2026-07-24, petición explícita: "el log de personaje solo
     // muestre 24h del mundo") — antes esta consulta cargaba TODAS las LogEntry desde el principio
     // de la partida, sin límite, cada vez que se abría o recargaba la página. `fictionalMinutes`

@@ -33,6 +33,7 @@ import {
   hasFalseItemUse,
   hasFalseInventoryReview,
   hasResurrectedDeadNpc,
+  repiteEscenaFija,
   hasFalseNpcAppearance,
   hasGisteraReencuentroSinNombrar,
   hasFalseGisteraNamedReturn,
@@ -653,6 +654,49 @@ describe('hasFalseCombatHit', () => {
     expect(hasFalseCombatHit(narration, true)).toBe(false);
   });
 
+  it('QA-517 (P488): un golpe intentado que se esquiva/para («pero… esquiva») o da en el escudo sin daño no es un golpe que conecte', () => {
+    for (const n of [
+      'Gorhorn ataca a la Guerrera serhu con un golpe directo de su hacha de guerra rota, pero la Guerrera es rápida y esquiva el golpe.',
+      'Gorhorn se acerca a la Guerrera serhu con un golpe directo, pero ella se esquiva a tiempo.',
+      'La Guerrera serhu se protege con su escudo de BERSERKER, pero la maza pesada de Gorhorn la golpea suavemente en el escudo.',
+    ]) {
+      expect(hasFalseCombatHit(n, true), n).toBe(false);
+    }
+  });
+
+  it('QA-517 (P488): lo que sí conecta se sigue rechazando aunque lleve «pero» o el escudo', () => {
+    for (const n of [
+      'Gorhorn golpea al orco en el hombro, que esquiva tarde y sangra.',
+      'El golpe directo le alcanza de lleno, pero el orco sigue en pie.',
+      'Gorhorn golpea el escudo y lo atraviesa hiriéndole el brazo.',
+      'Gorhorn lanza un golpe directo, pero el orco esquiva tarde y sangra.',
+      'Gorhorn golpea en el escudo del orco, hiriéndole el brazo.',
+      // Daño ANTES del «pero»: el golpe conectó aunque luego bloquee otro.
+      'Gorhorn golpea al orco y le abre una herida en el brazo, pero el orco bloquea el siguiente golpe.',
+    ]) {
+      expect(hasFalseCombatHit(n, true), n).toBe(true);
+    }
+  });
+
+  it('QA-505: el sustantivo «impacto» anticipado o sin daño no cuenta como golpe', () => {
+    for (const n of [
+      'Gorhorn se planta, listo para absorber el impacto.',
+      'Gorhorn se prepara para cualquier otro impacto.',
+      'Gorhorn aguanta el impacto sin derrumbarse.',
+      'El impacto hace que el suelo se estremezca bajo sus pies.',
+      'Gorhorn aguanta el impacto, impidiendo que el golpe le haga daño.',
+    ]) {
+      expect(hasFalseCombatHit(n, true), n).toBe(false);
+    }
+  });
+
+  it('QA-505: el verbo «impactando» y el sustantivo «impacto» con daño siguen contando', () => {
+    expect(hasFalseCombatHit('El hacha, impactando en el pecho del orco, lo hace retroceder.', true)).toBe(true);
+    expect(hasFalseCombatHit('El impacto le parte el brazo al orco.', true)).toBe(true);
+    expect(hasFalseCombatHit('El impacto lo hace retroceder, sangrando.', true)).toBe(true);
+    expect(hasFalseCombatHit('Gorhorn aguanta el impacto. El orco se desploma.', true)).toBe(true);
+  });
+
   it('no dispara fuera de combate (combatBothMissed undefined)', () => {
     expect(hasFalseCombatHit('Gorhorn golpea la puerta con el puño, impaciente.', undefined)).toBe(false);
   });
@@ -788,6 +832,28 @@ describe('hasFalseCombatMiss', () => {
     expect(hasFalseCombatMiss(narration, false, false)).toBe(false);
   });
 
+  it('P477: el arma que se hunde en el suelo a escasos centímetros del rival, con el golpe de lleno', () => {
+    const narration =
+      'La hacha de guerra rota de Gorhorn se hunde en la arcilla endurecida del suelo al lado del orco desconocido, a escasos centímetros de su cabeza.';
+    expect(hasFalseCombatMiss(narration, true)).toBe(true);
+  });
+
+  it('P477: el golpe de lleno recibido como si nada («apenas conmovido»)', () => {
+    expect(hasFalseCombatMiss('Gorhorn soporta el impacto en pleno pecho, apenas conmovido.', true)).toBe(true);
+  });
+
+  it('revisión: un golpe que entra no se rechaza por «sin inmutarse» del rival ni por «a escasos palmos» del atacante', () => {
+    expect(hasFalseCombatMiss('El hacha de Gorhorn se hunde en el hombro del orco, que encaja el golpe sin inmutarse.', true)).toBe(false);
+    expect(hasFalseCombatMiss('Gorhorn se planta a escasos palmos del orco y le abre un tajo.', true)).toBe(false);
+    // Los fallos que motivaron las alternativas siguen rechazándose.
+    expect(hasFalseCombatMiss('Gorhorn encaja el golpe en pleno pecho sin inmutarse.', true)).toBe(true);
+    expect(hasFalseCombatMiss('El hacha pasa a escasos centímetros de su cabeza.', true)).toBe(true);
+  });
+
+  it('P477: no dispara con la hoja que se clava en la carne del rival', () => {
+    expect(hasFalseCombatMiss('La hoja se clava en la carne del orco, que ruge de dolor.', true)).toBe(false);
+  });
+
   it('no dispara fuera del sistema de intercambios sin ninguna señal (ambos parámetros ausentes)', () => {
     expect(hasFalseCombatMiss('El Quio evita el golpe ágilmente.', undefined, undefined)).toBe(false);
   });
@@ -897,6 +963,21 @@ describe('hasFalseCombatAttacker', () => {
     expect(hasFalseCombatAttacker(narration, 'Gorhorn', false)).toBe(false);
   });
 
+  it('P473: no dispara si el jugador también conecta (golpes mutuos): narrarlo acertando es correcto', () => {
+    const narration = 'Gorhorn clava su cuchillo en el costado del orco.';
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true, true)).toBe(false);
+    expect(hasFalseCombatAttacker(narration, 'Gorhorn', true, false)).toBe(true);
+  });
+
+  it('P473: "sin herida" no cuenta como golpe que conecta', () => {
+    expect(hasFalseCombatHit('El orco ataca y Gorhorn lo esquiva, sin herida alguna.', true)).toBe(false);
+    expect(hasFalseCombatHit('El orco ataca y deja una herida en Gorhorn.', true)).toBe(true);
+    expect(hasFalseCombatHit('El golpe no le causa herida alguna a Gorhorn.', true)).toBe(false);
+    expect(hasFalseCombatHit('El golpe no le hace una herida.', true)).toBe(false);
+    expect(hasFalseCombatHit('El orco ataca, ni una herida en Gorhorn.', true)).toBe(false);
+    expect(hasFalseCombatHit('Gorhorn queda sin ninguna herida.', true)).toBe(false);
+  });
+
   it('no dispara sin characterName', () => {
     const narration = 'Gorhorn ataca de lleno al Orco enfurecido.';
     expect(hasFalseCombatAttacker(narration, undefined, true)).toBe(false);
@@ -924,6 +1005,36 @@ describe('hasFalseCombatAttacker', () => {
     const narration =
       'Gorhorn lanza su Cuchillo de hielo sílice en una estocada rápida y profunda hacia el Orco enfurecido. El cuchillo atrapa la piel del osoide en un ángulo mortal, dejando una línea roja que corre desde el omóplato hasta el costado.';
     expect(hasFalseCombatAttacker(narration, 'Gorhorn', true)).toBe(true);
+  });
+});
+
+describe('hasFalseCombatAttacker: QA-355 (P473), textos reales rechazados con el golpe bien atribuido al NPC', () => {
+  const pasan = [
+    'El orco desconocido carga con su maza orca y golpea a Gorhorn en el hombro. Gorhorn intenta esquivar el golpe, pero el orco desconocido es demasiado rápido y consigue conectar. Gorhorn se tambalea bajo el impacto.',
+    'El orco desconocido le asesta un golpe certero en la espalda a Gorhorn. El golpe se siente como un martillazo en su espalda y Gorhorn cae a un costado.',
+    'El orco desconocido carga con toda la fuerza, su maza orca descargando un golpe directo en el pecho de Gorhorn. Este último intenta resistir el golpe, pero su cuerpo no puede contener la fuerza de la maza orca; el impacto lo tumba al suelo, jadeando.',
+    'La maza orca del orco desconocido impacta con fuerza en el pecho de Gorhorn, haciéndolo tambalearse. Gorhorn intenta resistir el golpe, pero su cuerpo no puede contener la fuerza del impacto.',
+    'El orco desconocido le asesta un golpe fuerte en el hombro a Gorhorn, quien se mantiene firme pero vacila bajo el impacto. A su vez, Gorhorn intenta bloquear el ataque, pero el orco desconocido logra golpearlo en el brazo.',
+    'El orco desconocido le asesta un golpe certero en el hombro de Gorhorn con su maza orca. Gorhorn, sin desmayar, se coloca firmemente de puntas de pie, listo para recibir el impacto.',
+    'Gorhorn resiste el impacto de la maza orca, pero la fuerza del golpe lo hace tambalearse. El orco desconocido aprovecha la momentánea debilidad de Gorhorn para lanzarle un golpe de codo que lo hace caer de espaldas.',
+  ];
+  it.each(pasan.map((t, i) => [i + 1, t] as const))('texto %i del registro: el golpe es del NPC, no se rechaza', (_n, texto) => {
+    expect(hasFalseCombatAttacker(texto, 'Gorhorn', true)).toBe(false);
+  });
+
+  it('QA-517 (P489): «le da a Gorhorn un golpe certero» es el NPC golpeando al jugador; «Gorhorn se desploma» no es que acierte', () => {
+    expect(hasFalseCombatAttacker('La Guerrera serhu le da a Gorhorn un golpe certero en el hombro, mientras que Gorhorn se desploma al suelo con un gruñido.', 'Gorhorn', true)).toBe(false);
+  });
+
+  it('QA-517 (P489): sigue rechazando al jugador como sujeto del golpe', () => {
+    expect(hasFalseCombatAttacker('Gorhorn le da a la Guerrera un golpe certero en el hombro.', 'Gorhorn', true)).toBe(true);
+    expect(hasFalseCombatAttacker('La Guerrera ataca a Gorhorn. Gorhorn le da a la Guerrera un golpe certero en el hombro.', 'Gorhorn', true)).toBe(true);
+  });
+
+  it('un golpe mal atribuido de verdad (el jugador acierta, el NPC no) se sigue rechazando', () => {
+    const mal = 'El orco desconocido avanza con su maza. Gorhorn le asesta un golpe certero en el hombro y el impacto lo hace retroceder.';
+    expect(hasFalseCombatAttacker(mal, 'Gorhorn', true)).toBe(true);
+    expect(hasFalseCombatAttacker('Gorhorn esquiva la maza y golpea al orco en el costado, que gruñe de dolor.', 'Gorhorn', true)).toBe(true);
   });
 });
 
@@ -1125,6 +1236,18 @@ describe('hasFalseInventoryReview', () => {
 });
 
 describe('hasResurrectedDeadNpc', () => {
+  it('P470: un convaleciente «al borde de la escena, tensos los músculos» o con «gesto brusco» cuenta como en pie', () => {
+    expect(hasResurrectedDeadNpc('El Orco enfurecido, al borde de la escena, tensos los músculos, observa.', ['Orco enfurecido'])).toBe(true);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido rechaza la ofrenda con un gesto brusco.', ['Orco enfurecido'])).toBe(true);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido no se mueve del suelo.', ['Orco enfurecido'])).toBe(false);
+  });
+
+  it('QA-339: «se mueve» solo cuenta con el muerto de sujeto; «apenas/no se mueve» y otro sujeto no', () => {
+    expect(hasResurrectedDeadNpc('Gorhorn se mueve con cautela hacia el cuerpo del Orco enfurecido.', ['Orco enfurecido'])).toBe(false);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido apenas se mueve.', ['Orco enfurecido'])).toBe(false);
+    expect(hasResurrectedDeadNpc('El Orco enfurecido se yergue de pronto.', ['Orco enfurecido'])).toBe(true);
+  });
+
   it('bug real jugando en vivo (2026-08-01, "el orco que maté volvió a aparecer"): detecta un NPC muerto narrado como si siguiera activo', () => {
     const narration =
       'Gorhorn examina la zona. Una mirada al oeste revela un conjunto de huellas recientes en la arcilla. Se fija con atención y reconoce el paso de un orco — probablemente el Orco Enfurecido.';
@@ -1695,6 +1818,23 @@ describe('hasFalsePassiveHarvestClaim', () => {
     expect(hasFalsePassiveHarvestClaim(narration, 'Hojas duraderas', false)).toBe(false);
   });
 
+  it('QA-512: no dispara con «encuentra a/su…» (golpe que conecta) ni con «no consigue»/«consigue» + infinitivo', () => {
+    for (const n of [
+      'Un golpe certero de la hacha de Gorhorn encuentra a el orco en el estómago.',
+      'Gorhorn no consigue encontrar un punto débil.',
+      'Gorhorn consigue encontrar un hueco entre las defensas.',
+      'El hacha encuentra al orco en el costado.',
+    ]) {
+      expect(hasFalsePassiveHarvestClaim(n, null, false), n).toBe(false);
+    }
+  });
+
+  it('QA-512: sigue disparando con obtenciones reales', () => {
+    expect(hasFalsePassiveHarvestClaim('Encontrado un par de hojas duraderas, las añade a sus raciones.', null, false)).toBe(true);
+    expect(hasFalsePassiveHarvestClaim('Gorhorn consigue un trozo de carne.', null, false)).toBe(true);
+    expect(hasFalsePassiveHarvestClaim('Gorhorn encuentra un trozo de carne.', null, false)).toBe(true);
+  });
+
   it('no dispara sin vocabulario de obtención en la narración', () => {
     expect(hasFalsePassiveHarvestClaim('Gorhorn descansa junto al fuego, atento a los ruidos de la noche.', null, false)).toBe(false);
   });
@@ -2072,6 +2212,17 @@ describe('buildNarrationPrompt — lo que cambia cada turno va tras los hechos e
     expect(pos('TU PROPIA NARRACIÓN')).toBeLessThan(pos('CONOCIMIENTO DE FONDO DEL MUNDO'));
   });
 
+  it('en combate, la salud, el arma del golpe y el aviso de intercambio van tras los NPC, armas y misiones; fuera, no (QA-509)', () => {
+    const hechos = ['ESTADO ACTUAL DEL PERSONAJE: herido.', 'PERSONAJE EN ESCENA: Guerrera serhu', 'ESTE GOLPE EN CONCRETO es con el hacha.', 'Ningún intercambio de combate mecánico se ha resuelto todavía.', 'MISIONES DEL MUNDO: x', 'Guerrera serhu ataca con "Tajo".', 'UBICACIÓN ACTUAL: Hondonada'];
+    const base = { ...ctx('12:10', 'Gorhorn mira.'), worldFacts: hechos };
+    const orden = (enCombate: boolean) => {
+      const p = buildNarrationPrompt({ ...base, enCombate }).prompt;
+      return hechos.map((h) => [h.slice(0, 12), p.indexOf(h)] as const).sort((a, b) => a[1] - b[1]).map(([h]) => h);
+    };
+    expect(orden(true)).toEqual(['UBICACIÓN AC', 'PERSONAJE EN', 'MISIONES DEL', 'Guerrera ser', 'ESTADO ACTUA', 'ESTE GOLPE E', 'Ningún inter']);
+    expect(orden(false)).toEqual(['UBICACIÓN AC', 'ESTADO ACTUA', 'PERSONAJE EN', 'ESTE GOLPE E', 'Ningún inter', 'MISIONES DEL', 'Guerrera ser']);
+  });
+
   it('el esquema pide como mucho 3 hechos nuevos y cortos (QA-289)', () => {
     const nf = (buildNarrationPrompt(ctx('12:10', 'Gorhorn mira.')).format.properties as Record<string, { maxItems?: number; items?: { maxLength?: number } }>).newFacts;
     expect(nf.maxItems).toBe(3);
@@ -2185,5 +2336,16 @@ describe('buildNarrationPrompt — emboscada (ambushHint) ya no contradice a com
   it('fuera de un enfrentamiento hostil (sin NPC en escena), no añade ningún hint de emboscada', () => {
     const { prompt } = buildNarrationPrompt({ ...hostileCtx, npcSlugsInScene: [] });
     expect(prompt).not.toMatch(/SORPRENDE/);
+  });
+});
+
+describe('repiteEscenaFija (P464)', () => {
+  const apertura = 'Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo, con la respiración entrecortada y sin dejar de mirar hacia atrás.';
+  it('rechaza una narración que cuenta otra vez la apertura; deja pasar una que sigue', () => {
+    expect(repiteEscenaFija('Gorhorn pregunta. Levantando polvo entre la hondonada ves a una orca de las llanuras corriendo.', [apertura])).toBe(true);
+    expect(repiteEscenaFija('Gorhorn pregunta por el Clan Serhu y Gistera mira las rocas.', [apertura])).toBe(false);
+    expect(repiteEscenaFija('Cualquier cosa', undefined)).toBe(false);
+    // QA-339: una cola de 6 palabras compartida con el texto fijo es una frase corriente, no un repaso de la escena.
+    expect(repiteEscenaFija('La orca corre sin dejar de mirar hacia atrás.', [apertura])).toBe(false);
   });
 });

@@ -5,7 +5,7 @@ const appendFile = vi.hoisted(() => vi.fn());
 vi.mock('../config/env.js', () => ({ env: fakeEnv }));
 vi.mock('node:fs/promises', () => ({ appendFile }));
 
-import { registrarLlamada, registrarCaso, lineaRegistro, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa } from './iaRegistro.js';
+import { registrarLlamada, registrarCaso, lineaRegistro, prefijoComun, prefijoBloque, prefijoBloqueYLinea, prefijoBloqueAjeno, nsToMs, calcularTruncated, _reiniciarAviso, abrirTurnoIa, seguirTurnoIa, ambitoTurnoIa, fijarViaTurnoIa } from './iaRegistro.js';
 
 beforeEach(() => {
   appendFile.mockReset();
@@ -115,6 +115,40 @@ describe('iaRegistro', () => {
     expect(await enPeticion(() => {})).toBeUndefined();
   });
 
+  it('QA-510: la vía y el interlocutor del turno salen en sus líneas, y no en el turno siguiente', async () => {
+    fakeEnv.iaRegistro = '/tmp/x.jsonl';
+    const leer = (fn: () => void) =>
+      new Promise<Record<string, unknown>>((resolve) =>
+        ambitoTurnoIa(() => {
+          fn();
+          setImmediate(() => resolve(JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))));
+        }),
+      );
+    const dialogo = await leer(() => fijarViaTurnoIa('dialogo_puro', 'ulkha-ketg'));
+    expect(dialogo['app.via']).toBe('dialogo_puro');
+    expect(dialogo['app.interlocutor']).toBe('ulkha-ketg');
+    const narrar = await leer(() => fijarViaTurnoIa('narrar', null));
+    expect(narrar['app.via']).toBe('narrar');
+    expect('app.interlocutor' in narrar).toBe(false);
+    const nada = await leer(() => {});
+    expect('app.via' in nada).toBe(false);
+  });
+
+  it('QA-510: sin IA_REGISTRO la vía no se apunta', async () => {
+    const linea = await new Promise<Record<string, unknown>>((resolve) =>
+      ambitoTurnoIa(() => {
+        fijarViaTurnoIa('narrar', 'x');
+        setImmediate(() => resolve(JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))));
+      }),
+    );
+    expect('app.via' in linea).toBe(false);
+  });
+
+  it('QA-510: una fila rechazo lleva app.prompt_chars', () => {
+    const l = JSON.parse(lineaRegistro({ evento: 'rechazo', task: 'narrar', intento: 1, rechazo: 'x', promptChars: 1234 }, 'deck'));
+    expect(l['app.prompt_chars']).toBe(1234);
+  });
+
   it('sin IA_REGISTRO no hay turno', async () => {
     let id: unknown = 'x';
     await new Promise<void>((resolve) =>
@@ -153,5 +187,55 @@ describe('registrarCaso (QA-176)', () => {
     registrarCaso({ ...caso, format: { type: 'object' } });
     const o = JSON.parse((appendFile.mock.calls[0] as [string, string])[1]);
     expect(o.opciones.format).toEqual({ type: 'object' });
+  });
+});
+
+describe('prefijoComun (QA-502)', () => {
+  it('cuenta los caracteres que comparte con la llamada anterior del mismo modelo, no de otro', () => {
+    expect(prefijoComun('qa502-a', 'CABECERA hechos 1')).toEqual({ promptChars: 17, prefijoComunChars: 0 });
+    expect(prefijoComun('qa502-b', 'CABECERA otra cosa')).toEqual({ promptChars: 18, prefijoComunChars: 0 });
+    expect(prefijoComun('qa502-a', 'CABECERA hechos 2 y más')).toEqual({ promptChars: 23, prefijoComunChars: 16 });
+  });
+
+  it('va al registro como app.prompt_chars y app.prefijo_comun_chars', () => {
+    const o = JSON.parse(lineaRegistro({ operation: 'text_completion', promptChars: 100, prefijoComunChars: 40 }, 'deck'));
+    expect(o['app.prompt_chars']).toBe(100);
+    expect(o['app.prefijo_comun_chars']).toBe(40);
+  });
+});
+
+describe('prefijoBloque (QA-507)', () => {
+  const b = (...t: string[]) => t.map((texto, i) => ({ nombre: `b${i}`, texto }));
+
+  it('da el primer bloque que difiere de la última lista del mismo modelo', () => {
+    expect(prefijoBloque('qa507-a', b('x', 'y', 'z'))).toBe('inicio');
+    expect(prefijoBloque('qa507-b', b('x', 'q'))).toBe('inicio');
+    expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2'))).toBe('b1');
+    expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2'))).toBe('ninguno');
+    expect(prefijoBloque('qa507-a', b('x', 'y2', 'z2', 'extra'))).toBe('b3');
+    expect(prefijoBloque('qa507-a', b('x2'))).toBe('b0');
+  });
+
+  it('una llamada al modelo sin bloques desaloja la caché: la siguiente con bloques da «otra», no «ninguno»', () => {
+    expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('inicio');
+    prefijoBloqueAjeno('qa507-c');
+    expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('otra');
+    expect(prefijoBloque('qa507-c', b('x', 'y'))).toBe('ninguno');
+  });
+
+  it('dice el principio de la línea donde se corta dentro del bloque (QA-509)', () => {
+    const h = (t: string) => [{ nombre: 'ej', texto: 'fijo' }, { nombre: 'hechos', texto: t }];
+    expect(prefijoBloqueYLinea('qa509-a', h('HECHOS:\n- UBICACIÓN: X\n- ESTADO ACTUAL DEL PERSONAJE: herido.\n- y'))).toEqual({ bloque: 'inicio' });
+    expect(prefijoBloqueYLinea('qa509-a', h('HECHOS:\n- UBICACIÓN: X\n- ESTADO ACTUAL DEL PERSONAJE: malherido, apenas se tiene en pie y sangra.\n- y'))).toEqual({
+      bloque: 'hechos',
+      linea: '- ESTADO ACTUAL DEL PERSONAJE: malherido, apenas',
+    });
+    expect(prefijoBloqueYLinea('qa509-a', [{ nombre: 'otro', texto: 'fijo' }])).toEqual({ bloque: 'otro' });
+    expect(JSON.parse(lineaRegistro({ operation: 'text_completion', prefijoBloque: 'hechos', prefijoLinea: '- ESTADO' }, 'deck'))['app.prefijo_linea']).toBe('- ESTADO');
+  });
+
+  it('va al registro como app.prefijo_bloque y sin bloques no se escribe', () => {
+    expect(JSON.parse(lineaRegistro({ operation: 'text_completion', prefijoBloque: 'hechos' }, 'deck'))['app.prefijo_bloque']).toBe('hechos');
+    expect('app.prefijo_bloque' in JSON.parse(lineaRegistro({ operation: 'text_completion' }, 'deck'))).toBe(false);
   });
 });

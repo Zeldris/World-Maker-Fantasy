@@ -20,6 +20,7 @@
 export function createInFlightClaimSet<T = string>(staleAfterMs = 300_000): {
   claim: (key: T) => boolean;
   release: (key: T) => void;
+  has: (key: T) => boolean;
 } {
   const claimedAt = new Map<T, number>();
   return {
@@ -31,6 +32,11 @@ export function createInFlightClaimSet<T = string>(staleAfterMs = 300_000): {
     },
     release(key: T): void {
       claimedAt.delete(key);
+    },
+    /// ¿Hay un candado vigente (no caducado) para `key`?
+    has(key: T): boolean {
+      const existing = claimedAt.get(key);
+      return existing !== undefined && Date.now() - existing < staleAfterMs;
     },
   };
 }

@@ -196,11 +196,47 @@ const VERBO_DE_PREGUNTAR = /\b(pregunt\w*|cuent\w*|inform\w*|dime|dimelo|averigu
 /// hace del nombre el destinatario de otra acción, no el tema.
 const OTRA_ACCION_ANTES_DEL_NOMBRE = /[.;:,]|\b(y|e|luego|despues|entonces|tras|hablo|hablar|saludo|saludar|digo|decir|me acerco|voy|vamos|llamo|llamar|atacar?|ataco)\b/;
 
-function esTemaDeLaPregunta(action: string, nombres: string[]): boolean {
+/// P480: «quién es/era/fue Gogorath» (con artículo opcional): el nombre es el tema de la pregunta.
+const QUIEN_ES_ANTES_DEL_NOMBRE = /\bquien(?:es)?\s+(?:es|era|fue|son|eran|fueron)\s+(?:(?:el|la|los|las|ese|esa|aquel|aquella)\s+)?$/;
+
+/// P480: el nombre cae dentro de lo que dice el jugador («Le pregunto a Ulkha Ketg: ¿Quién era Gogorath?», «Le digo a
+/// Ulkha «… Gogorath …»»): tras los dos puntos que siguen al nombre de alguien presente, entre comillas o dentro de ¿…?.
+/// Lo dicho tras los dos puntos acaba en el fin de oración (`.`, `!`, `?` fuera de comillas) o en la comilla de cierre
+/// de la cita: «Le digo a Ulkha: espera aquí. Luego ataco a Gogorath» no incluye a Gogorath en lo dicho.
+function dosPuntosSigueAbierto(prefijo: string, desde: number): boolean {
+  const c = prefijo.indexOf(':', desde);
+  if (c < 0) return false;
+  let profundidad = 0;
+  let comillaRecta = false;
+  for (const ch of prefijo.slice(c + 1)) {
+    if (ch === '«' || ch === '“') profundidad++;
+    else if (ch === '»' || ch === '”') {
+      if (--profundidad < 0) return false;
+    } else if (ch === '"') comillaRecta = !comillaRecta;
+    else if (profundidad === 0 && !comillaRecta && /[.!?]/.test(ch)) return false;
+  }
+  return true;
+}
+
+function dentroDeLoDicho(texto: string, posNombre: number, finPresente: number): boolean {
+  const prefijo = texto.slice(0, posNombre);
+  const cuenta = (c: string) => prefijo.split(c).length - 1;
+  return dosPuntosSigueAbierto(prefijo, finPresente) || cuenta('«') > cuenta('»') || cuenta('"') % 2 === 1 || cuenta('“') > cuenta('”') || cuenta('¿') > cuenta('?');
+}
+
+function esTemaDeLaPregunta(action: string, nombres: string[], presentes: string[] = []): boolean {
   const texto = normalizeText(action);
   const posiciones = nombres.map((n) => texto.indexOf(normalizeText(n))).filter((i) => i >= 0);
   if (posiciones.length === 0) return false;
-  const prefijo = texto.slice(0, Math.min(...posiciones));
+  const posNombre = Math.min(...posiciones);
+  if (QUIEN_ES_ANTES_DEL_NOMBRE.test(texto.slice(0, posNombre))) return true;
+  // Un presente nombrado antes (a quien se habla) y el ausente dentro de lo dicho: el ausente es el tema, no el destinatario.
+  const finPresente = presentes
+    .map((n) => ({ i: texto.indexOf(normalizeText(n)), n: normalizeText(n) }))
+    .filter((p) => p.n.length > 0 && p.i >= 0 && p.i < posNombre)
+    .map((p) => p.i + p.n.length);
+  if (finPresente.length > 0 && dentroDeLoDicho(texto, posNombre, Math.min(...finPresente))) return true;
+  const prefijo = texto.slice(0, posNombre);
   return [...prefijo.matchAll(TEMA_DE_PREGUNTA_REGEX)].some((m) => {
     const marcador = m[1]!;
     const necesitaVerbo = marcador === 'por' || marcador === 'sobre' || marcador === 'acerca de';
@@ -229,7 +265,7 @@ export async function detectsAbsentSceneNpcClaim(action: string, worldId: string
   }
   const absent = allNpcs.find((n) => matchedSlugs.has(n.slug) && !effectiveSceneSlugs.includes(n.slug));
   if (!absent) return null;
-  if (effectiveSceneSlugs.length > 0 && esTemaDeLaPregunta(action, [absent.name, ...absent.aliases])) return null;
+  if (effectiveSceneSlugs.length > 0 && esTemaDeLaPregunta(action, [absent.name, ...absent.aliases], allNpcs.filter((n) => effectiveSceneSlugs.includes(n.slug)).flatMap((n) => [n.name, ...n.aliases]))) return null;
   // La ficha se busca con el tipo que le toca (`entityTypeDeSerVivo`, REVIEW.md): una fauna y un NPC con el mismo slug no se confunden.
   const entityType = entityTypeDeSerVivo(absent.slug, FUENTES_DE_CATALOGO);
   const vista = await prisma.discoveredEntity.findFirst({
@@ -487,7 +523,12 @@ const STRICT_BUILD_VERB_REGEX = /\b(constru|levant|erig)\w*\b/i;
 /// construction.ts) — "construyo una Torre de Cristal" cuando solo existen campamento/choza/
 /// ayuntamiento. Reutiliza el `nounRegex` de cada receta real, nunca una lista propia.
 export function detectsUnknownConstructionClaim(action: string): boolean {
-  const normalized = normalizeText(action);
+  // P448: «levanto la mano», «me levanto», «levanto la vista» no son construir.
+  const normalized = normalizeText(action)
+    .replace(/\b(?:me|se|te|nos) levant\w*/g, ' ')
+    // P475: «si puede levantarse», «que vuelva a levantarse», «levántate»: el verbo reflexivo es de quien se levanta.
+    .replace(/\blevant\w*(?:se|me|te|nos)\b/g, ' ')
+    .replace(/\blevant\w*\s+(?:(?:la|el|las|los|mi|mis|una|un|su|sus)\s+)?(?:mano|manos|brazo|brazos|vista|mirada|voz|punos?|cabeza|escudo|arma|ceja|cejas|ojos|dedo|copa|hacha|lanza|espada|garrote|antorcha|palma)\b/g, ' ');
   if (!STRICT_BUILD_VERB_REGEX.test(normalized)) return false;
   return !CONSTRUCTION_RECIPES.some((recipe) => recipe.nounRegex.test(normalized));
 }
@@ -687,6 +728,9 @@ export interface GiftToNpcClaim {
   itemEnInventario: string | null;
   /// Lo que la jugadora dice que entrega («mi cuchillo» → «cuchillo»), para decir «No tienes …».
   itemTexto: string;
+  /// P468: el destinatario como lo escribió la jugadora tras «a/al» con mayúscula («Gistera»), esté o no en escena;
+  /// null si no nombra a nadie por su nombre propio.
+  destinatarioNombrado: string | null;
 }
 
 /// «entrego/regalo/doy/ofrezco X a Y» (P241, decisión de la usuaria 2026-10-26): en texto libre no
@@ -720,6 +764,15 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
       if (token.length >= 4) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
     }
   }
+  // P468: «le regalo a Gistera una ración»: el nombre propio tras «a/al» es el destinatario, nunca parte del objeto,
+  // aunque no esté en escena (si no, «No tienes gistera una racion…»).
+  const nombrado = action.slice(verbo.index).match(/\b(?:a|al|para)\s+(\p{Lu}[\p{L}'-]+(?:\s+\p{Lu}[\p{L}'-]+)*)/u);
+  const destinatarioNombrado = nombrado ? nombrado[1] : null;
+  if (destinatarioNombrado) {
+    for (const token of normalizeText(destinatarioNombrado).split(/\s+/)) {
+      if (token.length >= 2) restoSinNpc = restoSinNpc.replace(new RegExp(`\\b${token}\\b`, 'g'), ' ');
+    }
+  }
   // Lo que se da: la primera cláusula tras el verbo, sin artículos ni preposiciones en los bordes.
   const palabras = restoSinNpc
     .split(/[,.;:!?¡¿«»"']|\s+(?:y|para|como|porque|pero|mientras)\s+/)[0]
@@ -741,7 +794,7 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
   if (weak && !enInventario) return null;
   const itemTexto = palabras.join(' ');
   if (!enInventario && itemTexto.length === 0) return null;
-  return { itemEnInventario: enInventario ?? null, itemTexto };
+  return { itemEnInventario: enInventario ?? null, itemTexto, destinatarioNombrado };
 }
 
 /// Destinatario de «dar X a Y» (P441): se busca en lo que va tras el último «a/al» (Y), nunca en las palabras del
@@ -749,9 +802,17 @@ export function detectsGiftToNpcClaim(action: string, inventoryItemNames: string
 /// una palabra suelta (≥4 letras) del nombre, p. ej. «Tirag» con «Tirag Susig». Sin cláusula «a Y» o sin acierto, -1.
 export function giftRecipientIndex(action: string, npcNames: string[][]): number {
   const normalized = ` ${normalizeText(action)} `;
-  const partes = normalized.split(/\s(?:a|al)\s/);
-  if (partes.length < 2) return -1;
-  const destino = ` ${partes[partes.length - 1]} `;
+  // P468: «para Ulkha» también nombra al destinatario («le doy la piel para Ulkha»). Se prueba la cláusula más a la
+  // derecha primero; la parte previa al primer «a/al/para» es el objeto y nunca se mira.
+  const partes = normalized.split(/\s(?:a|al|para)\s/);
+  for (let i = partes.length - 1; i >= 1; i--) {
+    const idx = indiceDestinatarioEn(` ${partes[i]} `, npcNames);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function indiceDestinatarioEn(destino: string, npcNames: string[][]): number {
   const completo = npcNames.findIndex((ns) => ns.some((n) => normalizeText(n).length > 0 && destino.includes(normalizeText(n))));
   if (completo >= 0) return completo;
   // Por palabras, sin RegExp: los nombres traen puntuación («(la cazadora)», «Dr.») que rompería un patrón.
@@ -771,6 +832,10 @@ export function giftRecipientIndex(action: string, npcNames: string[][]): number
 /// `puedeEntregar`: el NPC es compañero o encargado de ENCARGO_MATERIALES (`entrega.ts#puedeRecibirEntregas`),
 /// los únicos con botón Entregar; si no, no se promete un botón que no sale.
 /// `equipado`: el objeto solo está equipado (fase 1 hacia main); el botón Entregar pide desequiparlo antes.
+export function giftToAbsentNpcNarrationFor(nombre: string): string {
+  return `${nombre} no está aquí, así que no hay a quién entregarle nada: tendrás que ir a buscarlo donde esté.`;
+}
+
 export function giftToNpcNarrationFor(claim: GiftToNpcClaim, nombreNpc: string, puedeEntregar: boolean, equipado = false): string {
   if (!claim.itemEnInventario) {
     return claim.itemTexto

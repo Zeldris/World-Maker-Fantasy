@@ -30,8 +30,9 @@ import { applyLootMode, applyCombatExchangeToNpcState, applyKillSideEffects, app
 
 // Re-export: estos símbolos vivían aquí antes del corte de la Fase 12 (los importan otros módulos y tests).
 export { applyFactionRepDeltaForResolution, applyKillSideEffects, goirnosDeBotin };
-import { narrateAction, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
-import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded } from './retrieval.js';
+import { guardarPrefijoNarrador } from './calentarNarrador.js';
+import { narrateAction, buildNarrationPrompt, generateNpcReply, abreConElNpc, presentaNombreEnAccion, quitarCitas, quitarRestosDeDialogo, empezarPorElJugador, ultimaReplica, unirReplica, lineaDialogoDelJugador, narracionDeRespaldoEnDialogo, hasFalseTravelClaim, hasFalsePhantomTravel, type ClassificationResult, type NarrationResult } from './narrador.js';
+import { retrieveLore, formatLoreForPrompt, isWeaklyGrounded, cargarLoreParaReplica } from './retrieval.js';
 import { xpForRollSuccess, xpForHitos, labelForHitos, applyXp, type ProgressionResult, type HitoTipo } from './progression.js';
 import { alivioForLevel, xpForCraftSuccess, professionLevelForXp } from './professionProgress.js';
 import { DEFAULT_KINGDOM_STATS, kingdomStatsParaCliente } from './kingdomTick.js';
@@ -39,6 +40,7 @@ import { runDailyTick } from './dailyTick.js';
 import { assertExactlyOneOwner, ownerKeyFor } from './reinoOwner.js';
 import { recordFactionEvent } from './factionRelations.js';
 import { slugify } from '../lib/slugify.js';
+import { fijarViaTurnoIa } from '../lib/iaRegistro.js';
 import { appendSessionFacts, loadFactsKnownBy, selectRelevantFacts } from './worldFacts.js';
 import { bloqueMemoria } from './cronista/memoriaNarrador.js';
 import { nombresDelMundo } from './nombresDelMundo.js';
@@ -47,7 +49,7 @@ import { applyFactionRepDelta, effectiveTemperamento, reputacionHostil, resolveF
 import { regionControlActual, parseAgenda } from './worldAgenda.js';
 import { opcionesDisponiblesPara } from './npcInteraction.js';
 import { escuchaPropuestas, tieneMenu } from './menuDeNpc.js';
-import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
+import { detectNpcsInScene, enCombateConDelTurno, npcSceneBlockFor, npcSceneLineFor, difficultyHintFor, utilityDifficultyFor, detectsAttackIntent, detectsHostileSearchIntent, detectsDialogueIntent, elegirInterlocutor, npcInterpelado, detectsGreetingOrQuestion, detectsVerbalAcceptanceIntent, detectsLootIntent, detectsInventoryReviewIntent, scopeFor, pickAmbientEncounterCandidate, sinPuntoEnOtraZona, buildNpcInScene, conNombreVisible, nombreNarrado, corregirNombresCasi, candidateNpcNamesNotInScene, type NpcInScene, type NpcWithItems } from './npcScene.js';
 import { conGolpeDeGracia, resolveExchange, resolveIndependentExchange, rollInitiative, exchangeContextBlock, effectiveExchangeOutcome, independentExchangeContextBlock, hitSeverityHint, utilityTriggered, isReactiveUtility, type PendingNpcAttack, type PendingCanalizacion, type InitiativeResult, type CombatExchangeDisplay } from './combatExchange.js';
 import { npcCombatAbilitiesFor, chooseNpcAbility, ataquePendienteDeApertura } from './npcCombatAbilities.js';
 import { detectHarvest } from './harvest.js';
@@ -83,7 +85,7 @@ import { advanceFictionalMinutes, formatFictionalDate, entornoTemporalFor, momen
 import { PUERTA_INTERIOR, posicionPuertaAInterior } from './puertasInterior.js';
 import { faunaMomentoDelDia, FAUNA_AMBIENTAL } from '../scripts/worldCatalog.js';
 import { recalcularZonePointsDeLocation, zonePointsSummaryFor } from './zonePoints.js';
-import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS } from './dynamicMode.js';
+import { aNombre, conIndefinido, conDefinido, nombreEnFrase, nombreVisibleDeNpc, nombresVisiblesDeNpcs, quienEnAviso, decideOfertaModoDinamico, COOLDOWN_MODO_DINAMICO_MINUTOS, GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION, acotarEscenasFijasGistera } from './dynamicMode.js';
 import { alcanzableDesde } from './murosZona.js';
 import { bando } from './cronista/misiones.js';
 import { REP_CAZAR_GANADO_AJENO, REP_COGER_LO_AJENO } from './cronista/testigos.js';
@@ -124,6 +126,12 @@ export class TransitCancelledError extends Error {
     super('El CharacterTransit fue cancelado mientras se resolvía este turno.');
     this.name = 'TransitCancelledError';
   }
+}
+
+/// P306: ¿hay en escena alguien vivo cuya facción sea hostil para la jugadora? Un saludo o una pregunta solo abre
+/// combate (o deja de ser diálogo puro) en ese caso; un hostil muerto o convaleciente (`npcsInSceneVivos`) no cuenta.
+function hayReputacionHostilEnEscena(npcs: ReadonlyArray<{ faction: string | null }>, factionsStatus: Record<string, number>): boolean {
+  return npcs.some((n) => reputacionHostil(n.faction, factionsStatus));
 }
 
 function minutesLabel(minutos: number): string {
@@ -2157,6 +2165,11 @@ async function resolveCombatSlugsAndPersist(params: {
   narration: NarrationResult;
   npcsInScene: NpcInScene[];
   npcsInSceneVivos: NpcInScene[];
+  /// P471: los vivos de la zona ANTES de quitar a los agresivos sin punto en la casilla del jugador
+  /// (`npcsInSceneVivosParaCombate`); con ellos se conserva al rival pendiente que está en otra casilla.
+  npcsInSceneVivosZona?: NpcInScene[];
+  /// Slugs pendientes al empezar el turno, ya leídos por el caller (turn.ts); si faltan, se lee la base.
+  pendingCombatNpcSlugs?: string[];
   factionsStatus: Record<string, number>;
   condicionFisicaJugador: CondicionFisica;
   explicitTarget: NpcInScene | null;
@@ -2298,7 +2311,7 @@ async function resolveCombatSlugsAndPersist(params: {
   const saludoSinHostilidad =
     !enCombate &&
     detectsGreetingOrQuestion(action) &&
-    !npcsInSceneVivos.some((n) => reputacionHostil(n.faction, factionsStatus));
+    !hayReputacionHostilEnEscena(npcsInSceneVivos, factionsStatus);
   const combatSlugsFromModel = saludoSinHostilidad ? [] : (narration.combateIniciado?.npcSlugs ?? []).filter((slug) =>
     npcsInSceneVivos.some((n) => {
       if (n.slug !== slug) return false;
@@ -2445,10 +2458,29 @@ async function resolveCombatSlugsAndPersist(params: {
   // de verdad (resolveExchange), el NPC de ese intercambio SIEMPRE se incluye aquí — así
   // `combateIniciado` (y con él la condición física fresca del NPC) llega al frontend en CADA
   // turno donde de verdad pasó algo, no solo cuando el modelo se acuerda de repetir el slug.
-  const combatSlugsWithAttack =
+  const combatSlugsConAtaque =
     exchangeHappened && npcAttackTarget && !baseCombatSlugs.includes(npcAttackTarget.slug)
       ? [...baseCombatSlugs, npcAttackTarget.slug]
       : baseCombatSlugs;
+  // P471: con el combate ya abierto, un turno sin intercambio (p.ej. «lanzo un tajo» que el
+  // clasificador no reconoce) y sin `combateIniciado` del modelo dejaba `combatSlugs` en [] y
+  // `guardarSlugsDeCombate` vaciaba `pendingCombatNpcSlugs`: el rival se perdía. Los que ya
+  // estaban pendientes, siguen vivos en escena y son AGRESIVO/ENEMIGO se mantienen. `justDied`,
+  // `npcHuidoSlug` y los MUERTO siguen fuera (los filtra `justDied` y `combatSlugsToPersist`).
+  const pendientesRaw = !enCombate
+    ? null
+    : params.pendingCombatNpcSlugs ?? (await prisma.save.findUnique({ where: { id: saveId }, select: { pendingCombatNpcSlugs: true } }))?.pendingCombatNpcSlugs;
+  const pendientesDelSave = Array.isArray(pendientesRaw) ? pendientesRaw.filter((x): x is string => typeof x === 'string') : [];
+  const vivosDeLaZona = params.npcsInSceneVivosZona ?? npcsInSceneVivos;
+  const combatSlugsMantenidos = pendientesDelSave.filter((slug) =>
+    slug !== params.npcHuidoSlug &&
+    vivosDeLaZona.some((n) => {
+      if (n.slug !== slug) return false;
+      const t = effectiveTemperamento(n.temperamento, n.faction, factionsStatus);
+      return t === 'AGRESIVO' || t === 'ENEMIGO';
+    }),
+  );
+  const combatSlugsWithAttack = [...new Set([...combatSlugsConAtaque, ...combatSlugsMantenidos])];
   // Saqueo parcial (ver `partiallyLootedSlugs` del caller): un NPC tocado este turno que se queda
   // CON botín pendiente sigue contando como "en combate" para que `pendingCombatNpcSlugs`
   // sobreviva a un resync/recarga — sin esto, un turno de solo-saqueo (sin exchange) vaciaba el
@@ -3345,7 +3377,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Anti-repetición de vocabulario/imágenes (ver comentario de `lastNarration` más arriba).
   if (lastNarration) {
     contextBlocks.push(
-      `TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${lastNarration.text}". Varía el vocabulario y las imágenes en este turno — evita reutilizar las mismas palabras o metáforas que acabas de usar ahí.`,
+      `TU PROPIA NARRACIÓN DEL TURNO ANTERIOR (no la repitas): "${acotarEscenasFijasGistera(lastNarration.text)}". Varía el vocabulario y las imágenes en este turno — evita reutilizar las mismas palabras o metáforas que acabas de usar ahí.`,
     );
   }
 
@@ -4534,6 +4566,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // para no perder bloques deterministas/obligatorios como la escena de Gistera Koh.
     criticalFactsCount: contextBlocks.length,
     lastNarrationText: lastNarration?.text,
+    ...(gisteraYaPresentada ? { escenasFijasYaContadas: [GISTERA_TEXTO_APERTURA, GISTERA_TEXTO_PRESENTACION] } : {}),
     ...(dialogueTarget ? { replicaAparte: dialogueTarget.nombreVisible ?? dialogueTarget.name } : {}),
     combatBothMissed,
     combatRealHitLanded,
@@ -4548,6 +4581,9 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     npcFallsConvalecienteThisTurn,
     combatNoRealDeathThisTurn,
     jugadorRecibeGolpeEsteTurno,
+    // QA-340: con los dos de arriba, el campo `resultadoDelGolpe` del esquema del narrador.
+    jugadorConectaEsteTurno: exchangeHappened && npcAttackHits,
+    ...(exchangeHappened && npcAttackTarget ? { combatRivalNarrado: npcAttackTarget.nombreVisible ? nombreNarrado(npcAttackTarget) : conDefinido(npcAttackTarget.name, npcAttackTarget.articulo) } : {}),
     combatNotYetResolved,
     possiblyFalseItemUseNames,
     possiblyResurrectedNpcNames,
@@ -4780,7 +4816,25 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // ramas deterministas de abajo (combate múltiple/Gistera guionizada/saqueo/construcción/
   // cosecha/crafteo/curación explícita) nunca llaman a narrateAction, así que no hay ningún
   // prompt/respuesta real que capturar para el profesor cloud.
+  // P464(b), P466, P474, P476 (decisión de Álvaro, 2026-11-17): un saludo o una pregunta a un NPC, fuera de combate, sin
+  // viaje, sin escena fija y sin reputación hostil (que podría abrir combate), no pasa por el narrador: línea fija del
+  // jugador (`lineaDialogoDelJugador`) y la réplica de `dialogo_npc` detrás. Ahorra además la llamada a `narrar`.
+  // Revisión de código: además, sin tirada en el turno (su resultado se aplicaría sin narrarse) y con el NPC
+  // interpelado de verdad (`npcInterpelado`): no vale el primero de la escena por defecto.
+  const dialogoPuroCon =
+    dialogueTarget && !roll && npcInterpelado(action, dialogueTarget, !!explicitDialogueTarget) ? dialogueTarget : null;
+  const turnoDeDialogoPuro =
+    !!dialogoPuroCon &&
+    !enCombate &&
+    !travel &&
+    !combatExchangeDisplayFinal &&
+    !gisteraSePresentaEsteTurno &&
+    !pursuerRevealedThisTurn &&
+    detectsGreetingOrQuestion(action) &&
+    !hayReputacionHostilEnEscena(npcsInSceneVivos, factionsStatus);
+
   const wasLlmNarrated = !(
+    turnoDeDialogoPuro ||
     combatEncounterMode ||
     gisteraSePresentaEsteTurno ||
     lootMode ||
@@ -4800,6 +4854,35 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // adelantarse a ningún guard de arriba que todavía pudiera descartar el turno entero.
   if (combatExchangeDisplayFinal) onExchangeResolved?.(combatExchangeDisplayFinal, npcAbilityUsed?.npcName ?? combatExchangeDisplayFinal.rivalNombre ?? null);
 
+  // QA-510: la vía real del turno y el NPC al que se habla, para el registro de IA (`app.via`, `app.interlocutor`).
+  fijarViaTurnoIa(
+    turnoDeDialogoPuro
+      ? 'dialogo_puro'
+      : combatEncounterMode
+        ? 'combate_encuentro'
+        : gisteraSePresentaEsteTurno
+          ? 'gistera'
+          : lootMode
+            ? 'saqueo'
+            : buildMode
+              ? 'construccion'
+              : harvestOutcome
+                ? 'cosecha'
+                : craftMode
+                  ? 'crafteo'
+                  : usingExplicitHealList
+                    ? 'curacion'
+                    : usingExplicitHungerThirstList || bebeFuenteSinNarrador
+                      ? 'hambre_sed'
+                      : restBlockedByCooldown
+                        ? 'descanso_bloqueado'
+                        : 'narrar',
+    dialogueTarget?.slug,
+  );
+  const quienEnDialogo = async (npc: NonNullable<typeof dialogueTarget>): Promise<string> => {
+    const visible = await nombreVisibleDeNpc(prisma, saveId, npc);
+    return visible.oculto ? nombreEnFrase(visible.nombre) : conDefinido(visible.nombre, npc.articulo);
+  };
   const narration: NarrationResult = combatEncounterMode
     ? { narration: combatEncounterNarration, newFacts: [] }
     : gisteraSePresentaEsteTurno
@@ -4824,20 +4907,27 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
                       narration: `${characterName} no está lo bastante cansado y no quiere volver a descansar todavía. ${pickFlavor(REST_COOLDOWN_FLAVOR)}`,
                       newFacts: [],
                     }
-                  : await narrateAction(narrationCtx);
+                  : dialogoPuroCon && turnoDeDialogoPuro
+                    ? { narration: lineaDialogoDelJugador(characterName, action, await quienEnDialogo(dialogoPuroCon)), newFacts: [] }
+                    : await narrateAction(narrationCtx);
   // Streaming (2026-07-30): la rama determinista de arriba nunca llama a `onNarrationChunk` (no
   // hay generación en vivo que transmitir) — se manda de una vez aquí para que el frontend siga
   // viendo el mismo patrón de un "chunk" seguido de "done", en vez de quedarse sin nada hasta el
   // final de la respuesta HTTP completa.
   if (!wasLlmNarrated) onNarrationChunk?.(narration.narration);
+  // QA-339: el principio estable de este prompt, para calentarlo al volver a abrir la partida.
+  if (wasLlmNarrated) {
+    void guardarPrefijoNarrador(saveId, buildNarrationPrompt(narrationCtx).prefijoEstable).catch((err) =>
+      console.warn(`[turno] no se guardó el prefijo del narrador (saveId=${saveId}): ${err instanceof Error ? err.message : err}`),
+    );
+  }
 
   // P245: el narrador no respondió y era un diálogo con un NPC: el respaldo no copia la acción ni dice
   // «sin incidentes»; réplica neutra con el nombre que la jugadora le conoce + aviso. Fuera de un
   // diálogo (o en un intercambio de combate) el respaldo sigue como siempre. Si el streaming ya sacó el
   // texto antiguo, el cliente recibe el definitivo en la respuesta.
   if (wasLlmNarrated && narration.fallbackDeterminista && dialogueTarget && !combatExchangeDisplayFinal) {
-    const visible = await nombreVisibleDeNpc(prisma, saveId, dialogueTarget);
-    const quien = visible.oculto ? nombreEnFrase(visible.nombre, true) : conDefinido(visible.nombre, dialogueTarget.articulo);
+    const quien = await quienEnDialogo(dialogueTarget);
     narration.narration = narracionDeRespaldoEnDialogo(quien.charAt(0).toUpperCase() + quien.slice(1), characterName);
   }
 
@@ -4981,11 +5071,11 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
   // Réplica de NPC en su propia llamada dedicada (ver comentario de `generateNpcReply` en
   // narrador.ts) — `dialogueTarget` ya viene resuelto de más arriba (detectsDialogueIntent +
   // primer NPC real, sin fauna, detectado en escena). Nunca dispara en el mismo turno que la
-  // presentación de fase 2 (antes de presentarse no está en `npcsInScene` todavía, así que
-  // `dialoguePartners` sale vacío) — evita una doble réplica del mismo personaje en un turno.
+  // presentación de fase 2 (P464: si la acción nombra a Gistera, `dialogueTarget` sale con ella, así que
+  // se excluye con `gisteraSePresentaEsteTurno`) — evita pisar el discurso fijo con una réplica del LLM.
   // Nunca lanza si falla: perder la réplica de un turno es mucho mejor que perder el turno entero
   // por un timeout de esta llamada extra.
-  if (dialogueTarget) {
+  if (dialogueTarget && !gisteraSePresentaEsteTurno) {
     // P266: si el jugador le dice su nombre, queda como hecho que presenció; su réplica ve solo lo que vio.
     if (presentaNombreEnAccion(characterName, action)) {
       narration.newFacts = [...narration.newFacts, `${characterName} le dice su nombre a ${dialogueTarget.name}.`];
@@ -4998,11 +5088,14 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         sessionFacts: await loadFactsKnownBy(saveId, dialogueTarget.name),
         replicaAnterior: ultimaReplica(lastNarration?.text),
         nombresConocidos: await nombresDelMundo(worldId),
+        lore: await cargarLoreParaReplica(worldId, action, dialogueTarget.name, excludeTags).catch(() => []),
       });
       if (abreConElNpc(narration.narration, dialogueTarget.nombreVisible ?? dialogueTarget.name, characterName, dialogueTarget.genero)) {
         console.warn(`[lint] foco: la narración abre con ${dialogueTarget.nombreVisible ?? dialogueTarget.name}, no con ${characterName} (saveId=${saveId})`);
       }
-      {
+      if (turnoDeDialogoPuro) {
+        narration.narration = unirReplica(narration.narration, npcReply, dialogueTarget, true);
+      } else {
         // Una voz por llamada (QA-289 fila 1, P263/P311): si el narrador citó a alguien pese a la regla, se quita.
         // P415-P417 (restos de habla sin cita) y P412 (abre con el NPC): el NPC habla solo en su réplica, al final.
         const nombreNpc = dialogueTarget.nombreVisible ?? dialogueTarget.name;
@@ -5012,6 +5105,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
       }
     } catch (err) {
       console.warn(`[turno] generateNpcReply falló, se omite la réplica de este turno (saveId=${saveId}):`, err);
+      // Sin narrador ni réplica, la pregunta no se queda sin respuesta: la de respaldo.
+      if (turnoDeDialogoPuro) narration.narration = unirReplica(narration.narration, '', dialogueTarget, true);
     }
   }
   // P410: un nombre conocido escrito casi bien («Ulka Ketg») se corrige al de la ficha.
@@ -7092,6 +7187,8 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
         narration,
         npcsInScene,
         npcsInSceneVivos: npcsInSceneVivosParaCombate,
+        npcsInSceneVivosZona: npcsInSceneVivos,
+        ...(params.pendingCombatNpcSlugs ? { pendingCombatNpcSlugs: params.pendingCombatNpcSlugs } : {}),
         factionsStatus,
         condicionFisicaJugador: params.condicionFisica,
         explicitTarget,

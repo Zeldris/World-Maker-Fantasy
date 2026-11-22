@@ -94,6 +94,37 @@ relanzar_juego() {
   bash tools/playwright-e2e/arrancar-juego.sh
 }
 
+# P478: con el narrador real cargado (~5 GB), `cargar` bajaba la memoria disponible a ~1.260 MiB más de 30 s y el
+# vigilante (QA-353) paraba la ronda. Antes de restaurar se descargan los modelos de Ollama (`keep_alive: 0`); el
+# juego vuelve a cargar el narrador al abrir la partida (QA-339). Sin Ollama escuchando, no hace nada.
+descargar_ollama() {
+  local url="${OLLAMA_BASE_URL:-http://localhost:11434}" ps m
+  ps="$(curl -sf --max-time 5 "$url/api/ps" 2>/dev/null)" || return 0
+  # Solo los modelos del juego: Ollama de :11434 puede tener cargados los de otros procesos (GVE, generador de prompts).
+  mapfile -t propios < <(modelos_del_juego)
+  for m in $(printf '%s' "$ps" | python3 -c 'import json,sys
+n = lambda s: s if ":" in s else s + ":latest"
+propios = {n(a) for a in sys.argv[1:]}
+for m in json.load(sys.stdin).get("models", []):
+    if n(m["name"]) in propios: print(m["name"])' "${propios[@]}" 2>/dev/null); do
+    curl -sf --max-time 60 "$url/api/generate" -d "{\"model\":\"$m\",\"keep_alive\":0}" > /dev/null &&
+      echo "Ollama: descargado $m antes de restaurar (P478)" || echo "AVISO: no pude descargar $m de Ollama"
+  done
+}
+
+# Los modelos que usa el backend (backend/src/config/env.ts): la variable del entorno, si no la última asignación
+# de backend/.env y, si no, el valor por defecto de env.ts.
+modelos_del_juego() {
+  local par var val
+  for par in OLLAMA_MODEL_NARRADOR=tarkor-narrador-llama31 OLLAMA_MODEL_CRONISTA=qwen2.5:1.5b-instruct \
+    OLLAMA_MODEL_SUGERENCIAS=qwen3.5:4b OLLAMA_MODEL_EMBEDDINGS=nomic-embed-text; do
+    var="${par%%=*}"
+    val="${!var:-}"
+    [ -n "$val" ] || val="$(sed -n "s/^$var=[\"']\{0,1\}\([^\"'#]*\).*/\1/p" backend/.env 2>/dev/null | tail -n1 | tr -d '[:space:]')"
+    printf '%s\n' "${val:-${par#*=}}"
+  done
+}
+
 recargar_pagina() {
   [ -s tools/playwright-e2e/driver.token ] || return 0
   [ -z "${ESCENARIO_URL:-}" ] || return 0
@@ -156,6 +187,7 @@ case "${1:-}" in
     nombre="${2:?falta el nombre}"
     [ -f "$DIR/$nombre.dump" ] || { echo "No existe $DIR/$nombre.dump (escenario.sh lista)"; exit 1; }
     bash tools/playwright-e2e/arrancar-juego.sh --parar-juego > /dev/null
+    descargar_ollama
     psql postgresql://tarkor:tarkor@localhost:5432/tarkor -Atq -c "DROP DATABASE IF EXISTS $BASE WITH (FORCE)" -c "CREATE DATABASE $BASE"
     # pg_restore sale con 1 por avisos que no rompen nada (p. ej. el comentario de la extensión `vector`): se
     # enseñan y se sigue, para que el juego se arranque siempre.

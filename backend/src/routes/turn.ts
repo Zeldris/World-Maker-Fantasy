@@ -70,6 +70,7 @@ import {
   unresolvedDialogueTargetNarrationFor,
   detectsGiftToNpcClaim,
   giftToNpcNarrationFor,
+  giftToAbsentNpcNarrationFor,
   giftRecipientIndex,
   GIFT_ANY_REGEX,
   sinNumeroDeCombatiente,
@@ -754,11 +755,15 @@ export async function turnRoutes(app: FastifyInstance) {
       if (giftClaim) {
         const accionNorm = normalizeText(action);
         const idxDestino = giftRecipientIndex(action, visibles.map(nombresDe));
-        const destinatario =
+        const destinatarioEscena =
           (idxDestino >= 0 ? visibles[idxDestino] : undefined) ??
           visibles.find((n) => accionNorm.includes(normalizeText(n.name))) ??
-          visibles.find((n) => n.nombreVisible && nombraPorNombreVisible(action, n.nombreVisible)) ??
-          visibles[0];
+          visibles.find((n) => n.nombreVisible && nombraPorNombreVisible(action, n.nombreVisible));
+        // P468: la jugadora nombra a alguien que no está en la escena: se dice eso, no se entrega a otro (ni al primero).
+        if (!destinatarioEscena && giftClaim.destinatarioNombrado) {
+          return resolveBlockedTurn(giftToAbsentNpcNarrationFor(giftClaim.destinatarioNombrado));
+        }
+        const destinatario = destinatarioEscena ?? visibles[0];
         const nombreFrase = destinatario.nombreVisible ? nombreEnFrase(destinatario.nombreVisible) : conDefinido(destinatario.name, destinatario.articulo);
         const soloEquipado = giftClaim.itemEnInventario !== null && !inventario.some((i) => i.slot === null && i.name === giftClaim.itemEnInventario);
         const puedeEntregar = await puedeRecibirEntregas(saveId, save.worldId, destinatario.slug);

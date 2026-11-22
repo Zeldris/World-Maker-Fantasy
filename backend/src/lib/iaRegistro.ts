@@ -33,6 +33,13 @@ export interface RegistroLlamada {
   prefillMs?: number;
   decodeMs?: number;
   ttftMs?: number;
+  /// QA-502: caracteres de `system` + `prompt` y cuántos comparte con la llamada anterior al mismo modelo (`prefijoComun`).
+  promptChars?: number;
+  prefijoComunChars?: number;
+  /// QA-507: nombre del primer bloque del prompt que difiere del anterior del mismo modelo (solo con bloques con nombre).
+  prefijoBloque?: string;
+  /// QA-509: principio de la línea donde se corta el prefijo dentro de ese bloque (`prefijoBloqueYLinea`).
+  prefijoLinea?: string;
   truncated?: boolean;
   error?: string;
   ragQuery?: string;
@@ -63,8 +70,32 @@ export function calcularTruncated(inputTokens?: number, numCtx?: number, promptC
 /// Cada petición abre su ámbito (`ambitoTurnoIa`, gancho `onRequest` de server.ts) y el id se escribe en él: un
 /// `enterWith` desde el handler antes de su primer `await` se pegaría al socket y lo heredarían las peticiones
 /// siguientes de la misma conexión (code-review del PR de `QA-160`…`QA-168`).
-const turnoIa = new AsyncLocalStorage<{ id?: string }>();
+const turnoIa = new AsyncLocalStorage<{ id?: string; via?: ViaTurnoIa; interlocutor?: string }>();
 const turnoAbiertoPorPartida = new Map<string, string>();
+
+/// QA-510: por dónde resolvió el turno (`app.via`) y con quién habló (`app.interlocutor`, slug del NPC): sin esto,
+/// distinguir un diálogo puro de un turno narrado obligaba a reconstruirlo desde el código. Se escribe en el ámbito de
+/// la petición (`turnResolution.ts`, justo antes de resolver la narración) y lo heredan las llamadas siguientes del turno.
+export type ViaTurnoIa =
+  | 'dialogo_puro'
+  | 'narrar'
+  | 'combate_encuentro'
+  | 'gistera'
+  | 'saqueo'
+  | 'construccion'
+  | 'cosecha'
+  | 'crafteo'
+  | 'curacion'
+  | 'hambre_sed'
+  | 'descanso_bloqueado';
+
+export function fijarViaTurnoIa(via: ViaTurnoIa, interlocutor?: string | null): void {
+  if (!env.iaRegistro) return;
+  const ambito = turnoIa.getStore();
+  if (!ambito) return;
+  ambito.via = via;
+  ambito.interlocutor = interlocutor ?? undefined;
+}
 
 export function ambitoTurnoIa(siguiente: () => void): void {
   turnoIa.run({}, siguiente);
@@ -90,6 +121,65 @@ export function seguirTurnoIa(saveId: string): void {
   fijarTurno(id);
 }
 
+/// QA-502: en la exploración cada turno pagaba 26-34 s de prefill sobre ~6.300 tokens; para ver dónde se corta el
+/// prefijo que Ollama puede reaprovechar, cada llamada apunta cuántos caracteres comparte con la anterior del mismo
+/// modelo (la caché de `llama-server` es por modelo cargado). La primera de cada modelo da 0.
+const ultimoPromptPorModelo = new Map<string, string>();
+export function prefijoComun(modelo: string, texto: string): { promptChars: number; prefijoComunChars: number } {
+  const anterior = ultimoPromptPorModelo.get(modelo) ?? '';
+  ultimoPromptPorModelo.set(modelo, texto);
+  const tope = Math.min(anterior.length, texto.length);
+  let i = 0;
+  while (i < tope && anterior.charCodeAt(i) === texto.charCodeAt(i)) i++;
+  return { promptChars: texto.length, prefijoComunChars: i };
+}
+
+/// QA-507: `prefijoComun` dice cuántos caracteres; esto, en qué bloque del prompt se corta. Compara con la última lista
+/// de bloques del mismo modelo: el nombre del primero distinto, `ninguno` si son iguales y `inicio` si es la primera
+/// (o si hay más o menos bloques, el primero que sobra o falta). Solo para prompts armados por bloques con nombre.
+export interface BloquePrompt {
+  nombre: string;
+  texto: string;
+}
+/// `null`: la última llamada a ese modelo no llevaba bloques (dialogo_npc, calentar…) y desalojó la caché de Ollama, así
+/// que el prefijo de la lista anterior ya no era el que había en memoria.
+const ultimosBloquesPorModelo = new Map<string, BloquePrompt[] | null>();
+export function prefijoBloque(modelo: string, bloques: BloquePrompt[]): string {
+  return prefijoBloqueYLinea(modelo, bloques).bloque;
+}
+
+/// QA-509: con el bloque solo, «hechos» no decía qué hecho cambiaba en cada ronda de combate. `linea`: los primeros
+/// caracteres de la línea del bloque nuevo donde empieza la diferencia (solo si el bloque está en las dos listas).
+export function prefijoBloqueYLinea(modelo: string, bloques: BloquePrompt[]): { bloque: string; linea?: string } {
+  const anterior = ultimosBloquesPorModelo.get(modelo);
+  ultimosBloquesPorModelo.set(modelo, bloques);
+  if (anterior === null) return { bloque: 'otra' };
+  if (!anterior) return { bloque: 'inicio' };
+  const n = Math.max(anterior.length, bloques.length);
+  for (let i = 0; i < n; i++) {
+    const a = anterior[i];
+    const b = bloques[i];
+    if (a?.nombre === b?.nombre && a?.texto === b?.texto) continue;
+    if (!a || !b || a.nombre !== b.nombre) return { bloque: (b ?? a!).nombre };
+    return { bloque: b.nombre, linea: lineaDeLaDiferencia(a.texto, b.texto) };
+  }
+  return { bloque: 'ninguno' };
+}
+
+const LARGO_LINEA = 48;
+function lineaDeLaDiferencia(anterior: string, nuevo: string): string {
+  let i = 0;
+  while (i < anterior.length && i < nuevo.length && anterior.charCodeAt(i) === nuevo.charCodeAt(i)) i++;
+  const inicio = nuevo.lastIndexOf('\n', i - 1) + 1;
+  const fin = nuevo.indexOf('\n', inicio);
+  return nuevo.slice(inicio, fin < 0 ? undefined : fin).slice(0, LARGO_LINEA);
+}
+
+/// Una llamada a este modelo sin bloques: la siguiente con bloques apunta `otra` (el prefijo previo no era el suyo).
+export function prefijoBloqueAjeno(modelo: string): void {
+  ultimosBloquesPorModelo.set(modelo, null);
+}
+
 export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Date()): string {
   const campos: Record<string, unknown> = {
     ts: ahora.toISOString(),
@@ -105,6 +195,8 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.task': r.task,
     'app.machine_profile': perfil,
     'app.turno': turnoIa.getStore()?.id,
+    'app.via': turnoIa.getStore()?.via,
+    'app.interlocutor': turnoIa.getStore()?.interlocutor,
     'app.intento': r.intento,
     'app.rechazo': r.rechazo,
     'app.rechazo_texto': r.rechazoTexto,
@@ -115,6 +207,10 @@ export function lineaRegistro(r: RegistroLlamada, perfil: string, ahora = new Da
     'app.prefill_ms': r.prefillMs,
     'app.decode_ms': r.decodeMs,
     'app.ttft_ms': r.ttftMs,
+    'app.prompt_chars': r.promptChars,
+    'app.prefijo_comun_chars': r.prefijoComunChars,
+    'app.prefijo_bloque': r.prefijoBloque,
+    'app.prefijo_linea': r.prefijoLinea,
     'app.truncated': r.truncated,
     'app.error': r.error,
     'app.rag.query': r.ragQuery,

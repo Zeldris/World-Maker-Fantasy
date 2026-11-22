@@ -6,7 +6,7 @@ vi.mock('../lib/ollama.js', () => ({
   ollamaGenerateStream: vi.fn(),
 }));
 
-const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc } = await import('./narrador.js');
+const { generateNpcReply, npcConoceNombreDelJugador, hablaDeSiComoOtro, abreConElNpc, replicaDefectuosa, hasPlayerLineAddressedToPlayer } = await import('./narrador.js');
 
 describe('generateNpcReply (fase 1 hacia main, P327)', () => {
   beforeEach(() => {
@@ -24,6 +24,18 @@ describe('generateNpcReply (fase 1 hacia main, P327)', () => {
     const { prompt } = ollamaGenerate.mock.calls[0]![0] as { prompt: string };
     expect(prompt).toContain('PERSONAJE QUE ERES: Orco desconocido');
     expect(prompt).not.toMatch(/Ugrak/);
+  });
+
+  // QA-518 (P487): con el lore de lo nombrado, el NPC no dice «no conozco a nadie con ese nombre».
+  it('el lore de lo nombrado entra en el prompt, tras los hechos; sin lore, ni el bloque', async () => {
+    const npc = { name: 'Ulkha Ketg', role: 'Terk\'ikar', personality: '', bio: '' };
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: '¿Quién es Gistera?', sessionFacts: ['Gorhorn llega.'], lore: ['Gistera Koh y Uhuld Koh: Gistera huye con su hijo.'] });
+    const { prompt } = ollamaGenerate.mock.calls[0]![0] as { prompt: string };
+    expect(prompt).toMatch(/LO QUE SABES DEL MUNDO \(nunca digas que no lo conoces;[^\n]*desde tu lado: lo de otro clan, pueblo o raza es ajeno[^\n]*\):\n- Gistera Koh y Uhuld Koh: Gistera huye con su hijo\./);
+    expect(prompt).toMatch(/1-2 frases[^\n]*sin recitarlo[^\n]*no inventes/);
+    expect(prompt.indexOf('Gorhorn llega.')).toBeLessThan(prompt.indexOf('LO QUE SABES DEL MUNDO'));
+    await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Hola', sessionFacts: [] });
+    expect((ollamaGenerate.mock.calls[1]![0] as { prompt: string }).prompt).not.toContain('LO QUE SABES DEL MUNDO');
   });
 
   it('sin nombre oculto, el prompt lleva su nombre', async () => {
@@ -173,6 +185,55 @@ describe('narrateAction tras repetir el turno anterior (QA-289, P414)', () => {
     const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
     expect(prompts[0]).toContain('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
     expect(prompts[1]).not.toContain('TU PROPIA NARRACIÓN DEL TURNO ANTERIOR');
+  });
+});
+
+describe('narrateAction: el intento 2 conserva el prefijo tras un rechazo (QA-501)', () => {
+  const ctx = {
+    worldFacts: ['Hecho A de la escena.', 'Hecho B de la escena.', 'Hecho C de la escena.'],
+    characterSummary: 'Gorhorn, orco del Clan Maktor.',
+    characterName: 'Gorhorn',
+    action: 'Miro el paso',
+    criticalFactsCount: 1,
+    backgroundLore: ['Lore de fondo del paso.'],
+  };
+  const buena = JSON.stringify({ narration: 'Gorhorn otea el paso rocoso con calma.', newFacts: [] });
+
+  it('tras un rechazo de la guarda, el mismo prompt entero y el motivo al final', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'Gorhorn mira the river con calma.', newFacts: [] }) })
+      .mockResolvedValue({ text: buena });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction(ctx as unknown as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[1]!.startsWith(prompts[0]!)).toBe(true);
+    expect(prompts[1]).toContain('Hecho C de la escena.');
+    expect(prompts[1]!.slice(prompts[0]!.length)).toMatch(/SE DESCARTÓ POR: fuga de inglés/);
+  });
+
+  it('revisión: el intento 3 tras un rechazo va recortado (QA-166) pero con el motivo del descarte', async () => {
+    ollamaGenerate.mockReset();
+    const mala = JSON.stringify({ narration: 'Gorhorn mira the river con calma.', newFacts: [] });
+    ollamaGenerate.mockResolvedValueOnce({ text: mala }).mockResolvedValueOnce({ text: mala }).mockResolvedValue({ text: buena });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction(ctx as unknown as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts).toHaveLength(3);
+    expect(prompts[2]).not.toContain('Hecho C de la escena.');
+    expect(prompts[2]).toMatch(/SE DESCARTÓ POR: fuga de inglés/);
+  });
+
+  it('tras un fallo técnico (JSON cortado), el prompt recortado', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValueOnce({ text: '{"narration": "Gorhorn mi' }).mockResolvedValue({ text: buena });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction(ctx as unknown as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toContain('Hecho C de la escena.');
+    expect(prompts[1]).not.toContain('Hecho C de la escena.');
+    expect(prompts[1]).not.toContain('Lore de fondo del paso.');
+    expect(prompts[1]).not.toMatch(/SE DESCARTÓ/);
   });
 });
 
@@ -332,5 +393,152 @@ describe('empezarPorElJugador (QA-289, ronda 2: P412)', () => {
     expect(abreConElNpc('Él la mira. Ulkha Ketg calla.', 'Ulkha Ketg', 'Gorhorn', 'M')).toBe(false);
     expect(abreConElNpc('Ella calla.', 'Ulkha Ketg', 'Gorhorn')).toBe(false);
     expect(empezarPorElJugador('Gorhorn le tiende el odre. Ulkha Ketg sonríe.', 'Ulkha Ketg', 'Gorhorn')).toBe('Gorhorn le tiende el odre. Ulkha Ketg sonríe.');
+  });
+});
+
+describe('resultado del golpe obligatorio en combate (QA-340)', () => {
+  const base = { worldFacts: [], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Ataco con el hacha', enCombate: true, combatRivalNarrado: 'Orco enfurecido' };
+
+  it('el valor sale de la mecánica: nadie, el jugador, el rival o los dos', async () => {
+    const { resultadoDelGolpe } = await import('./narrador.js');
+    expect(resultadoDelGolpe({ ...base, combatBothMissed: true })).toBe('Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.');
+    // QA-504 (P481): defendiéndose, el golpe se pierde (sin «impacto» que absorber ni resistir): en positivo y sin cubrirse.
+    const defensa = resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true });
+    expect(defensa).toMatch(/^(El golpe de Orco enfurecido se pierde en el aire: Gorhorn lo esquiva y no le toca\. Orco enfurecido sigue en pie y atento\.|Orco enfurecido lanza su golpe y Gorhorn lo desv[ií]a: pasa de largo sin tocarle\. Orco enfurecido sigue en pie, en guardia\.|El ataque de Orco enfurecido falla: Gorhorn se aparta a tiempo y el golpe pasa de largo, sin tocarle\. Orco enfurecido sigue en pie y listo\.)$/);
+    // QA-508: las tres variantes dicen que el rival sigue en pie, y sin ideas de derribo.
+    expect(defensa).toContain('Orco enfurecido sigue en pie');
+    expect(defensa).not.toMatch(/desplom|derrib|ca[eé]/i);
+    expect(defensa).not.toMatch(/impacto|absorb|resist|encaj|se cubre/i);
+    // Determinista por turno, y varía según la acción.
+    expect(resultadoDelGolpe({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true })).toBe(defensa);
+    const distintas = new Set(['Me defiendo', 'Me cubro', 'Paro el golpe', 'Levanto el escudo'].map((action) => resultadoDelGolpe({ ...base, action, combatBothMissed: true, playerActedAsDefenderThisExchange: true })));
+    expect(distintas.size).toBeGreaterThan(1);
+    expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true })).toBe('Gorhorn acierta y golpea a Orco enfurecido; Orco enfurecido no le acierta.');
+    expect(resultadoDelGolpe({ ...base, jugadorRecibeGolpeEsteTurno: true })).toBe('Orco enfurecido acierta y golpea a Gorhorn; Gorhorn no le acierta.');
+    expect(resultadoDelGolpe({ ...base, jugadorConectaEsteTurno: true, jugadorRecibeGolpeEsteTurno: true })).toMatch(/^Los dos aciertan/);
+    // Sin intercambio resuelto, fuera de combate o sin rival, no hay campo.
+    expect(resultadoDelGolpe({ ...base })).toBeNull();
+    expect(resultadoDelGolpe({ ...base, enCombate: false, combatBothMissed: true })).toBeNull();
+    expect(resultadoDelGolpe({ ...base, combatRivalNarrado: undefined, combatBothMissed: true })).toBeNull();
+    // En la Deck, con el nombre real, la narración llamó «Orco enfurecido» al rival sin descubrir: va el narrado.
+    expect(resultadoDelGolpe({ ...base, combatRivalNarrado: 'el orco desconocido', jugadorRecibeGolpeEsteTurno: true })).toBe(
+      'El orco desconocido acierta y golpea a Gorhorn; Gorhorn no le acierta.',
+    );
+  });
+
+  it('P473: el prompt dice quién golpea a quién y el reintento lleva ese hecho', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ narration: 'Gorhorn clava el hacha en el orco.', newFacts: [] }) });
+    await narrateAction({ ...base, jugadorRecibeGolpeEsteTurno: true } as Parameters<typeof narrateAction>[0]);
+    const frase = 'Orco enfurecido acierta y golpea a Gorhorn; Gorhorn no le acierta.';
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toContain(`RESULTADO YA DECIDIDO, NO LO CAMBIES: ${frase}`);
+    // Rechazado el 1.º (jugador acertando), el reintento lleva el hecho entre los HECHOS.
+    expect(prompts.length).toBeGreaterThan(1);
+    expect(prompts[1]).toContain(`Resultado del intercambio (ya decidido): ${frase}`);
+  });
+
+  it('QA-504: tras rechazar un golpe falso defendiéndose, el reintento dice en positivo que el golpe no le toca', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'Gorhorn clava el hacha en el orco y el golpe del orco le alcanza.', newFacts: [] }) })
+      .mockResolvedValue({ text: JSON.stringify({ narration: 'El orco lanza su golpe y Gorhorn lo esquiva.', newFacts: [] }) });
+    await narrateAction({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true } as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts.length).toBeGreaterThan(1);
+    expect(prompts[0]).not.toContain('TU RESPUESTA ANTERIOR');
+    expect(prompts[1]).toContain('Cuéntalo así: el golpe de Orco enfurecido falla, se pierde en el aire o Gorhorn lo esquiva o lo desvía, y no le toca. Orco enfurecido sigue en pie y atento.');
+  });
+
+  it('QA-508: en defensa sin acierto, el 1.er intento y el reintento dicen que el rival sigue en pie', async () => {
+    const { narrateAction } = await import('./narrador.js');
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ narration: 'Gorhorn clava el hacha en el orco y el golpe del orco le alcanza.', newFacts: [] }) })
+      .mockResolvedValue({ text: JSON.stringify({ narration: 'El orco lanza su golpe y Gorhorn lo esquiva.', newFacts: [] }) });
+    await narrateAction({ ...base, combatBothMissed: true, playerActedAsDefenderThisExchange: true } as Parameters<typeof narrateAction>[0]);
+    const prompts = ollamaGenerate.mock.calls.map((c) => (c[0] as { prompt: string }).prompt);
+    expect(prompts[0]).toMatch(/RESULTADO YA DECIDIDO, NO LO CAMBIES: .*Orco enfurecido sigue en pie/);
+    expect(prompts[1]).toMatch(/Cuéntalo así: .*Orco enfurecido sigue en pie y atento\./);
+  });
+
+  it('narrateAction lo pide primero, obligatorio y con un único valor, y no lo devuelve', async () => {
+    const { narrateAction, CLAVE_RESULTADO_GOLPE } = await import('./narrador.js');
+    const valor = 'Nadie acierta: ni Gorhorn ni Orco enfurecido conectan su golpe.';
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: JSON.stringify({ [CLAVE_RESULTADO_GOLPE]: valor, narration: 'Gorhorn lanza el hacha y el Orco enfurecido la esquiva.', newFacts: [] }) });
+    const res = await narrateAction({ ...base, combatBothMissed: true } as Parameters<typeof narrateAction>[0]);
+    expect(CLAVE_RESULTADO_GOLPE in res).toBe(false);
+    const { format } = ollamaGenerate.mock.calls[0]![0] as { format: { properties: Record<string, { enum?: string[] }>; required: string[] } };
+    expect(Object.keys(format.properties)[0]).toBe(CLAVE_RESULTADO_GOLPE);
+    expect(format.properties[CLAVE_RESULTADO_GOLPE]!.enum).toEqual([valor]);
+    expect(format.required[0]).toBe(CLAVE_RESULTADO_GOLPE);
+  });
+});
+
+describe('réplica defectuosa del NPC (P466, P467, P469)', () => {
+  const npc = { name: 'Ulkha Ketg', role: 'cazadora', personality: '', bio: '' };
+  beforeEach(() => ollamaGenerate.mockReset());
+
+  it('replicaDefectuosa: acotación, tercera persona propia, nombre del jugador sin conocerlo', () => {
+    expect(replicaDefectuosa('«Ulkha Ketg se inclina hacia Gorhorn, su mirada fija.»', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
+    expect(replicaDefectuosa('«Si quieres que Ulkha Ketg te escuche, ofrécele algo.»', npc, 'Gorhorn', false)).toBe('habla de sí en tercera persona');
+    expect(replicaDefectuosa('«¿Qué quieres, Gorhorn?»', npc, 'Gorhorn', false)).toBe('nombre del jugador sin conocerlo');
+    expect(replicaDefectuosa('«¿Qué quieres, Gorhorn?»', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«Yo, Ulkha Ketg, mando aquí.»', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«Me llamo Ulkha Ketg.»', npc, 'Gorhorn', true)).toBeNull();
+  });
+
+  it('una réplica que es solo acotación se pide otra vez; si repite, sin réplica', async () => {
+    const acotacion = JSON.stringify({ reply: 'Ulkha Ketg se inclina hacia el forastero, su voz baja y profunda resuena.' });
+    ollamaGenerate.mockResolvedValueOnce({ text: acotacion }).mockResolvedValueOnce({ text: JSON.stringify({ reply: '«Los Maktor cayeron en la guerra.»' }) });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Cuéntame qué pasó con los Maktor', sessionFacts: [] })).toBe('«Los Maktor cayeron en la guerra.»');
+    ollamaGenerate.mockReset();
+    ollamaGenerate.mockResolvedValue({ text: acotacion });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Cuéntame', sessionFacts: [] })).toBe('');
+  });
+
+  it('un NPC que no conoce al jugador no lo llama por su nombre', async () => {
+    ollamaGenerate.mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué quieres, Gorhorn?»' }) }).mockResolvedValueOnce({ text: JSON.stringify({ reply: '«¿Qué quieres, forastero?»' }) });
+    expect(await generateNpcReply({ npc, characterName: 'Gorhorn', action: 'Hola, ¿cazas por aquí?', sessionFacts: [] })).toBe('«¿Qué quieres, forastero?»');
+  });
+});
+
+describe('réplica sin habla y cita del NPC en boca del jugador (P466, P474)', () => {
+  const npc = { name: 'Ulkha Ketg', role: 'cazadora', personality: '', bio: '' };
+  it('P466: acotación sin comillas que abre con una parte del nombre o habla del jugador se rechaza', () => {
+    expect(replicaDefectuosa('Ulkha mira hacia Gorhorn, su rostro serio.', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
+    expect(replicaDefectuosa('Se inclina hacia Gorhorn, su mirada fija y sin parpadear, mientras su voz baja resuena en la plaza.', npc, 'Gorhorn', true)).toBe('acotación sin frase hablada');
+    expect(replicaDefectuosa('Los Maktor cayeron en la guerra, Gorhorn.', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('Ulkha, así me llaman: los Maktor cayeron por débiles.', npc, 'Gorhorn', true)).toBeNull();
+    expect(replicaDefectuosa('«La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn.»', npc, 'Gorhorn', true)).toBeNull();    // Vocativo sin coma tras «mira»: es habla, no una acotación (revisión de P466).
+    expect(replicaDefectuosa('Mira Gorhorn, los Maktor cayeron por débiles.', npc, 'Gorhorn', true)).toBeNull();
+  });
+  it('P474: una cita con el nombre del jugador en vocativo no puede abrirla el propio jugador', () => {
+    expect(hasPlayerLineAddressedToPlayer('Gorhorn se acerca a Ulkha… "La caída del Clan Maktor fue el resultado de su propia debilidad, Gorhorn"', 'Gorhorn')).toBe(true);
+    expect(hasPlayerLineAddressedToPlayer('Ulkha Ketg lo mira. Gorhorn dice: «Gorhorn, ¿qué quieres?»', 'Gorhorn')).toBe(true);
+    expect(hasPlayerLineAddressedToPlayer('Ulkha Ketg responde: «La caída del Clan Maktor fue su debilidad, Gorhorn.»', 'Gorhorn')).toBe(false);
+    expect(hasPlayerLineAddressedToPlayer('Gorhorn se acerca a Ulkha. «¿Qué pasó con los Maktor, Ulkha?»', 'Gorhorn')).toBe(false);
+    expect(hasPlayerLineAddressedToPlayer('Gorhorn asiente. Ulkha Ketg lo mira: «Escucha, Gorhorn.»', 'Gorhorn')).toBe(false);
+  });
+});
+
+describe('turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => {
+  it('la línea fija cita lo que dice el jugador, o dice solo a quién se dirige', async () => {
+    const { lineaDialogoDelJugador } = await import('./narrador.js');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Le digo a Gistera Koh: ¿quién manda en el Clan Serhu?', 'Gistera Koh')).toBe('Gorhorn le pregunta a Gistera Koh: «¿Quién manda en el Clan Serhu?»');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Le digo a Ulkha: «Cuéntame qué pasó con los Maktor, Ulkha»', 'Ulkha Ketg')).toBe('Gorhorn le dice a Ulkha Ketg: «Cuéntame qué pasó con los Maktor, Ulkha.»');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Le pregunto qué opina de mí', 'el orco desconocido')).toBe('Gorhorn se vuelve hacia el orco desconocido y le pregunta.');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Saludo con la cabeza', 'el orco desconocido')).toBe('Gorhorn se dirige al orco desconocido.');
+    expect(lineaDialogoDelJugador('Gorhorn', 'Saludo con la cabeza', 'la orca desconocida')).toBe('Gorhorn se dirige a la orca desconocida.');
+  });
+
+  it('la réplica lleva siempre su hablante, aunque la línea del jugador ya nombre al NPC', async () => {
+    const { unirReplica } = await import('./narrador.js');
+    const ulkha = { name: 'Ulkha Ketg', articulo: null, genero: 'F' };
+    expect(unirReplica('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?»', '«El hambre.»', ulkha, true)).toBe('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?» Ulkha Ketg responde: «El hambre.»');
+    expect(unirReplica('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?»', '«El hambre.»', ulkha)).toBe('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?» «El hambre.»');
   });
 });

@@ -41,3 +41,9 @@ export function claimTurnInFlight(saveId: string): boolean {
 export function releaseTurnInFlight(saveId: string): void {
   turnClaims.release(saveId);
 }
+
+/// ¿Hay un turno en curso para `saveId`? Solo lectura (no reclama nada): lo usa el calentamiento del narrador para no
+/// ponerse en la cola de Ollama delante de la narración en marcha.
+export function isTurnInFlight(saveId: string): boolean {
+  return turnClaims.has(saveId);
+}

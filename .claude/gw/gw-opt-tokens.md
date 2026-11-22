@@ -99,6 +99,8 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
   `minimal_output` y `perPage` 3-5.
 - **Subagentes `gw-worker`** (`QA-332`): sin MCP, arranque muy por debajo de los 71k de un `general-purpose`; los
   arreglos de revisión con `sonnet` (regla en `docs/runbooks/skills-wmf.md`, `gw-orchestrate-dealer`).
+  Hasta el 2026-11-20 no existía: `.gitignore` dejaba fuera `.claude/agents/` y los subagentes eran `general-purpose`
+  (~41k de arranque en `claude/ronda-local-2`); ya versionado (`!.claude/agents/`). Si falta, `doctor.py` no lo dice.
 - **Bitácora archivada** (`QA-333`): «Hecho recientemente» antiguo, en `docs/records/traspaso-archivo.md`
   (`handoff.py archive` va por versiones publicadas y WMF no las etiqueta). Quedan 39k de 20k (`logSize`): el resto
   son filas de otras ramas y propuestas abiertas, que se encogen al cerrar esas ramas.
