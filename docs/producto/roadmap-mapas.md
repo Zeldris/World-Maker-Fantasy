@@ -179,6 +179,16 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
   `MAP-13` por `image-generator/` (como referencia o con LoRA) para un acabado ilustrado, sin mover costas ni
   fronteras (se comprueba superponiendo las capas). Depende de `MAP-13`. **M**
 
+## Contenido por hito (usuaria, 2026-11-24)
+
+Qué hito toca cada tarea: `0.3` ~~`MAP-1`…`MAP-9`, `MAP-14`, `MAP-16`…`MAP-18`~~, `MAP-19` 🚧, `MAP-20`; `0.4` `MAP-11`, `MAP-12`; `0.5` `MAP-13`; `0.6` `MAP-15`; `1.0` `MAP-10`. Desde `0.3` cada región nueva llega con su mapa.
+
+- **MAP-21 · Mapa de Cristal Helado** [A] (usuaria, 2026-11-24): terreno, rutas, lugares y mapas de zona de la región, canon protegido por los tests. Hito `0.4`. **M**
+- **MAP-22 · Mapa de la Ciénaga Troncal** [A] (usuaria, 2026-11-24): lo mismo para la Ciénaga. Hito `0.5`. **M**
+- **MAP-23 · Mapa de Margen Silencioso y Meseta del Orden** [A] (usuaria, 2026-11-24): lo mismo para las dos regiones. Hito `0.6`. **M**
+- **MAP-24 · Mapa de Vaelira** [A] (usuaria, 2026-11-24): el segundo continente, con `MAP-10`. Hito `1.0`. **L**
+- **MAP-25 · Puntos de inicio por raza** [A] (usuaria, 2026-11-24): dónde empieza cada raza en el mapa. Hito `1.1`. **S**
+
 ## Pendiente de comprobar en la Deck
 
 - ~~Que el editor (`abrir.sh`) abra y se use bien en la Deck sin red~~ ✅ 2026-11-10, la usuaria: «funciona».

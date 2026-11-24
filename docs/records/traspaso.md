@@ -16,7 +16,7 @@ cada commit.**
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/ronda-local-2`** | PR abierto a `main`: https://github.com/Zeldris/World-Maker-Fantasy/pull/104 (2026-11-20, ronda local 2: L1-L8, ~~QA-509~~…~~QA-519~~, retro aprobada); se fusiona con el CI en verde. Al fusionarse, rama terminada. Quedan P311, P485, P491, P492, P493 (jugar con Ollama real) y `QA-520` (barrido de `iaRegistro.ts`) para otra rama. |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | Fusionada en `main` (PR #105, 2026-11-24, CI en verde): flujo 0.9.0. Rama terminada; pendiente de la usuaria: P2 de la retro (desconectar conectores sin uso). |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | QA-528: generadores en cada hito (5.ª columna en 21-roadmap, IMG-60…65, MAP-21…25, VOZ-12…16), cobertura.py mira MAP, mapa-agente con el mapa. Pendiente: respuestas de la usuaria (fusionar imagenes-por-fases, fin de pausa de VOZ, reparto). |
 | **Tarea en curso · `claude/narrador-tiempos`** | Fusionada en `main` (PR #97, 2026-11-15) y, con ~~`QA-347`~~, ~~`QA-348`~~ y las tandas 131-132, en `claude/ronda-local-2` (2026-11-15). Rama terminada. |
 | **Tarea en curso · `claude/marca-imagenes`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
@@ -31,13 +31,18 @@ Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
    hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice, hito a hito (`0.1` → `1.0`), qué
    tareas de cada roadmap tocan. Todas las tareas de todos los roadmaps están asignadas a un hito
    (comprobado con `python3 tools/roadmap/cobertura.py`, 2026-10-02: 367 de 367).
-3. **[Plan del hito actual (`0.2`)](../producto/plan-roadmap-0.2.md)** — fases A-G del `0.2` en orden, con su estado. El del `0.1` ([plan-roadmap-0.1.md](../producto/plan-roadmap-0.1.md)) sigue abierto solo por sus Fases E y F.
+3. **[Plan del hito en curso (`0.3`)](../producto/plan-roadmap-0.3.md)** — pruebas de juego primero, luego `0.3` (Reino profundo) por fases. Los del `0.1` ([plan-roadmap-0.1.md](../producto/plan-roadmap-0.1.md)) y `0.2` ([plan-roadmap-0.2.md](../producto/plan-roadmap-0.2.md)) están cerrados.
 4. **Los roadmaps por tema** — el detalle de cada tarea, con su estado (`✅`, `🚧`, pendiente):
    - [roadmap-front.md](../producto/roadmap-front.md) — `CFG` `BAS` `DAD` `MOD` `PAN` `HUD` `NAR` `CMB` `ATM` `PRE` `SON` `QA` `INT`
    - [roadmap-front-ux.md](../producto/roadmap-front-ux.md) — `UX` (fases UX-A…UX-F)
    - [roadmap-front-zona.md](../producto/roadmap-front-zona.md) — `ZON` (fases Z-A…Z-F)
    - [roadmap-front-reino.md](../producto/roadmap-front-reino.md) — `REI` (fases R-A…R-F)
    - [roadmap-cronista.md](../producto/roadmap-cronista.md) — `CR` (fases 1-8)
+   - [roadmap-imagenes.md](../producto/roadmap-imagenes.md) — `IMG` (generador de imágenes)
+   - [roadmap-voces.md](../producto/roadmap-voces.md) — `VOZ` (generador de voces; en pausa hasta el `0.3`)
+   - [roadmap-mapas.md](../producto/roadmap-mapas.md) — `MAP` (generador de mapas)
+   - [roadmap-idiomas.md](../producto/roadmap-idiomas.md) — `IDI` (internacionalización)
+   Desde el `0.3` cada hito incluye sus imágenes, su mapa y sus voces (usuaria, 2026-11-24).
 5. **Lore:** propuestas pendientes de Álvaro en `docs/borradores-opencode/propuestas-lore.md` (nunca
    editar `docs/rpgtarkor/` directamente, ver `AGENTS.md`). Las propuestas de OpenCode las revisa la otra
    cuenta de Claude (rama `claude/wonderful-volta-662qt8`); la última revisión, la del 2026-10-07 (36 de
