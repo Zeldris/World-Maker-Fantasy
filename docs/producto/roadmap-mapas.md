@@ -181,7 +181,7 @@ etiquetas, para rehacer un mapa que ya es canon. Valoración completa, con fuent
 
 ## Contenido por hito (usuaria, 2026-11-24)
 
-Qué hito toca cada tarea: `0.3` ~~`MAP-1`…`MAP-9`, `MAP-14`, `MAP-16`…`MAP-18`~~, `MAP-19` 🚧, `MAP-20`; `0.4` `MAP-11`, `MAP-12`; `0.5` `MAP-13`; `0.6` `MAP-15`; `1.0` `MAP-10`. Desde `0.3` cada región nueva llega con su mapa.
+Qué hito toca cada tarea: `0.3` hechas: `MAP-1`…`MAP-9`, `MAP-14`, `MAP-16`…`MAP-18`, `MAP-19` 🚧, `MAP-20`; `0.4` `MAP-11`, `MAP-12`; `0.5` `MAP-13`; `0.6` `MAP-15`; `1.0` `MAP-10`. Desde `0.3` cada región nueva llega con su mapa.
 
 - **MAP-21 · Mapa de Cristal Helado** [A] (usuaria, 2026-11-24): terreno, rutas, lugares y mapas de zona de la región, canon protegido por los tests. Hito `0.4`. **M**
 - **MAP-22 · Mapa de la Ciénaga Troncal** [A] (usuaria, 2026-11-24): lo mismo para la Ciénaga. Hito `0.5`. **M**
