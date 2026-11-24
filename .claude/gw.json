@@ -119,5 +119,6 @@
   ],
   "taskRecord": {
     "enabled": true
-  }
+  },
+  "workflowClone": "../galivelop-workflow"
 }

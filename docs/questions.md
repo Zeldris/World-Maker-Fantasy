@@ -83,3 +83,21 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: ok: crear gw-seo en .claude/skills y .agents/skills (es del flujo; WMF no tiene web pública, no estorba); alternativa: no, y se excluye
 - Answer: ok
 - Answered: 2026-11-24
+
+## Q-10
+- Refs:
+- Status: answered
+- Asked: 2026-11-24
+- Question: workflowClone → ../galivelop-workflow
+- Recommendation: ok
+- Answer: ok
+- Answered: 2026-11-24
+
+## Q-11
+- Refs:
+- Status: answered
+- Asked: 2026-11-24
+- Question: Quitar los 8 worktrees ya fusionados
+- Recommendation: ok
+- Answer: ok
+- Answered: 2026-11-24
