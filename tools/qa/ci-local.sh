@@ -55,6 +55,7 @@ paso . "tests de opt-ai" python3 -m unittest discover -s .claude/skills/gw-opt-a
 paso . "tests de scout-updates" python3 -m unittest discover -s .claude/skills/gw-scout-updates/scripts
 paso . "tests de opt-tokens" python3 -m unittest discover -s .claude/skills/gw-opt-tokens/scripts
 paso . "tests de gw-media-content" python3 -m unittest discover -s .claude/skills/gw-media-content/scripts
+paso . "tests de gw-seo" python3 -m unittest discover -s .claude/skills/gw-seo/scripts
 paso . "resumen de los registros de hallazgos" 'for r in docs/records/pruebas-[0-9]*-hallazgos.md; do python3 tools/qa/marca-hallazgo.py --resumen --comprobar --registro "$r" || exit 1; done'
 
 echo "== backend"

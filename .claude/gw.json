@@ -1,10 +1,20 @@
 {
   "$schema": "gw/schema/gw.schema.json",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "pendingFile": "docs/records/pendientes-leves.md",
-  "schemaVersion": 1,
-  "language": "es",
-  "visibleLanguages": [],
+  "schemaVersion": 2,
+  "languages": {
+    "code": "en",
+    "docs": {
+      "primary": "es",
+      "others": []
+    },
+    "public": {
+      "primary": "es",
+      "others": []
+    },
+    "ui": []
+  },
   "log": "docs/records/traspaso.md",
   "logRows": true,
   "protectedBranch": "main",
@@ -67,9 +77,24 @@
   },
   "testMap": {
     "rules": [
-      {"paths": "^tools/qa/tests/(?P<t>test_\\w+\\.py)$", "tests": ["tools/qa/tests/{t}"]},
-      {"paths": "^tools/(qa|roadmap)/(deck/)?(?P<name>[\\w.-]+)\\.(py|sh)$", "tests": ["tools/qa/tests/test_{name:id}.py"]},
-      {"paths": "^tools/qa/deck/(ia-ronda|vigilante-memoria)\\.sh$", "tests": ["tools/qa/tests/test_ia_ronda.py"]}
+      {
+        "paths": "^tools/qa/tests/(?P<t>test_\\w+\\.py)$",
+        "tests": [
+          "tools/qa/tests/{t}"
+        ]
+      },
+      {
+        "paths": "^tools/(qa|roadmap)/(deck/)?(?P<name>[\\w.-]+)\\.(py|sh)$",
+        "tests": [
+          "tools/qa/tests/test_{name:id}.py"
+        ]
+      },
+      {
+        "paths": "^tools/qa/deck/(ia-ronda|vigilante-memoria)\\.sh$",
+        "tests": [
+          "tools/qa/tests/test_ia_ronda.py"
+        ]
+      }
     ],
     "command": "PYTHONPATH=tools/qa/tests python3 -B -m unittest {files}"
   },
@@ -94,5 +119,6 @@
   ],
   "taskRecord": {
     "enabled": true
-  }
+  },
+  "workflowClone": "../galivelop-workflow"
 }
