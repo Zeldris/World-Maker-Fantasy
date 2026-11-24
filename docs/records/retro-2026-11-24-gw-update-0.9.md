@@ -21,4 +21,4 @@ misma sesión (5607 llamadas, 73 compactaciones; arranque fijo ~95k por llamada,
   mayúsculas, o que `doctor.py` avise con la ruta hallada.
 - **G2 · `config.py set <clave> <valor>`**: no existe; poner `workflowClone` obligó a editar el JSON con Python.
 
-**Estado:** propuestas presentadas a la usuaria el 2026-11-24; su decisión se apunta aquí.
+**Estado:** aprobada por la usuaria el 2026-11-24 (Q-12): P1 aplicada en `.claude/gw/gw-scout-updates.md`; P2 la hace ella en claude.ai; G1 y G2 decididas para el flujo (las recoge `gw-harvest`).
