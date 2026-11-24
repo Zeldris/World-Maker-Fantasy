@@ -101,3 +101,10 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: ok
 - Answer: ok
 - Answered: 2026-11-24
+
+## Q-12
+- Refs: retro-2026-11-24-gw-update-0.9
+- Status: open
+- Asked: 2026-11-24
+- Question: Retro del gw-update 0.9.0: ¿P1 (nota en gw-scout-updates.md: skills-con-tests.py antes del primer push), P2 (desconectar conectores sin uso), G1 y G2 (propuestas al flujo)?
+- Recommendation: aplicar P1; P2 la haces tú; G1 y G2 al flujo
