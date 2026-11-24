@@ -80,7 +80,7 @@ Tarkor»).
 
 ## Contenido por hito (usuaria, 2026-11-24)
 
-Qué hito toca cada tarea: `0.3` `VOZ-1`…`VOZ-3`; `0.4` `VOZ-4`…`VOZ-6`; `0.5` `VOZ-7`, `VOZ-8`; `0.6` `VOZ-9`, `VOZ-10`; `0.7` `VOZ-11`. **La pausa se levanta en `0.3`** cuando llegue `Zeldris/galivelop-voice-generator` (pendiente de confirmar por la usuaria).
+Qué hito toca cada tarea: `0.3` `VOZ-1`…`VOZ-3`; `0.4` `VOZ-4`…`VOZ-6`; `0.5` `VOZ-7`, `VOZ-8`; `0.6` `VOZ-9`, `VOZ-10`; `0.7` `VOZ-11`. **La pausa se levanta en `0.3`** cuando llegue `Zeldris/galivelop-voice-generator` (usuaria, 2026-11-24, Q-14: se confirma que el repo está listo antes de empezar `0.3`; si no lo está, `VOZ-1`…`VOZ-3` pasan a `0.4`).
 
 - **VOZ-12 · Voces de Cristal Helado** [A] (usuaria, 2026-11-24): voces de sus gentes y sonidos de su fauna. Hito `0.4`. **M**
 - **VOZ-13 · Voces de la Ciénaga Troncal** [A] (usuaria, 2026-11-24): lo mismo para la Ciénaga. Hito `0.5`. **M**

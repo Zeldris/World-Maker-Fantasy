@@ -110,3 +110,48 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: aplicar P1; P2 la haces tú; G1 y G2 al flujo
 - Answer: ok
 - Answered: 2026-11-24
+
+## Q-13
+- Refs: QA-528
+- Status: answered
+- Asked: 2026-11-24
+- Question: ¿Fusionar claude/imagenes-por-fases en main (IMG-34…58)?
+- Recommendation: sí, en su propia sesión, por merge
+- Answer: ok (en su propia sesión, por merge)
+- Answered: 2026-11-24
+
+## Q-14
+- Refs: QA-528
+- Status: answered
+- Asked: 2026-11-24
+- Question: ¿Está listo galivelop-voice-generator para levantar la pausa de VOZ en 0.3?
+- Recommendation: confirmarlo antes de empezar 0.3; si no está, VOZ-1…3 pasan a 0.4
+- Answer: ok (confirmarlo antes de empezar 0.3; si no está, VOZ-1…3 pasan a 0.4)
+- Answered: 2026-11-24
+
+## Q-15
+- Refs: QA-528
+- Status: answered
+- Asked: 2026-11-24
+- Question: ¿Vale el reparto de los generadores por hito?
+- Recommendation: sí
+- Answer: ok
+- Answered: 2026-11-24
+
+## Q-16
+- Refs: QA-528
+- Status: answered
+- Asked: 2026-11-24
+- Question: ¿Pasar el veredicto de los pilotos de IMG-6 al roadmap de imágenes?
+- Recommendation: sí, cuando dé el veredicto
+- Answer: ok (cuando dé el veredicto)
+- Answered: 2026-11-24
+
+## Q-17
+- Refs: QA-528
+- Status: answered
+- Asked: 2026-11-24
+- Question: ¿Se confirman las 32 filas «no se juega» de matriz-pruebas (IMG y MAP cerradas)?
+- Recommendation: sí
+- Answer: ok
+- Answered: 2026-11-24
