@@ -50,28 +50,36 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-6
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-24
 - Question: Hay v0.9.0 del flujo (proyecto en 0.8.2, sin PR todavía). ¿Aplico apply.py --update (17 nuevos, 113 actualizados, hook PreToolUse nuevo en .claude/settings.json, propuestas AGENTS.md/CLAUDE.md.gw-new)?
 - Recommendation: ok: aplicar --update ahora en esta misma rama; el PR llevará 0.8.1 → 0.9.0 de una vez
+- Answer: ok
+- Answered: 2026-11-24
 
 ## Q-7
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-24
 - Question: schemaVersion 1 → 2 en .claude/gw.json: ¿migrar language y visibleLanguages al bloque languages?
 - Recommendation: ok: migrar language/visibleLanguages al bloque languages (docs.primary es, ui vacío; code en)
+- Answer: ok
+- Answered: 2026-11-24
 
 ## Q-8
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-24
 - Question: REVIEW.md/GLOSSARY.md: ¿solo subir la marca a v0.9.0?
 - Recommendation: ok: REVIEW.md solo cambia la línea marca a v0.9.0 (nuestra regla de idiomas visibles no existe y ui está vacío); GLOSSARY.md, solo la marca
+- Answer: ok
+- Answered: 2026-11-24
 
 ## Q-9
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-24
 - Question: ¿Instalar la skill nueva gw-seo?
 - Recommendation: ok: crear gw-seo en .claude/skills y .agents/skills (es del flujo; WMF no tiene web pública, no estorba); alternativa: no, y se excluye
+- Answer: ok
+- Answered: 2026-11-24
