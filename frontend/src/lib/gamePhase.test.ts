@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcularFase, canDo, etiquetaDeFase, type EstadoParaFase, type FaseJuego } from './gamePhase'
+import { calcularFase, canDo, etiquetaDeFase, motivoComposerFase, type EstadoParaFase, type FaseJuego } from './gamePhase'
 
 const base: EstadoParaFase = {
   terminada: false, muertePendiente: false, enCombate: false, modoDinamico: false,
@@ -74,5 +74,17 @@ describe('UX-8 — etiquetaDeFase', () => {
     expect(etiquetaDeFase('libre')).toBeNull()
     expect(etiquetaDeFase('pensando')).toMatchObject({ icono: '✒️', texto: 'El narrador escribe' })
     expect(etiquetaDeFase('combate')?.texto).toBe('En combate')
+  })
+})
+
+describe('P484 — motivoComposerFase', () => {
+  it('en una escena con su capa abierta, el campo dice el motivo de la escena', () => {
+    expect(motivoComposerFase(canDo('dinamico', 'enviarTurno'), true)).toMatch(/mitad de una escena/)
+  })
+  it('en fase libre con una capa abierta, dice que se resuelva la capa', () => {
+    expect(motivoComposerFase(canDo('libre', 'enviarTurno'), true)).toMatch(/Resuelve lo que tienes abierto/)
+  })
+  it('en fase libre sin capa, no hay motivo', () => {
+    expect(motivoComposerFase(canDo('libre', 'enviarTurno'), false)).toBeUndefined()
   })
 })

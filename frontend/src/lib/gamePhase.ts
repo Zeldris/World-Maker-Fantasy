@@ -129,3 +129,12 @@ export function etiquetaDeFase(fase: FaseJuego): EtiquetaFase | null {
   const e = ETIQUETA_FASE[fase]
   return { ...e, imagen: imagenFase(fase) }
 }
+
+/// Motivo del composer bloqueado tras los casos de turno en marcha (P484, QA-530): si la fase no deja
+/// escribir, su motivo va antes que el genérico de «capa encima», porque en una escena la propia
+/// escena cuenta como capa y taparía la explicación de qué hacer.
+export function motivoComposerFase(permiso: Permiso, capaEncimaAbierta: boolean): string | undefined {
+  if (!permiso.permitido && permiso.motivo) return permiso.motivo
+  if (capaEncimaAbierta) return 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
+  return permiso.motivo ?? undefined
+}
