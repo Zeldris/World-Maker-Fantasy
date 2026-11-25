@@ -34,4 +34,4 @@ verde. El resto es contenido: 21-roadmap, los roadmaps de imágenes, mapas y voc
   esta sesión por `docs/metrics/ledger.jsonl` solo. Si el gancho es del flujo, que ignore el ledger; si es del
   entorno remoto, apuntarlo en el runbook para que no se obedezca.
 
-**Estado:** sin decidir, a la espera de la usuaria.
+**Estado:** decidida por la usuaria el 2026-11-25. P1 rechazada: en la nube no se puede desconectar el conector. P2 (`QA-529`) aplazada hasta volver al roadmap. P3 aplicada: la fila de `claude/ronda-local-2` está cerrada en la bitácora. G1 y G2 aprobadas para el flujo, las recoge `gw-harvest`.
