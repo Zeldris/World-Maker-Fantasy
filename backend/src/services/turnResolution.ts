@@ -6598,7 +6598,7 @@ export async function narrateAndPersistTurn(params: NarrateAndPersistParams): Pr
     // edificio, súbdito nuevo...) así que, si es él quien domina sobre los hitos propuestos por el
     // modelo, usa una etiqueta genérica de Reino en vez de `labelForHitos`.
     const xpHitoLabel: string | null =
-      xpHito === 0 ? null : reinoXp >= xpHitoFromTipos ? 'Progreso del Reino' : labelForHitos(hitos);
+      xpHito === 0 ? null : reinoXp >= xpHitoFromTipos ? 'Progreso del Reino' : labelForHitos(hitos, narration.hitoMotivo);
     const xpTurno = xpTirada + xpHito + questRewardXp;
     const result = applyXp(params.currentXp, params.currentLevel, xpTurno, { xpTirada, xpHito, xpHitoLabel });
 

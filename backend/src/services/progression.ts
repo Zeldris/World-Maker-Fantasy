@@ -140,10 +140,15 @@ export function xpForHitos(hitoTipos: HitoTipo[]): number {
 /// valor gana" que `xpForHitos`) — null si no hubo ningún hito. `reinoXp` (fundar/consolidar
 /// territorio, etc.) no tiene tipo de `HitoTipo` propio, así que lo etiqueta el caller si aplica
 /// (ver `xpHitoLabel` en turnResolution.ts).
-export function labelForHitos(hitoTipos: HitoTipo[]): string | null {
+/// P483: `motivo` (título corto del objetivo/descubrimiento que el narrador cita en `hitoMotivo`) se
+/// añade a la etiqueta de los hitos propuestos por el modelo («Objetivo cumplido: Cazar al orco»); sin
+/// él, la etiqueta genérica de siempre. Nunca a «Capítulo completado» (su etiqueta es fija).
+export function labelForHitos(hitoTipos: HitoTipo[], motivo?: string | null): string | null {
   if (hitoTipos.length === 0) return null;
   const top = hitoTipos.reduce((best, t) => (XP_BY_HITO[t] > XP_BY_HITO[best] ? t : best));
-  return HITO_LABEL[top];
+  const base = HITO_LABEL[top];
+  const m = typeof motivo === 'string' ? motivo.trim().replace(/\s+/g, ' ').slice(0, 80) : '';
+  return m && top !== 'capitulo' ? `${base}: ${m}` : base;
 }
 
 export interface ProgressionResult {

@@ -58,6 +58,8 @@ export interface NarrationResult {
   /// docs/mecanicas/10-niveles-xp-reino.md § 3.2: el modelo solo propone el TIPO de hito narrativo, el
   /// backend traduce a XP. "capitulo" no está aquí porque ese lo emite el backend, no el modelo.
   hito?: HitoTipo | null;
+  /// P483: título corto de lo que cumple/descubre el `hito` (se muestra junto a «Objetivo cumplido»).
+  hitoMotivo?: string | null;
   /// docs/mecanicas/10-niveles-xp-reino.md § 5: eventos de Reino, uno por turno como mucho, poco frecuentes
   /// a propósito — el backend valida y materializa (mismo patrón que newItem/newCompanion).
   newTerritory?: { name: string; region?: string; description: string } | null;
@@ -1692,7 +1694,7 @@ DIÁLOGO (una sola voz): cuando el jugador habla a un NPC, la réplica de ese NP
 
 SALUD: fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null.
 
-Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
+Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" y "hitoMotivo" con el título corto (máx. 8 palabras) de ese objetivo o descubrimiento — en caso contrario, null en ambos. Ser vencido, herido o dado por muerto NUNCA es un objetivo cumplido. Esto es poco frecuente, no pasa en cada turno.
 
 Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción cumple de verdad una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" — en caso contrario, null (muy poco frecuente). Nunca das una misión por fallida: eso lo decide el juego.
 
@@ -1800,6 +1802,7 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
         },
       },
       hito: { type: ['string', 'null'], enum: ['descubrimiento', 'objetivo_menor', 'objetivo_mayor', null] },
+      hitoMotivo: { type: ['string', 'null'] },
       // Campos de Reino (roadmap de velocidad, 2026-07-19): solo entran en el schema cuando
       // reinoActive los sugiere — el resto de turnos ni siquiera se le ofrece la posibilidad de
       // rellenarlos, así que no puede gastar tokens devolviendo "newTerritory": null, etc.
@@ -2331,6 +2334,7 @@ export function deterministicFallbackNarration(ctx: {
     newItem: null,
     newCompanion: null,
     hito: null,
+    hitoMotivo: null,
     newQuest: null,
     questProgress: null,
     condicionFisica: null,
