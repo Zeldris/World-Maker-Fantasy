@@ -277,7 +277,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
             onKeyUp={saveSelection}
             onMouseUp={saveSelection}
             onBlur={saveSelection}
-            data-placeholder="¿Qué hace tu personaje?"
+            data-placeholder={disabled && disabledReason ? disabledReason : '¿Qué hace tu personaje?'}
             className={`composer-editable max-h-40 flex-1 overflow-y-auto whitespace-pre-wrap break-words bg-transparent text-sm text-wood-100 outline-none ${
               disabled ? 'opacity-50' : ''
             }`}

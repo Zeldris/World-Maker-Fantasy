@@ -68,7 +68,7 @@ const MOTIVO_FASE: Record<Exclude<FaseJuego, 'libre'>, string> = {
   ocupado: 'Estás ocupado con otra actividad.',
   encuentro: 'Primero reacciona a quien te corta el paso.',
   combate: 'Estás en combate.',
-  dinamico: 'Estás en mitad de una escena.',
+  dinamico: 'Estás en mitad de una escena: responde con las opciones del menú (Responder, Ignorar, Seguir mi camino).',
   eleccion: 'Primero termina la elección pendiente.',
   muerte: 'Primero resuelve lo que ha pasado tras tu muerte.',
   fin: 'La partida ha terminado.',

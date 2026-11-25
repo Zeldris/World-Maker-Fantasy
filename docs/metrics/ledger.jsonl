@@ -775,3 +775,5 @@
 {"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":111242,"cacheWrite":1272,"date":"2026-11-25","input":4,"model":"claude-opus-5-5","output":169,"recorded":"2026-11-25T21:14:25Z","refs":[],"session":"3ff236db"}
 {"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":570981,"cacheWrite":3947,"date":"2026-11-25","input":12,"model":"claude-opus-5-5","output":1921,"recorded":"2026-11-25T21:17:22Z","refs":[],"session":"3ff236db"}
 {"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":116632,"cacheWrite":932,"date":"2026-11-25","input":4,"model":"claude-opus-5-5","output":90,"recorded":"2026-11-25T21:17:26Z","refs":[],"session":"3ff236db"}
+{"agent":"gw-worker","branch":"claude/wonderful-volta-662qt8","cacheRead":1138330,"cacheWrite":60390,"date":"2026-11-25","input":66,"model":"claude-sonnet-5-5","output":12511,"recorded":"2026-11-25T21:58:44Z","refs":[],"session":"f0ae840d"}
+{"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":3820718,"cacheWrite":80302,"date":"2026-11-25","input":71,"model":"claude-opus-5-5","output":13652,"recorded":"2026-11-25T21:58:44Z","refs":[],"session":"f0ae840d"}

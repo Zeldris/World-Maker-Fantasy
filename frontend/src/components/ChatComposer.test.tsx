@@ -19,4 +19,12 @@ describe('ChatComposer — UX-13', () => {
     rerender(<ChatComposer {...props} disabled />)
     expect(document.activeElement).not.toBe(editor)
   })
+
+  // P484 (QA-530): bloqueado en una escena, el propio campo dice por qué en vez de no hacer nada.
+  it('deshabilitado con motivo: el placeholder dice el motivo', () => {
+    const props = { onChange: vi.fn(), onSubmit: vi.fn() }
+    const { container } = render(<ChatComposer {...props} disabled disabledReason="Estás en mitad de una escena" />)
+    const editor = container.querySelector('[contenteditable]') as HTMLElement
+    expect(editor.getAttribute('data-placeholder')).toBe('Estás en mitad de una escena')
+  })
 })
