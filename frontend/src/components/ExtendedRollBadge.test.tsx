@@ -55,6 +55,14 @@ describe('ExtendedRollBadge (modo estático)', () => {
     expect(tirada).toContain('Éxito parcial')
   })
 
+  // P472 (QA-530): tras recargar, la etiqueta es Recolección, no Explorar.
+  it('recolección recargada: la etiqueta es Recolección', () => {
+    render(<ExtendedRollBadge roll={{ kind: 'recoleccion', tirada: gathering({}) }} />)
+    const tirada = screen.getByTestId('recoleccion-tirada').textContent
+    expect(tirada).toContain('Recolección')
+    expect(tirada).not.toContain('Explorar')
+  })
+
   it('recolección con ventaja por Suerte: muestra los dos dados', () => {
     render(<ExtendedRollBadge roll={{ kind: 'recoleccion', tirada: gathering({ rolls: [4, 17], usedRoll: 17, advantage: true, result: 29 }) }} />)
     expect(screen.getByTestId('recoleccion-tirada').textContent).toContain('🎲4/17')
