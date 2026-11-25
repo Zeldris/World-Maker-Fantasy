@@ -16,7 +16,7 @@ cada commit.**
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
 | **Tarea en curso · `claude/ronda-local-2`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | 🚧 QA-530 (usuaria 2026-11-25): lote P484, P485, P483 y P472. Arreglados con test (tsc y vitest en verde): P483 (el aviso de hito dice el objetivo; el prompt no cuenta caer como objetivo), P472 (etiqueta Recolección), P484 (en escena el campo dice por qué no se escribe). P485 es diseño (energía de Ataque Básico): falta jugarlo y la decisión de la usuaria. Siguiente: tanda en la nube con el simulado de P472, P484 y P485; P483 a la sesión local. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | QA-530 ✅ (2026-11-25): P472, P484 y P485 arreglados y comprobados jugando con el simulado (P485 es diseño: Ataque Básico cuesta energía, mantenido por la usuaria; el panel avisa del bloqueo). P483 arreglado con test, a «Para la sesión local» (Ollama real). Siguiente: siguiente lote de la puerta de pruebas (paso 3), con la usuaria. |
 | **Tarea en curso · `claude/narrador-tiempos`** | Fusionada en `main` (PR #97, 2026-11-15) y, con ~~`QA-347`~~, ~~`QA-348`~~ y las tandas 131-132, en `claude/ronda-local-2` (2026-11-15). Rama terminada. |
 | **Tarea en curso · `claude/marca-imagenes`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
@@ -164,10 +164,10 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-25 — QA-528: generadores (IMG-60…65, MAP-21…25, VOZ-12…16) en cada hito del 0.3 en adelante y cobertura.py con MAP; PR #106
-2. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
+1. 2026-11-25 — QA-530: lote P472, P484, P485 (comprobados jugando con el simulado) y P483 (arreglado, a la sesión local)
+2. 2026-11-25 — QA-528: generadores (IMG-60…65, MAP-21…25, VOZ-12…16) en cada hito del 0.3 en adelante y cobertura.py con MAP; PR #106
+3. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
    QA-352, QA-353, QA-354, QA-355, QA-356, QA-370, QA-503, QA-505, QA-506, QA-507, QA-508, QA-510, QA-512,
    QA-513, QA-515, QA-516 (detalle en `roadmap-front.md` y el PR #104)
-3. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
-4. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos
-5. 2026-11-20 — QA-514: cerrada sin recalentado; la tanda A/B L7 mostró que con Ollama 0.34.2 dialogo_npc no desaloja al narrador (narrar tras diálogo 10-22 s de prefill frente a 24-26 s con recalentado); revert del código
+4. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
+5. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos

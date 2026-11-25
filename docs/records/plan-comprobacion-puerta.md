@@ -34,6 +34,7 @@ las partes locales de otros ids (abajo) no se cuentan dos veces.
 | P268 | «Le entrego raciones al orco» con el narrador real: los guards ya no lo toman por un viaje («raciones de viaje», `TRAVEL_INTENT_REGEX`) |
 | P435 | En la ronda en que ataca un NPC (p. ej. el Orco de `mv-hondonada-hostiles`), la narración bajo «… ATACA CON» va en tercera persona y cuenta su ataque, no el acercamiento. Con el simulado sale su texto fijo o el respaldo de combate (P94) |
 | P271 | Con el narrador real, tras dar Clemente a un rival, el rival no llama «Clemente» a Gorhorn: la memoria dice «Fama de la jugadora, por lo que ha hecho…» |
+| P483 | Con el narrador real, al cumplir un objetivo el aviso dice cuál («Objetivo cumplido: <título>», `hitoMotivo`, QA-530), y caer vencido o dado por muerto no cuenta como objetivo (solo lo pide el prompt, sin guarda en código) |
 
 Partes locales de ids que sí están en tandas (la tanda comprueba lo visible con el simulado; esto queda para la local, sin
 contarlo otra vez): P245 (por qué fallan los 3 intentos del narrador en GPU y que Gistera conteste con preguntas es del
