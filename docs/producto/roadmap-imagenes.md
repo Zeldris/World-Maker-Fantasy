@@ -282,3 +282,14 @@ desde el panel vive en tablas que siembran.
   licencia y los GGUF de `leejet/MOSS-Image-SFT-GGUF`, comprobar que el `sd-cli` de la Deck trae `moss_image` (si no,
   binario nuevo) y generar 3 prompts fijos (criatura, paisaje, banner 1920x768) con la misma semilla que Qwen-Image 2.1;
   la usuaria puntúa. Se apunta en `banco/resultados.md`. Depende de que la Deck tenga Hugging Face. **S**
+
+## Contenido por hito (usuaria, 2026-11-24)
+
+«De aquí en adelante cada versión/hito incluye el generador de imágenes, el de mapas y el de voces.» Qué hito toca cada tarea: `0.3` bloques A-D del plan por fases (rama `claude/imagenes-por-fases`, sin fusionar), `IMG-3`, `IMG-6`, `IMG-11`, `IMG-20`, `IMG-25`, `IMG-59` (hechas: `IMG-4`, `IMG-5`, `IMG-14`…`IMG-19`, `IMG-21`…`IMG-24`, `IMG-27`…`IMG-33`); `0.4` bloques E y F, `IMG-1`, `IMG-2`, `IMG-9`, `IMG-7`, `IMG-8`, `IMG-10`, `IMG-12`, `IMG-13`; `0.5` bloque H; `0.6` bloque G (`IMG-26`, con GVIG).
+
+- **IMG-60 · Imágenes de Cristal Helado** [A] (usuaria, 2026-11-24): paisajes, fauna, flora, construcciones y retratos de la región, con la receta y el montaje del generador. Hito `0.4`. **L**
+- **IMG-61 · Imágenes de la Ciénaga Troncal** [A] (usuaria, 2026-11-24): lo mismo para la Ciénaga y sus oficios. Hito `0.5`. **L**
+- **IMG-62 · Imágenes de Margen Silencioso y Meseta del Orden** [A] (usuaria, 2026-11-24): lo mismo para las dos regiones. Hito `0.6`. **L**
+- **IMG-63 · Imágenes de Vaelira** [A] (usuaria, 2026-11-24): lo mismo para el segundo continente. Hito `1.0`. **L**
+- **IMG-64 · Retrato del personaje propio por raza** [A] (usuaria, 2026-11-24): retratos para elegir y mostrar al personaje creado. Hito `1.1`. **M**
+- **IMG-65 · Imágenes de lo nuevo del 0.3** [A] (usuaria, 2026-11-24): ganado Murgol, Corretolvas, Canizor, Cuernahoja y construcciones de defensa. Hito `0.3`. **M**

@@ -23,7 +23,7 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 6. **La sesión se abre con el repo como carpeta de trabajo**; en otra no carga `.claude/settings.json` (ni sus
    ganchos): dilo a la usuaria, y mientras, `git config core.hooksPath .githooks` y la marca de revisión y el CI a mano.
 
-**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza), abre
+**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza, generadores de imágenes, mapas y voces), abre
 [`docs/mapa-agente.md`](docs/mapa-agente.md): funciones de entrada, tests, tablas, interfaz y qué no leer (`QA-108`).
 Orden y fases de todo el trabajo: [mapa de roadmaps](docs/producto/21-roadmap.md#mapa-de-roadmaps), y la forma de
 trabajo de cada plan de hito (p. ej. [`plan-roadmap-0.1.md`](docs/producto/plan-roadmap-0.1.md)).

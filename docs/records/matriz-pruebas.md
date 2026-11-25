@@ -23,6 +23,25 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-39` | Configuración | Prompts de imagen con reglas FLUX | jugado | Regenerar el banner del múrgol con el LLM real y generarlo en la Deck (`v8-cfg39-s7`): sin px, sin negativos, cierre una vez |
 | `CFG-40` | Configuración | Región y ejemplos en los prompts de imagen | jugado | Banner del cuernahoja (estepa roja) y del nievón (Cristal Helado) con el LLM real, todo en inglés; `cfg40/cuernahoja-s7` en la Deck |
 | `CFG-43` | Configuración | Interfaz local del generador de imágenes | jugado | Miniatura real del múrgol macho desde la interfaz en la Deck (104 s), nota y «Elegir esta» a `salida/images/fauna/murgol-macho-thumbnail.png`; con la casilla de referencia (su banner del juego), 202 s; por elemento (2026-10-24): miniatura en 104 s (estimado 103) a `generated/fauna/murgol-macho/`, nota y elegida `murgol-macho-thumbnail.png`; lista con miniaturas vista en Chrome; la lista trae toda la enciclopedia con lo anidado (2.550 elementos con el juego arrancado: variantes por sexo, de raza y de tiempo, mapas de zona, 310 habilidades, 9 clases y 31 especializaciones); `test_interfaz_imagenes` 35/35 |
+| `IMG-4` | Configuración | Guía visual del mundo y plantilla de prompt | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-5` | Configuración | Script que monta el prompt desde la ficha | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-14` | Configuración | Momento del día y estación como condiciones | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-15` | Configuración | Calidad del generador local frente a ChatGPT | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-16` | Configuración | Prompt `fotorreal` que llega entero | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-17` | Configuración | Gradación y medida en ffmpeg | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-18` | Configuración | Bocetos SVG de forma | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-19` | Configuración | Tanda de borradores | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-21` | Configuración | Pautas con la fauna | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-22` | Configuración | Pautas con flora, lugar, objeto y raza | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-23` | Configuración | Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json` | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-24` | Configuración | Plantillas de boceto por plan corporal | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-27` | Configuración | Encuadre del sujeto en la cadena de planos desde la ficha | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-28` | Configuración | El sol fuera de cuadro | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-29` | Configuración | Scout: condicionar con los banners del juego (LoRA y referencia) | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-30` | Configuración | Paso 0 del LoRA: `sd.cpp` con LoRAs de FLUX.3 en la Deck | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-31` | Configuración | Banner ajeno como referencia de acabado | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-32` | Configuración | LoRA de estilo en Kaggle | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-33` | Configuración | El LoRA de estilo en el perfil fotorreal | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
 | `INT-1` | Cronista en la interfaz | Familias de sucesos con identidad propia | jugado | 2026-10-19: Leyendas con 5 familias, cada una con icono y color propios (Diplomacia, Tus hechos, Facciones, Tu Reino, Crónica); el filtro Diplomacia deja solo sus 6 entradas |
 | `INT-2` | Cronista en la interfaz | Importancia visible | jugado | 2026-10-19: tres niveles (NORMAL sin borde, DESTACADO con borde, GRAVE con borde rojo y sello: «Gorhorn muere», «funda el reino») |
 | `INT-3` | Cronista en la interfaz | Causas enlazadas | jugado | 2026-10-19: «Por qué pasó: Día 1 Gorhorn funda el reino…» en «Fundador» lleva a la causa y la resalta |
@@ -131,6 +150,19 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-65` | Mundo vivo | Defensa del Reino y milicia 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2 | jugado | jugado 2026-10-21 (reino-sano-defensas): guarnición 5/5, equipos de milicia comprados, alerta de la Torre un día antes, «Llamar a la milicia» (P295), cobertura de la Empalizada, asalto con defensas (día 44) y Reparar de la Empalizada; P284 reconfirmado sin milicia, P285 no se vio (P296) |
 | `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | jugado | 2026-10-20: Configuración › Partida, Intensidad Dura y Tamaño Fácil se guardan (WorldState.intensidadAsaltos=DURA, tamanoAsaltos=FACIL) y siguen tras recargar; sin ver su efecto en un asalto (texto de Intensidad: P257) |
 | `NAR-9` | Narrador | Rumores en "El mundo" | jugado | 2026-10-19: un rumor del Cronista sale en pergamino con «Desde El Margen Silencioso · pasó el día 9» y «Ver en Leyendas», que abre Leyendas con la entrada resaltada; los «Se dice que…» de `darNoticia` salen sin estilo (P226) |
+| `MAP-1` | Otros | Importador de solo lectura del `.map` | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-2` | Otros | Medidas automáticas y test del canon | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-3` | Otros | El lore en datos y su comprobador | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-4` | Otros | El juego lee del mapa propio | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-5` | Otros | Visor local por capas | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-6` | Otros | Editar regiones y fronteras | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-7` | Otros | Editar relieve y costa | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-8` | Otros | Ríos, rutas y lugares | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-9` | Otros | Guardar con historial | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-14` | Otros | Capas del juego | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-16` | Otros | El mapa lo gestionan agentes | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-17` | Otros | Mejorar el agente local del mapa con lo que hace Haiku | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-18` | Otros | El agente local, para encargos de verdad | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
 | `PAN-9b` | Paneles | Leyendas de tu partida | jugado | P137 |
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | jugado | 2026-10-19: ⏸ desactiva; «Desactivadas (1)» con Reactivar y Borrar; Borrar pide confirmación «No se puede deshacer» y borra (0 órdenes en la base); límite editable solo en «único» |
 | `REI-40` | Reino | Agrupado por recurso (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, | jugado | 2026-10-19, Súbditos › Almacén: «Raciones de viaje ×1» agrupado, con Retirar y tope; P215 |

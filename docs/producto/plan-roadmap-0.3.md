@@ -484,6 +484,14 @@ Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece.
 - **Q7 Mismo sistema para todos:** también decide cuándo un campamento sale a por viajeros; más
   adelante, expediciones y guerras entre facciones.
 
+## Generadores en 0.3
+
+Desde el `0.3` cada hito incluye imágenes, mapas y voces (usuaria, 2026-11-24; fila `0.3` de «Qué entra en cada hito»).
+**Imágenes:** bloques A-D del plan por fases (rama `claude/imagenes-por-fases`, sin fusionar), `IMG-3`, `IMG-6`, `IMG-11`,
+`IMG-20`, `IMG-25`, `IMG-59` e `IMG-65` (ganado Murgol, Corretolvas, Canizor, Cuernahoja y construcciones de defensa).
+**Mapas:** `MAP-19` 🚧 y `MAP-20`. **Voces:** `VOZ-1`…`VOZ-3`, con el fin de la pausa al traer `galivelop-voice-generator`
+(pendiente de confirmar por la usuaria).
+
 ## Decisiones que bloquean algo
 
 | Bloquea | Pregunta |
