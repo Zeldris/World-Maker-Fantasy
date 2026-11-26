@@ -1599,6 +1599,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   materiales de la receta sacados del Almacén y prioridad sed > hambre > oficio · **36b** partidas de acopio
   (viajeros con el motor de `CR-63`) para facciones y Reino, con guardias · **36c** obreros que viajan,
   pausa en guerra o asalto y avisos. **L**
+  🚧 en curso: ~~36a~~ ✅ 2026-11-26 (`services/cronista/obrasFacciones.ts`: `ObraFaccion` y `Building.cantidad`,
+  agua y topes de facción con las reglas del Reino, siembra idempotente, prioridad sed > hambre > oficio,
+  avance diario con el Almacén de la facción y sucesos `OBRA_EMPEZADA` y `EDIFICIO_CONSTRUIDO`; pendiente la
+  revisión de la sesión principal y probarlo jugando). Quedan 36b y 36c; la siembra se repasa en 36b (Q-39).
 - ~~**CR-37** Guerra de una facción contra el Reino de la jugadora~~ ✅ 2026-10-08 (`CR-34` Q7, `0.3`): solo cuando
   existan los edificios de defensa (ya están, `CR-65`). Ronda de detalle aceptada el 2026-10-08 (Q1-Q7
   en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)).

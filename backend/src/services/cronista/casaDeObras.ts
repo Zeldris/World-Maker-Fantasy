@@ -63,7 +63,7 @@ export function avanceDiario(nivelConstructor: number): number {
 }
 
 /// El avance se guarda con dos decimales para que sumar 1,1 cada día no acumule error.
-const redondearAvance = (x: number) => Math.round(x * 100) / 100;
+export const redondearAvance = (x: number) => Math.round(x * 100) / 100;
 
 /// Puro: unidades de un material que se gastan al pasar una obra de `dias` días de `diasHechos` a
 /// `diasHechos + avance`. Lo acumulado hasta el avance p es ceil(cantidad·p/dias), así que al acabar
@@ -77,18 +77,23 @@ export function cuotaDelDia(cantidad: number, dias: number, diasHechos: number, 
 /// Gasta del Almacén la cuota de hoy de cada material de la receta (por slug exacto o por categoría
 /// del catálogo). Una fila apilada («Leña (12)») cuenta por su cantidad y, si sobra, se queda con el
 /// resto. Todo o nada: si falta alguno, no toca ninguna fila y devuelve qué falta.
-async function gastarCuotaDelDia(
+/// CR-36: `dueno` es el Reino (`{ saveId }`, su Almacén) o una facción del mundo (`{ factionId }`, el suyo).
+export type DuenoDeAlmacen = { saveId: string } | { factionId: string };
+
+export async function gastarCuotaDelDia(
   tx: Tx,
-  saveId: string,
+  dueno: DuenoDeAlmacen,
   recipe: ConstructionRecipe,
   dias: number,
   diasHechos: number,
   avance: number,
 ): Promise<{ ok: true; gastadas: number } | { ok: false; faltan: string[] }> {
-  const save = await tx.save.findUniqueOrThrow({ where: { id: saveId }, select: { worldId: true } });
-  const catalogo = await tx.itemCatalog.findMany({ where: { worldId: save.worldId }, select: { slug: true, tipo: true, category: true } });
+  const { worldId } = 'saveId' in dueno
+    ? await tx.save.findUniqueOrThrow({ where: { id: dueno.saveId }, select: { worldId: true } })
+    : await tx.faction.findUniqueOrThrow({ where: { id: dueno.factionId }, select: { worldId: true } });
+  const catalogo = await tx.itemCatalog.findMany({ where: { worldId }, select: { slug: true, tipo: true, category: true } });
   const catalogBySlug = new Map<string, CatalogLookup>(catalogo.map((c) => [c.slug, { tipo: c.tipo, category: c.category }]));
-  let libres: InventoryRowLike[] = await tx.almacenItem.findMany({ where: { saveId }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, catalogSlug: true } });
+  let libres: InventoryRowLike[] = await tx.almacenItem.findMany({ where: dueno, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, catalogSlug: true } });
   const borrar: string[] = [];
   const renombrar = new Map<string, string>();
   const faltan: string[] = [];
@@ -412,7 +417,7 @@ export async function avanzarCasaDeObras(tx: Tx, saveId: string, ahora: number):
       return false;
     }
     const avance = Math.min(avanceDiario(c.nivelConstructor), o.dias - o.diasHechos);
-    const gasto = await gastarCuotaDelDia(tx, saveId, recipe, o.dias, o.diasHechos, avance);
+    const gasto = await gastarCuotaDelDia(tx, { saveId }, recipe, o.dias, o.diasHechos, avance);
     if (!gasto.ok) {
       await ponerAviso(o, `Faltan materiales en el Almacén: ${gasto.faltan.join(', ')}.`);
       return false;

@@ -180,10 +180,16 @@ que has tenido que buscar, **corrígelo en el mismo commit**.
   `b/services/cronista/quienEncarga.ts#conQuienVisible`, `conQuienVisibleEnLote`; reputación por coger lo ajeno
   `b/services/cronista/testigos.ts#aprovecharseDeLoAjeno`. Rutas `b/routes/saves/misiones.ts` (tablones, aceptar,
   entregar, abandonar). Mundo por partida: `b/services/mundoPartida.ts#asegurarMundoDePartida`.
+  Las facciones construyen (`CR-36`): `b/services/cronista/obrasFacciones.ts#elegirObraDeFaccion` (prioridad sed >
+  hambre > oficio), `avanzarObrasDeFacciones` (una jornada por día simulado, tras la Casa de obras del Reino),
+  `plazoDeObra`, `sembrarSuministrosDeFacciones`; agua y topes de una facción:
+  `b/services/factionEconomy.ts#suministrosDeFaccion`; el gasto del Almacén (Reino o facción)
+  `b/services/cronista/casaDeObras.ts#gastarCuotaDelDia`.
 - **Tests:** uno por módulo junto a él en `b/services/cronista/` (`*.integration.test.ts` con base real);
   `simulacion60.integration.test.ts` simula 60 días.
 - **Datos:** `Suceso`, `SucesoCausa`, `SucesoActor`, `Consecuencia`, `Conocimiento`, `Recuerdo`, `Hilo`,
-  `MisionOfrecida`, `Quest`, `Etiqueta`, `Linaje`.
+  `MisionOfrecida`, `Quest`, `Etiqueta`, `Linaje`, `ObraFaccion` (la obra en curso de una facción, una a la vez) y
+  `Building.cantidad` (los edificios iguales de una facción en una fila, «Pozo ×N»; el Reino, siempre 1).
 - **Interfaz:** `f/components/panels/MisionesPanel.tsx`, `LeyendasPanel.tsx`, `HistoriasEnMarcha.tsx`.
 - **Trampas:** el diseño está en [roadmap-cronista.md](producto/roadmap-cronista.md) y
   [22-mundo-vivo-x4-tecnico.md](arquitectura/22-mundo-vivo-x4-tecnico.md); léelos solo si cambias reglas.

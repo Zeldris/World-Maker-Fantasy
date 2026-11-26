@@ -219,6 +219,8 @@ export const COCINA_RECIPE_KEYS = new Set(['cocina', 'cocina-obrador', 'cocina-g
 /// oficio y no produce nada — se excluye explícitamente.
 // CR-40: el tablón de avisos tampoco produce (no es un edificio de oficio).
 const SALON_RECIPE_KEYS = new Set(['ketg-sedsar', 'helsig-sedsar', 'goshg-sedsar', 'tablon-avisos']);
+/// CR-36: Pozo, Cisterna y Granero de una facción dan agua y almacén, no riqueza (como el salón, no son un taller).
+const SUMINISTRO_RECIPE_KEYS = new Set(['pozo', 'cisterna', 'granero']);
 
 export interface FactionBuildingForTick {
   recipeKey: string | null;
@@ -231,7 +233,7 @@ export interface FactionBuildingForTick {
 export function tickFactionProduction(buildings: FactionBuildingForTick[]): { comida: number; riqueza: number } {
   let riqueza = 0;
   for (const b of buildings) {
-    if (b.status !== 'ACTIVO' || !b.recipeKey || SALON_RECIPE_KEYS.has(b.recipeKey)) continue;
+    if (b.status !== 'ACTIVO' || !b.recipeKey || SALON_RECIPE_KEYS.has(b.recipeKey) || SUMINISTRO_RECIPE_KEYS.has(b.recipeKey)) continue;
     // CR-61: la Cocina ya no da comida fija; la ganan sus cocineros (`comidaOficios.ts`).
     if (COCINA_RECIPE_KEYS.has(b.recipeKey)) continue;
     riqueza += PRODUCCION_FACCION_POR_EDIFICIO_OFICIO;

@@ -20,6 +20,8 @@ describe('catálogo de sucesos', () => {
       'ESCARAMUZA', 'PATRULLA_VASALLO', 'MALESTAR_INTERNO', 'AYUDA_PRESTADA', 'HUIDA_DE_NPC', 'NPC_DESTACA', 'ETIQUETA_GANADA', 'ETIQUETA_PERDIDA', 'COMPANERO_SE_VA', 'RECLUTAMIENTO', 'RECLUTAMIENTO_FALLIDO', 'INFORMANTE_CAPTADO', 'INFORMANTE_DESCUBIERTO',
       // CR-40 (misiones del motor): dejar una misión no es fracasar.
       'MISION_ABANDONADA',
+      // CR-36 (36a): las facciones construyen.
+      'OBRA_EMPEZADA',
     ];
     expect(Object.keys(CATALOGO_SUCESOS).sort()).toEqual([...esperados].sort());
     for (const def of Object.values(CATALOGO_SUCESOS)) {

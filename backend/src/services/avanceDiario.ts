@@ -48,6 +48,7 @@ import { revisarSalidas } from './cronista/salidas.js';
 import { revisarSueldos } from './cronista/economiaReino.js';
 import { avanzarGanadoReino } from './cronista/ganadoReino.js';
 import { avanzarCasaDeObras } from './cronista/casaDeObras.js';
+import { avanzarObrasDeFacciones, sembrarSuministrosDeFacciones } from './cronista/obrasFacciones.js';
 import { resembrarFacciones, revisarExtinciones } from './cronista/economiaFacciones.js';
 import { asegurarVasallajes, revisarVasallajes } from './cronista/vasallaje.js';
 import { revisarInformantes } from './cronista/reclutamiento.js';
@@ -104,6 +105,8 @@ export async function avanzarMundoHasta(
       await asegurarVasallajes(tx, saveId, fictionalMinutes);
       // CR-65 (65e): las facciones sin Empalizada la levantan (idempotente, bajo el mismo candado).
       await asegurarDefensasDeFacciones(tx, saveId);
+      // CR-36 (Q39): Pozos, Cisternas y Graneros para lo que ya necesitan (idempotente, nunca baja una cantidad).
+      await sembrarSuministrosDeFacciones(tx, saveId);
       const estado = await tx.worldState.findUnique({ where: { saveId }, select: { ultimoDiaSimulado: true } });
       if (!estado) return { dias: 0, desde: 0 };
       const dias = diasPendientes(estado.ultimoDiaSimulado, diaDeFiccion(fictionalMinutes));
@@ -183,6 +186,8 @@ export async function avanzarMundoHasta(
         await prisma.$transaction((tx) => avanzarGanadoReino(tx, saveId, d, ahora, random));
         // P277/P284: una jornada de la Casa de obras (cola de obras y reparaciones).
         await prisma.$transaction((tx) => avanzarCasaDeObras(tx, saveId, ahora));
+        // CR-36 (36a): una jornada de la obra de cada facción del mundo (materiales de su Almacén).
+        await prisma.$transaction((tx) => avanzarObrasDeFacciones(tx, saveId, ahora));
       });
     }
     // CR-14: etiquetas de relación (AMIGO_DE / ENEMIGO_DE) según la reputación del final del día.

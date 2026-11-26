@@ -2221,6 +2221,9 @@ model Building {
   /// el lienzo, sin romper nada (mismo criterio nullable que el resto del proyecto).
   x              Float?
   y              Float?
+  /// CR-36 (Q38): cuántos edificios iguales representa la fila. La facción guarda «Pozo ×N» en una sola
+  /// (`@@unique([factionId, recipeKey])`) y suma `suministro × cantidad`; el Reino siempre 1 (un edificio, una fila).
+  cantidad       Int            @default(1)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
@@ -2812,6 +2815,8 @@ model Faction {
   /// Ver el comentario de `Building.factionId` para el criterio de propietario exclusivo.
   territories  Territory[]
   buildings    Building[]
+  /// CR-36 (Q38): la obra que levanta ahora (una a la vez), aparte de la cola del Reino.
+  obra         ObraFaccion?
   kingdomStats KingdomStats?
   /// Mercado regulado (§ 4.4, 2026-09-21) — stock real que el jugador puede comprar, si hay
   /// tratado comercial/alianza real (ver FactionRelation).
@@ -4124,4 +4129,33 @@ model ObraCola {
   createdAt  DateTime @default(now())
 
   @@index([saveId, orden])
+}
+
+/// CR-36 (36a, Q28-Q31 y Q38): la obra que una facción del mundo levanta ahora, una a la vez (X4: la IA
+/// añade módulos a su estación según lo que le falta). Aparte de `ObraCola`, que es la cola de la Casa de
+/// obras del Reino. Cada día simulado avanza 1 día de obra gastando del Almacén de la facción la cuota de
+/// los materiales de su receta (`cuotaDelDia`); sin ellos no avanza y lo dice en `aviso`, sin perder lo hecho.
+model ObraFaccion {
+  id         String   @id @default(cuid())
+  factionId  String   @unique
+  faction    Faction  @relation(fields: [factionId], references: [id], onDelete: Cascade)
+  saveId     String
+  /// Receta de `construction.ts` (una mejora lleva la del escalón siguiente).
+  recipeKey  String
+  /// Tier de la receta (da la XP y el número de obreros que pide).
+  tier       Int
+  /// Plazo en días de obra, ya multiplicado por el factor de obreros (`plazoDeObra`).
+  dias       Int
+  diasHechos Float    @default(0)
+  /// Materiales del Almacén de la facción ya gastados.
+  gastados   Int      @default(0)
+  /// El suceso de inicio sale el primer día que avanza, no al elegir la obra.
+  empezada   Boolean  @default(false)
+  /// Mejora de escalón: id del `Building` que sube (la mejora actualiza esa fila, no crea otra).
+  mejoraDe   String?
+  /// Por qué no avanza hoy (faltan materiales…); null = avanza.
+  aviso      String?
+  createdAt  DateTime @default(now())
+
+  @@index([saveId])
 }

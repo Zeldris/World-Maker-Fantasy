@@ -83,6 +83,8 @@ export interface DatosSuceso {
   EXPEDICION_SALE: { faccion: string; destino: string };
   EXPEDICION_INTERCEPTADA: { faccion: string; interceptora: string; destino: string };
   EXPEDICION_VUELVE: { faccion: string; destino: string; botin?: string };
+  /// CR-36 (36a, Q31): una facción empieza una obra (el primer día que avanza); al acabar sale `EDIFICIO_CONSTRUIDO`.
+  OBRA_EMPEZADA: { faccion: string; edificio: string };
   // CLIMA
   TORMENTA: { region: string };
   TORMENTA_EXTREMA: { region: string; danos?: string };
@@ -217,6 +219,7 @@ export const CATALOGO_SUCESOS: Catalogo = {
   EXPEDICION_SALE: { familia: 'FACCION', importanciaBase: 2, plantilla: (d) => `Una expedición de ${d.faccion} sale hacia ${d.destino}.` },
   EXPEDICION_INTERCEPTADA: { familia: 'FACCION', importanciaBase: 4, plantilla: (d) => `${d.interceptora} intercepta una expedición de ${d.faccion} camino de ${d.destino}.` },
   EXPEDICION_VUELVE: { familia: 'FACCION', importanciaBase: 2, plantilla: (d) => `La expedición de ${d.faccion} vuelve de ${d.destino}${d.botin ? ` con ${d.botin}` : ''}.` },
+  OBRA_EMPEZADA: { familia: 'FACCION', importanciaBase: 3, plantilla: (d) => `${d.faccion} empieza a levantar ${d.edificio}.` },
   // CLIMA
   TORMENTA: { familia: 'CLIMA', importanciaBase: 2, plantilla: (d) => `Una tormenta azota ${d.region}.` },
   TORMENTA_EXTREMA: { familia: 'CLIMA', importanciaBase: 6, plantilla: (d) => `Una tormenta terrible arrasa ${d.region}${d.danos ? `: ${d.danos}` : ''}.` },

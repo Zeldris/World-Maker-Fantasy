@@ -9,6 +9,13 @@ describe('economía del Reino (CR-53) — agua y almacén', () => {
       agua: 24, topeComida: BASE_ALMACEN.comida + 120, topeBebida: BASE_ALMACEN.bebida + 120, topeMateriales: BASE_ALMACEN.materiales + 120,
     });
     expect(suministrosDeEdificios([], true).agua).toBe(AGUA_FUENTE_NATURAL_DIA);
+    // CR-36 (Q38): una fila de facción cuenta `suministro × cantidad` («Pozo ×3» = tres Pozos); sin cantidad, una.
+    expect(suministrosDeEdificios([{ recipeKey: 'pozo', cantidad: 3 }, { recipeKey: 'granero', cantidad: 2 }, { recipeKey: 'cisterna' }, { recipeKey: null, cantidad: 9 }], true)).toEqual({
+      agua: AGUA_FUENTE_NATURAL_DIA + 36,
+      topeComida: BASE_ALMACEN.comida + 240,
+      topeBebida: BASE_ALMACEN.bebida + 120,
+      topeMateriales: BASE_ALMACEN.materiales,
+    });
   });
 
   it('agua natural en Los Manaderos, el Cauce o junto al agua', () => {

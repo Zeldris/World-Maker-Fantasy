@@ -5,6 +5,7 @@ import { asegurarMundoDePartida } from '../mundoPartida.js';
 import { filasDeFaccion, REPARTO_FACCIONES } from '../../scripts/repartoFacciones.js';
 import { DIAS_PARA_REFUNDAR, repartoEstandar, resembrarFacciones, revisarExtinciones, VERSION_REPARTO_FACCIONES } from './economiaFacciones.js';
 import { producirFacciones } from '../factionEconomy.js';
+import { sembrarSuministrosDeFacciones } from './obrasFacciones.js';
 
 describe('reparto de las facciones (CR-54, Q16)', () => {
   const margen = (r: (typeof REPARTO_FACCIONES)[number]) => 2 * r.trabajadores - (r.trabajadores + r.soldados + r.civiles);
@@ -71,6 +72,8 @@ describe('re-siembra única del reparto en una partida (CR-54, Q20)', () => {
     const worldId = (await prisma.world.findFirstOrThrow({ where: { slug: 'helek-sirik' } })).id;
     const f = await prisma.faction.findFirstOrThrow({ where: { saveId, slug: 'clan-serhu' }, include: { kingdomStats: true } });
     const ks = f.kingdomStats!;
+    // CR-36: la comida topa con el almacén de la facción (60 + 120 por Granero); los 500 de partida piden los Graneros que la siembra les da.
+    await prisma.$transaction((tx) => sembrarSuministrosDeFacciones(tx, saveId));
     await prisma.kingdomStats.update({ where: { id: ks.id }, data: { comida: 500, diasHambre: 0, ultimoDiaProducido: 20 } });
     const antes = await prisma.kingdomStats.findUniqueOrThrow({ where: { id: ks.id } });
     await producirFacciones(prisma, worldId, { id: f.id }, 21, { diasProcesados: 0, semanasDecaidas: 0, depositados: 0 });

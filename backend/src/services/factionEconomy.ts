@@ -1,7 +1,8 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { cazadoresFuera } from './partidasFacciones.js';
 import { CRAFTING_RECIPES, objetoFabricado, type CraftingRecipe, type ObjetoFabricado } from './crafting.js';
-import { daysCrossed, escalonCocinaDe, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock } from './kingdomTick.js';
+import { daysCrossed, escalonCocinaDe, hambrunaNueva, tickFactionProduction, tickKingdomOneDay, type KingdomStatsBlock, type SuministrosDia } from './kingdomTick.js';
+import { suministrosDeEdificios } from './cronista/economiaReino.js';
 import { comidaDelDia, porcionDelDia, repartoDeFaccion } from './cronista/comidaOficios.js';
 import { estacionFor } from './worldClock.js';
 import { decayPresion, stageForPresion, typeForPresion } from './factionRelations.js';
@@ -41,15 +42,19 @@ export function pendingWeeks(ultimaSemana: number | null, diaActual: number): nu
 
 /// Puro: un día de economía de facción = producción agregada de sus edificios (tickFactionProduction)
 /// sumada a la comida/riqueza, y después el MISMO día de reino del jugador (`tickKingdomOneDay`:
-/// trabajadores producen, bocas consumen, soldados cuestan, déficit baja la felicidad). Las
-/// facciones NPC no modelan bebida (no hay producción de agua): se le da a `tickKingdomOneDay` una
-/// bebida holgada y se restaura la original, para que no haya "déficit de bebida" perpetuo.
-/// CR-54 (Q17): el agua sale de su fuente canónica, que cubre el consumo con un 10 % de margen; caben
-/// 30 días de agua. Los sueldos van por semana (`sueldosDelDia`), no como mantenimiento diario.
-export function tickFactionOneDay(stats: KingdomStatsBlock, produccion: { comida: number; riqueza: number }): KingdomStatsBlock {
-  const bocas = stats.poblacion + stats.soldados + stats.visitantes;
+/// trabajadores producen, bocas consumen, soldados cuestan, déficit baja la felicidad). Los sueldos van
+/// por semana (`sueldosDelDia`), no como mantenimiento diario.
+/// CR-36 (Q27): agua y topes salen de lo que suman sus edificios (`suministrosDeFaccion`), con las reglas
+/// del Reino: antes el agua era un 10 % sobre el consumo y la comida no tenía tope.
+export function tickFactionOneDay(stats: KingdomStatsBlock, produccion: { comida: number; riqueza: number }, suministros: Pick<SuministrosDia, 'agua' | 'topeComida' | 'topeBebida'>): KingdomStatsBlock {
   const conProduccion = { ...stats, comida: stats.comida + produccion.comida, riqueza: stats.riqueza + produccion.riqueza };
-  return tickKingdomOneDay(conProduccion, { agua: Math.ceil(bocas * AGUA_FUENTE_FACCION), topeComida: Infinity, topeBebida: Math.max(30, bocas * 30), sueldosSemanales: true });
+  return tickKingdomOneDay(conProduccion, { agua: suministros.agua, topeComida: suministros.topeComida, topeBebida: suministros.topeBebida, sueldosSemanales: true });
+}
+
+/// CR-36 (Q27): lo que da una facción con sus edificios activos (cada fila cuenta `cantidad` veces): la fuente
+/// natural de su asentamiento (todas la tienen, 20 al día) y los Pozos, Cisternas y Graneros, con la base de almacén del Reino.
+export function suministrosDeFaccion(edificios: { recipeKey: string | null; cantidad?: number }[]) {
+  return suministrosDeEdificios(edificios, true);
 }
 
 /// Recetas de producto de un oficio: mismo oficio exacto; si no hay ninguna (p. ej. `herrero-orcos-cristal`
@@ -114,11 +119,12 @@ export async function producirFacciones(
       });
       if (claim.count === 0 || pendientes === 0) return; // otro tick ya lo hizo, o solo se fija la línea base
 
-      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true } });
+      const edificios = await tx.building.findMany({ where: { factionId, status: 'ACTIVO' }, select: { recipeKey: true, status: true, kind: true, tier: true, cantidad: true } });
       // CR-61: escalón de su mejor Cocina (multiplica lo que ganan sus cocineros).
       const escalonCocina = escalonCocinaDe(edificios);
       const fuera = await cazadoresFuera(tx, factionId);
       const porDia = tickFactionProduction(edificios);
+      const suministros = suministrosDeFaccion(edificios);
       let stats: KingdomStatsBlock = {
         poblacion: fks.poblacion, felicidad: fks.felicidad, comida: fks.comida, bebida: fks.bebida, riqueza: fks.riqueza,
         soldados: fks.soldados, trabajadores: fks.trabajadores, visitantes: fks.visitantes,
@@ -165,7 +171,7 @@ export async function producirFacciones(
         // CR-63 (63g): los cazadores que están fuera con sus partidas no cazan en agregado.
         cuadrilla.cazadores = Math.max(0, cuadrilla.cazadores - fuera);
         const comidaHoy = comidaDelDia(cuadrilla, { estacion: estacionFor(dia * 1440), hayAgua: true, escalonCocina: escalonCocina || null, comidaDisponible: stats.comida });
-        stats = tickFactionOneDay(stats, { ...porDia, comida: porcionDelDia(comidaHoy, dia) });
+        stats = tickFactionOneDay(stats, { ...porDia, comida: porcionDelDia(comidaHoy, dia) }, suministros);
         const pago = sueldosDelDia({ ...stats, diasSinCobrar }, dia, equipoDeLaSemana(stats));
         stats = { ...stats, riqueza: pago.riqueza, felicidad: pago.felicidad };
         diasSinCobrar = pago.diasSinCobrar;

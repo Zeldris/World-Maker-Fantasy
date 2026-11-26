@@ -13,6 +13,7 @@ const SE_QUEDAN: Record<string, string> = {
   Conocimiento: 'en cascada al borrar sus sucesos',
   LinajeMiembro: 'en cascada al borrar su linaje',
   Ganado: 'en cascada al borrar sus edificios',
+  ObraFaccion: 'en cascada al borrar su facción (CR-36)',
 };
 
 describe('reinicio de partida completo (QA-37)', () => {

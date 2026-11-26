@@ -27,16 +27,22 @@ export function tieneFuenteNatural(lugar: { slug: string; name: string }): boole
   return tags.includes('acuatico') || tags.includes('costero') || /manadero|cauce/i.test(`${lugar.slug} ${lugar.name}`);
 }
 
-/// Puro: lo que suman los edificios activos del Reino (agua al día y topes).
-export function suministrosDeEdificios(recipeKeys: (string | null)[], fuenteNatural: boolean): SuministrosDia & { topeMateriales: number } {
+/// Un edificio activo para sumar sus suministros: su receta y, en una facción, cuántos iguales guarda la fila
+/// (`Building.cantidad`, CR-36 Q38). El Reino pasa las claves tal cual (cada una, un edificio).
+export type EdificioDeSuministro = string | null | { recipeKey: string | null; cantidad?: number };
+
+/// Puro: lo que suman los edificios activos (agua al día y topes). Cada fila suma `suministro × cantidad`.
+export function suministrosDeEdificios(edificios: EdificioDeSuministro[], fuenteNatural: boolean): SuministrosDia & { topeMateriales: number } {
   const r = { agua: fuenteNatural ? AGUA_FUENTE_NATURAL_DIA : 0, topeComida: BASE_ALMACEN.comida, topeBebida: BASE_ALMACEN.bebida, topeMateriales: BASE_ALMACEN.materiales };
-  for (const key of recipeKeys) {
+  for (const e of edificios) {
+    const key = e !== null && typeof e === 'object' ? e.recipeKey : e;
+    const cantidad = e !== null && typeof e === 'object' ? Math.max(0, e.cantidad ?? 1) : 1;
     const s = CONSTRUCTION_RECIPES.find((x) => x.key === key)?.suministro;
     if (!s) continue;
-    r.agua += s.aguaDia ?? 0;
-    r.topeComida += s.topeComida ?? 0;
-    r.topeBebida += s.topeBebida ?? 0;
-    r.topeMateriales += s.topeMateriales ?? 0;
+    r.agua += (s.aguaDia ?? 0) * cantidad;
+    r.topeComida += (s.topeComida ?? 0) * cantidad;
+    r.topeBebida += (s.topeBebida ?? 0) * cantidad;
+    r.topeMateriales += (s.topeMateriales ?? 0) * cantidad;
   }
   return r;
 }
