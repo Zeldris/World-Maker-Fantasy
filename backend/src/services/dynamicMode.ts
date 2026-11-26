@@ -317,7 +317,7 @@ export function narrarAperturaCombateForzado(targetName: string, cantidad?: numb
 }
 
 export const GISTERA_TEXTO_PRESENTACION =
-  'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Llevas la marca de los Maktor, ¿verdad? Entonces sabes lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
+  'Con la respiración entrecortada, sin dejar de mirar hacia atrás, se presenta a toda prisa: «Soy Gistera Koh... del Clan Serhu, aunque ya no. No tengo tiempo para explicarte más — uno de los suyos me pisa los talones y quiere verme muerta. Pareces alguien que ha perdido a los suyos, ¿verdad? Entonces sabrás lo que es que un clan entero se vuelva contra los tuyos. ¿No quieres acabar con los Serhu? Empieza por el que me persigue — hazlo antes de que sea demasiado tarde.»';
 /// P243 (decidido por la usuaria 2026-10-26): desde la segunda vez que se pulsa «Preguntar más antes de
 /// decidir», Gistera no repite el discurso: dice brevemente que ya lo contó.
 export const GISTERA_TEXTO_YA_CONTADO =
