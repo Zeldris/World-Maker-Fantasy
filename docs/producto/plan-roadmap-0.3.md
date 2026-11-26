@@ -513,6 +513,10 @@ Preguntas Q-27…Q-37 de [`docs/questions.md`](../questions.md), contrastadas co
   porteadores pelean solo si caen los guardias. Las facciones eligen cuántos según el riesgo de la ruta (fauna,
   bandidos, guerra) y lo que les sobre. Entra en `36b` para el acopio y en la base de `CR-64` para lo demás;
   escoltar viajeros ajenos sigue en `CR-64`.
+- **Q-38 Edificios iguales:** `Building.cantidad` (1 por defecto): la facción guarda «Pozo ×N» en una fila; sus obras,
+  en un modelo propio `ObraFaccion` (una a la vez), aparte de la cola del Reino. Como los cupos de módulos de X4.
+- **Q-39 Siembra:** al migrar, para su `poblacionMax` (agua 20 + 12 por Pozo con 10 % de margen; Cisternas y Graneros
+  para 30 días). **Pendiente en `36b`:** repasarla a la población de hoy más un margen, y el resto por obras.
 
 Fuentes: [Egosoft, Defend Commander](https://wiki.egosoft.com/X4%20Foundations%20Wiki/Manual%20and%20Guides/Objects%20in%20the%20Game%20Universe/Orders%2C%20Behaviours%20and%20Assignments/Defend%20Commander%20%28Assignment%29/),
 [foro de Egosoft](https://forum.egosoft.com/viewtopic.php?p=4781138),
