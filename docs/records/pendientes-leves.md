@@ -96,3 +96,15 @@ Los dos de `iaRegistro.ts`, en `QA-520` (retro, 2026-11-20).
 ## Pendientes leves de la revisión de bloque de QA-531 (2026-11-26)
 
 - `narrador.ts` `JSON_LEAK_REGEX` (~2384): no casa `hitoMotivo"` (la alternativa `hito` pide `"` justo detrás); si el modelo escribe `"hitoMotivo": …` en `narration` sin otra clave antes, `stripLeakedJson` no lo corta. Arreglo: `hito(?:Motivo)?` y un caso en su test.
+
+## Pendientes leves de la revisión de bloque de CR-36b (2026-11-26)
+
+- `partidasCaza.ts` `aplicarBajas` (~115): solo los genéricos con rol `guardia` quedan fuera de población y trabajadores; los `soldado` de un asalto de facción (`guerraReino.ts` ~92) ya se descontaron al salir y, si mueren, se restan otra vez. Arreglo: tratar `soldado` como `guardia` (anterior al diff).
+- `viajerosEncuentros.ts` (~72): los enemigos heridos en la 1.ª ronda vuelven ilesos a la 2.ª (`simularCombateDeFondo` parte de cero). Llevar su condición o documentarlo.
+- `campamentos.ts` `asaltoAlViajero` (~141): solo roba `carga.piezas`; un acopio vencido por bandidos llega con `carga.items` entera al Almacén.
+- `partidasAcopio.ts` (~145): los guardias genéricos de facción se descuentan de `soldados` al salir y solo vuelven en `alVolver`; si el viajero se borra por otra vía (`routes/saves/shared.ts` ~281), se pierden.
+- `obrasFacciones.ts` (~155) siembra +25 % con `kingdomStats` antes de `syncFactionPopulationToKingdomStats` (`avanceDiario.ts` 110 vs 117): población del día anterior, o 0 sin fila. Sincronizar antes.
+- `routes/saves/partidas.ts` (~36): `porteadorIds`/`guardiaIds` que no son arrays dan 500 en vez de 400; sanear con `idsDelCuerpo` y validar `categoria`.
+- `partidasReino.ts` (~114): el motivo de error dice «no hay madera» (categoría interna) donde la interfaz dice «Leña».
+- `PartidasSection.tsx` (~159): un acopio sale «en el coto» y «sin presas» (textos de la caza).
+- `partidasAcopio.ts` `categoriasQueFaltan` (~120): compara cada requisito por separado con el Almacén; una obra que pide 6 y 4 de leña con 6 no lanza acopio y se para en el 2.º paso. Simular el consumo en orden.
