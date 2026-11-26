@@ -155,3 +155,84 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: sí
 - Answer: ok
 - Answered: 2026-11-24
+
+## Q-18
+- Refs:
+- Status: answered
+- Asked: 2026-11-26
+- Question: Siguiente lote de la puerta (paso 3): a) arreglos de código en la nube P266+P273+P486; b) tanda de juego P131 (huir en combate) y P429 (Interactuar sobre el recinto); c) los dos
+- Recommendation: a) lote de arreglos en la nube: P266 (frase fija del guion), P273 (el registro de IA dice por qué rechaza), P486 (narración contra la tarjeta de defensa); con test en rojo y jugado con el simulado
+- Answer: a
+- Answered: 2026-11-26
+
+## Q-19
+- Refs:
+- Status: answered
+- Asked: 2026-11-26
+- Question: P311 (Interactuar no ofrece regalar): ¿se cierra por no haber regalo, o se abre un camino para regalar?
+- Recommendation: cerrar P311: no hay camino de regalo en Interactuar y lo que queda es voz del narrador (Ollama real, ya en «Para la sesión local»)
+- Answer: ok (cerrar P311)
+- Answered: 2026-11-26
+
+## Q-20
+- Refs:
+- Status: answered
+- Asked: 2026-11-26
+- Question: Lo que queda de la puerta depende casi todo de Ollama real o de arte: ¿tras este lote pasamos al paso 4 (limpieza del roadmap)?
+- Recommendation: después del lote, pasar al paso 4 (limpieza del roadmap) y dejar a la Deck lo que solo sale con Ollama real o arte
+- Answer: ok (paso 4 tras el lote)
+- Answered: 2026-11-26
+
+## Q-21
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: Tareas del Cronista del 0.3 o posteriores metidas en fases del 0.2 (CR-50…52, 57, 60, 64, 69…72): a) moverlas a una sección «Fuera de fase» de su hito en roadmap-cronista.md; b) tolerarlas con una lista de excepciones en cobertura.py
+- Recommendation: a) sección «Fuera de fase» por hito en roadmap-cronista.md y mover allí esas líneas
+- Answer: a
+- Answered: 2026-11-26
+
+## Q-22
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: Las 8 propuestas aprobadas de tipo QA (filas 1-3, 6 y 10-13 de propuestas-aprobadas.md): a) al hito 0.7, cada una con su id QA-n; b) dejarlas sin hito hasta cerrar las pruebas
+- Recommendation: a) una fila «QA de las pruebas» en el hito 0.7, un QA-n por propuesta
+- Answer: a
+- Answered: 2026-11-26
+
+## Q-23
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: CFG-20 («dónde se muestran» las tiradas) está a medias: ¿se queda 🚧 en el 0.2, con lo que falta apuntado?
+- Recommendation: sí: CFG-20 queda 🚧 en el 0.2 con lo que falta apuntado
+- Answer: sí
+- Answered: 2026-11-26
+
+## Q-24
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: ¿Pasan a «Preguntas abiertas para Álvaro» el objetivo de turno de la Fase F del 0.1 y CR-49c?
+- Recommendation: sí
+- Answer: sí
+- Answered: 2026-11-26
+
+## Q-25
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: ¿Se marcan el 0.1 y el 0.2 como «cerrados salvo Álvaro», con la lista de lo que espera (Fase E de súbditos, objetivo de turno, ZON-1/UX-14, CR-49c, etiquetas v0.1.0/v0.2.0; la Fase G del 0.1 pasa al 0.7; CR-8 falta correrlo con --aplicar en la base real)?
+- Recommendation: sí
+- Answer: sí
+- Answered: 2026-11-26
+
+## Q-26
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: La matriz tiene 21 filas nuevas (CFG-9 y 20 de ZON: 2, 3, 4, 6, 16, 18, 30…34, 36, 38, 40, 41, 45, 50, 51, 53, 58) como «no se juega, sin ronda registrada; para la fase única del 0.7»: a) se quedan así; b) pasan a «sin jugar» y entran en la puerta de pruebas
+- Recommendation: a) se quedan en «no se juega», como las 32 de Q-17; el 0.7 tiene su fase de pruebas
+- Answer: a
+- Answered: 2026-11-26

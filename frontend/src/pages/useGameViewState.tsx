@@ -9,7 +9,7 @@ import { notificacionesDeEntrada } from '../lib/notificaciones'
 import { avisoDeLlegadas, pesoDeLlegada } from '../lib/llegadas'
 import { useDecisionesEnCola } from '../hooks/useDecisionesEnCola'
 import { resolverCapas, type CapaAbierta } from '../lib/capas'
-import { etiquetaDeFase } from '../lib/gamePhase'
+import { etiquetaDeFase, motivoComposerFase } from '../lib/gamePhase'
 import { abrirCombateAlCargar, combateTrasResync, hayCombateEnCurso, mapaDeZonaDebeCerrarse } from '../lib/combateResync'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -1459,9 +1459,7 @@ export function useGameViewState() {
         ? 'En combate — usa el panel de combate para actuar.'
         : confirmingExit
           ? 'Partida en pausa — cierra el menú para seguir jugando.'
-          : capaEncimaAbierta
-            ? 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
-            : (permisoTurno.motivo ?? undefined)
+          : motivoComposerFase(permisoTurno, capaEncimaAbierta)
 
   // UX-9 (hito 0.2) — gestor de capas: cada overlay abierto con su nivel (§ 4.3), en orden de
   // prioridad dentro del nivel. Solo se ve el de nivel más alto; el resto espera oculto y montado

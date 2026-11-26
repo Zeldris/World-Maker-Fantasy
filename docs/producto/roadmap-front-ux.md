@@ -386,6 +386,9 @@ vuelva más tarde. Eso exige estas reglas de experiencia:
   enlace del lugar a su sitio en el mapa, filtro del canal por categoría, y categoría también para
   las noticias que no salen del narrador de fondo (expediciones, agenda Serhu). **S**
 
+- **UX-42 · Leyendas por categorías con filtros genéricos** (propuesta aprobada, 2026-10-20): entra todo (también los avisos menores del Reino) y lo que se ve lo eligen filtros combinables: **origen** (Tú, Tu Reino, Aliados, Mundo), **familia**, **importancia** (Todo / Notable / Grave, por marca, nunca número) y **vía** (lo viviste, te lo contaron, de oídas, tablón). Por defecto «Notable»; recuerda el último filtro; contador por categoría; avisos iguales del mismo día agrupados. Hoy `LeyendasPanel.tsx` filtra por una familia y los avisos del Reino no llegan por el umbral de importancia. **M**
+- **UX-43 · Escape cierra primero el cajón** (propuesta aprobada, P239, 2026-10-20): con el Diario o Leyendas abierto, Escape cierra el cajón en vez de abrir la Pausa. **S**
+
 ### 4.8 Marca de Tarkor
 
 Diseño completo en [`diseno-interfaz-marca.md`](diseno-interfaz-marca.md) (de galivelop-image-generator,
@@ -477,8 +480,8 @@ del hook `useGamePhase`.
 | **UX-B · Estado único** | UX-1, UX-2, UX-5, UX-7, UX-8, UX-37 | La base para que todos los bloqueos sean coherentes y se expliquen. |
 | **UX-C · Orden** | UX-9, UX-10, UX-11, UX-12 | Una cosa importante a la vez y en el orden en que se lee. |
 | **UX-D · Entrada y salida** | UX-15, UX-17, UX-18, UX-19, UX-20 | Empezar más rápido, salir sin sustos, Atrás como en un juego. |
-| **UX-E · Pulido** | UX-6, UX-21, UX-22, UX-23, UX-25…28 | Foco, esperas, deshacer, primeros pasos. |
-| **UX-F · Mundo vivo** | UX-29…UX-36, UX-38, UX-39 | Llega con las fases 3-5 del Cronista (hitos `0.2`-`0.3`); `UX-29` y `UX-35` antes de que el Cronista use la IA. |
+| **UX-E · Pulido** | UX-21, UX-22, UX-23, UX-25, UX-27, UX-28, UX-43 | Foco, esperas, deshacer, primeros pasos. |
+| **UX-F · Mundo vivo** | UX-29…UX-36, UX-38, UX-39, UX-42 | Llega con las fases 3-5 del Cronista (hitos `0.2`-`0.3`); `UX-29` y `UX-35` antes de que el Cronista use la IA. |
 | **UX-G · Marca** | UX-40, UX-41 | La interfaz con la marca de Tarkor; `UX-41` espera a las imágenes de galivelop-image-generator. |
 
 El hito exacto de cada fase lo fija el [mapa de roadmaps](21-roadmap.md#qué-entra-en-cada-hito).

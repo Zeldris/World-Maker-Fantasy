@@ -25,6 +25,11 @@ ARCHIVOS = {
     'docs/records/traspaso.md': (
         'python3 .claude/gw/scripts/recover.py',
         '`--state` para tu fila y los últimos commits (QA-261)'),
+    # QA-540 (`/gw-opt-tokens` de QA-532): 13 lecturas del mapa de roadmaps en una tarea, 91k arrastrados.
+    'docs/producto/21-roadmap.md': (
+        'tools/roadmap/',
+        '`python3 tools/roadmap/cobertura.py --fila <id>` para el hito de una tarea, `ver.py <id>` para su entrada '
+        '(QA-242, QA-540)'),
     'docs/runbooks/rondas-de-pruebas.md': (
         'tools/qa/seccion.sh',
         '`bash tools/qa/seccion.sh docs/runbooks/rondas-de-pruebas.md "<sección>"`, una sección (QA-311, QA-323)'),

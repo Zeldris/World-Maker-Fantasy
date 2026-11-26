@@ -95,7 +95,7 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 - Primera línea en español: qué cambia, con los identificadores de las tareas tocadas. Un commit que cambia código
   empieza por `feat: `, `fix: ` o `hotfix: ` y lleva `Refs: <id>` en el bloque final: el `commit-msg` le pide la
   ficha de la tarea (`docs/tasks/<id>.md`, con `python3 .claude/gw/scripts/task.py new <id>`) y una entrada nueva
-  de su decision log (`task.py log <id> --agent <skill|sesión>`); los de docs, bitácora y métricas siguen sin prefijo
+  de su decision log (`task.py log <id> --agent <skill|session>`); los de docs, bitácora y métricas siguen sin prefijo
   (`taskRecord`, usuaria, 2026-11-18).
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check y de los tests.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.

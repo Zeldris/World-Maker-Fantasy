@@ -31,7 +31,7 @@ files=['roadmap-front.md','roadmap-front-ux.md','roadmap-front-zona.md','roadmap
 defs={}
 titulo={}  # QA-246: id → título de su primera definición en el árbol
 repetidas={}  # QA-246: id → [(archivo, línea)] de las definiciones que siguen a la primera
-DEF=rf'^\s*-\s*(?:~~)?\*\*({ID})\b|^\|\s*(?:~~)?({ID})(?:~~)?\s*\||^\s*(?:~~)?\*\*({ID})\s*·'
+DEF=rf'^\s*-\s*(?:[^\w\s*~]\s*)?(?:~~)?\*\*({ID})\b|^\|\s*(?:~~)?({ID})(?:~~)?[^|]*\||^\s*(?:~~)?\*\*({ID})\s*·'
 def num(i):
     return (i.split('-')[0],int(re.sub(r'\D','',i.split('-')[1])))
 def definiciones(texto):
@@ -169,7 +169,7 @@ if __name__ == '__main__':
     for i in falta: print(' ',i,defs[i][0],defs[i][1])
     print('ASIGNADAS PERO NO DEFINIDAS:',fantasmas)
     # QA-14: los que ya había al activar la comprobación (pendientes de definir en su roadmap); uno nuevo falla.
-    FANTASMAS_CONOCIDOS={'CFG-9','CR-49','ZON-5','ZON-16','ZON-18','ZON-30','ZON-31','ZON-32','ZON-33','ZON-34','ZON-35','ZON-36','ZON-38','ZON-40','ZON-41','ZON-50','ZON-51','ZON-53','ZON-58'}
+    FANTASMAS_CONOCIDOS=set()
     nuevos=[i for i in fantasmas if i not in FANTASMAS_CONOCIDOS]
     print('NO DEFINIDAS NUEVAS:',nuevos)
     dobles={i:h for i,h in asignado.items() if len(h)>1}

@@ -66,6 +66,14 @@ class Fila(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertEqual(r.stdout.splitlines(), ['QA-9: no está definida en ningún roadmap', 'hito: SIN HITO'])
 
+    def test_definiciones_tachadas_con_texto_y_con_emoji(self):
+        # QA-532: `| ~~QA-1~~ ✅ fecha (…) |` y `- 🚧 **QA-2**` también son definiciones.
+        escribir(os.path.join(self.dir, 'docs', 'producto', 'roadmap-front.md'),
+                 '| ~~QA-1~~ ✅ 2026-10-02 (hecha) | **Uno** |\n- 🚧 **QA-2** Dos\n')
+        for i in ('QA-1', 'QA-2'):
+            r = self.fila(i)
+            self.assertNotIn('no está definida', r.stdout, i)
+
     def test_sin_id(self):
         r = self.fila()
         self.assertEqual(r.returncode, 1)

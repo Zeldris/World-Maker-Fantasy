@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { levelForXp, maxCombatAbilitiesFor, xpForRollSuccess, xpForHitos, applyXp, attributeCapForLevel, npcAttributesForLevel, MAX_LEVEL } from './progression.js';
+import { levelForXp, maxCombatAbilitiesFor, xpForRollSuccess, xpForHitos, labelForHitos, applyXp, attributeCapForLevel, npcAttributesForLevel, MAX_LEVEL } from './progression.js';
 
 describe('levelForXp', () => {
   it('nivel 1 con 0 XP', () => {
@@ -125,5 +125,15 @@ describe('applyXp', () => {
     const result = applyXp(0, 1, 48_000); // 48000 = umbral nivel 9, cruza ASI de 4 y 8
     expect(result.newLevel).toBe(9);
     expect(result.attributePointsGained).toBe(4); // +2 en nivel 4, +2 en nivel 8
+  });
+});
+
+describe('labelForHitos con motivo (P483)', () => {
+  it('añade el título del objetivo a la etiqueta del hito', () => {
+    expect(labelForHitos(['objetivo_menor'], '  Vencer   al orco ')).toBe('Objetivo cumplido: Vencer al orco');
+  });
+  it('sin motivo, la etiqueta genérica; el capítulo nunca lleva motivo', () => {
+    expect(labelForHitos(['objetivo_menor'], null)).toBe('Objetivo cumplido');
+    expect(labelForHitos(['capitulo'], 'x')).toBe('Capítulo completado');
   });
 });

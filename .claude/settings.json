@@ -7,6 +7,9 @@
       "Bash(tools/qa/host.sh bash tools/qa/escenario.sh:*)",
       "Bash(bash tools/qa/host.sh tools/qa/escenario.sh:*)",
       "Bash(tools/qa/host.sh tools/qa/escenario.sh:*)"
+    ],
+    "deny": [
+      "mcp__Claude_Docs"
     ]
   },
   "env": {

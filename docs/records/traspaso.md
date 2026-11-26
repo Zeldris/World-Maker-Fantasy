@@ -10,7 +10,7 @@ cada commit.**
 
 | | |
 |---|---|
-| **Actualizado** | 2026-11-25 |
+| **Actualizado** | 2026-11-26 |
 | **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/generador-mapas`, `claude/banco-narrador`. Filas de ramas cerradas: [`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342). Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
 | **Último commit en `main`** | PR #105 de `claude/wonderful-volta-662qt8` (2026-11-24, `904226bd`, CI en verde): flujo Galivelop-workflow 0.8.1 → 0.9.0 y `QA-527` en el hito 0.3; antes, PR #103 (flujo v0.8.1), PR #102 y PR #100. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
@@ -164,10 +164,8 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-25 — QA-528: generadores (IMG-60…65, MAP-21…25, VOZ-12…16) en cada hito del 0.3 en adelante y cobertura.py con MAP; PR #106
-2. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
-   QA-352, QA-353, QA-354, QA-355, QA-356, QA-370, QA-503, QA-505, QA-506, QA-507, QA-508, QA-510, QA-512,
-   QA-513, QA-515, QA-516 (detalle en `roadmap-front.md` y el PR #104)
-3. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
-4. 2026-11-20 — QA-518: lore de lo que nombra el jugador en la réplica del NPC (loreParaReplica), desde su lado; L8: P487 arreglado, P491 en parte, P493 y P494 nuevos
-5. 2026-11-20 — QA-514: cerrada sin recalentado; la tanda A/B L7 mostró que con Ollama 0.34.2 dialogo_npc no desaloja al narrador (narrar tras diálogo 10-22 s de prefill frente a 24-26 s con recalentado); revert del código
+1. 2026-11-26 — QA-540: /gw-opt-tokens del PR de QA-532 (Claude Docs denegado en settings.json; aviso al leer 21-roadmap.md entero)
+2. 2026-11-26 — QA-532: limpieza del roadmap del paso 4 (Q-21…Q-25); ids tachados ZON-2, ZON-3, ZON-4, ZON-6, ZON-45; CR-73…75, UX-42, UX-43, REI-123 y QA-533…539 entran con hito
+3. 2026-11-26 — QA-531: P266, P273 y P486 arreglados con test (P266 jugado con el simulado); a la sesión local para Ollama real
+4. 2026-11-25 — QA-530: lote P472, P484, P485 (comprobados jugando con el simulado) y P483 (arreglado, a la sesión local)
+5. 2026-11-25 — QA-528: generadores (IMG-60…65, MAP-21…25, VOZ-12…16) en cada hito del 0.3 en adelante y cobertura.py con MAP; PR #106

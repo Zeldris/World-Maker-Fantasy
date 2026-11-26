@@ -167,11 +167,11 @@ son de relleno.*
 | Id | Propuesta | Back | Esf. |
 |---|---|---|---|
 | ZON-1 | **El mapa vive en la pantalla de juego, no en un modal** 🧭. Tres opciones: **(A, recomendada)** la columna derecha muestra por defecto la **Zona**, con *El mundo* y *Reino* como pestañas con contador de entradas nuevas — igual que ya se sustituye por el panel de combate durante una pelea; la narración del personaje sigue visible a la izquierda mientras te mueves. **(B)** minimapa fijo encima del registro de personaje, ampliable. **(C)** mantener el modal, pero más pequeño y sin tapar el registro. | ✅ | L |
-| ZON-2 | **Minimapa permanente** (si no se elige A): esquina de la cabecera o del registro, ~200 px, con el personaje centrado, los puntos cercanos y **clic para andar** (OSRS). | ✅ | M |
-| ZON-3 | **Un solo mapa**: la vista de consulta de *Mapa → Zona* pasa a ser la misma vista, con el movimiento activo. | ✅ | S |
-| ZON-4 | **Atajos**: `M` abre o centra el mapa, `Z` alterna mapa grande / minimapa, flechas o `WASD` mueven una celda, `Espacio` para o reanuda, `Tab` recorre los puntos cercanos, `Enter` interactúa con el seleccionado. Mando: cruceta = celda, A = confirmar, B = parar. | ✅ | M |
+| ~~ZON-2~~ | **Minimapa permanente** (si no se elige A): esquina de la cabecera o del registro, ~200 px, con el personaje centrado, los puntos cercanos y **clic para andar** (OSRS). | ✅ | M |
+| ~~ZON-3~~ | **Un solo mapa**: la vista de consulta de *Mapa → Zona* pasa a ser la misma vista, con el movimiento activo. | ✅ | S |
+| ~~ZON-4~~ | **Atajos**: `M` abre o centra el mapa, `Z` alterna mapa grande / minimapa, flechas o `WASD` mueven una celda, `Espacio` para o reanuda, `Tab` recorre los puntos cercanos, `Enter` interactúa con el seleccionado. Mando: cruceta = celda, A = confirmar, B = parar. | ✅ | M |
 | ~~ZON-5~~ ✅ 2026-10-05 (adelantada de Z-C a petición de la usuaria: chocar con algo ya no cierra el mapa de movimiento; la tarjeta del encuentro sale junto a su ficha con sus acciones —las mismas del registro, `lib/ofertaModoDinamico.ts`— más «Seguir mi camino»; hablar o recolectar se abren encima y el mapa vuelve; solo se cierra para escribir una respuesta o al empezar un combate. Lo de «con el mapa en la pantalla de juego» sigue esperando `ZON-1`) | **El encuentro no cierra nada**: con el mapa en la pantalla de juego, la tarjeta de Interactuar aparece en el registro de al lado y además **sobre la ficha** del encuentro en el mapa (ver ZON-41). | ✅ | S |
-| ZON-6 | **Pantalla completa del mapa** (`F` o doble clic en el borde) para explorar con detalle. | ✅ | S |
+| ~~ZON-6~~ | **Pantalla completa del mapa** (`F` o doble clic en el borde) para explorar con detalle. | ✅ | S |
 
 ## 7. Fichas e iconos (`ZON-I`)
 
@@ -214,7 +214,7 @@ son de relleno.*
 | ZON-42 | **Encuentro con presencia**: al chocar, la ficha del otro da un pequeño salto, aparece un aviso sobre ella ("¡Te topas con…!") y el mapa se atenúa un instante alrededor; la tirada de "quién ve a quién" (`DiceTray`, roadmap general § 4) sale anclada al encuentro. Resuelve Z17. | ✅ | M |
 | ZON-43 | **Combate que empieza en el mapa**: transición desde la ficha del rival (destello rojo, zoom breve) hacia el panel de combate, en vez de un cambio seco. | ✅ | M |
 | ZON-44 | **Marcas propias** (BG3): el jugador puede poner una marca con nombre en una celda ("veta de hierro", "cuidado: lobos"). | 🛠️ (guardar marcas) | M |
-| ZON-45 | **Lista lateral útil** en vez de duplicada (Z25): puntos agrupados por tipo y **ordenados por distancia**, con su ficha en pequeño; pasar el ratón por la lista resalta la ficha en el mapa y viceversa. | ✅ | S |
+| ~~ZON-45~~ | **Lista lateral útil** en vez de duplicada (Z25): puntos agrupados por tipo y **ordenados por distancia**, con su ficha en pequeño; pasar el ratón por la lista resalta la ficha en el mapa y viceversa. | ✅ | S |
 
 ## 10. Leer el mundo (`ZON-L`)
 
@@ -312,7 +312,7 @@ son de relleno.*
 | **Z-B · Que se entienda antes de actuar** ✅ 2026-10-05 | ZON-30, 31, 32, 34, 35, 36, 38 (🧭), 40, 41, 51, 18 (parcelas como fichas) + base técnica ZON-80, 81, 86 | Ruta, coste, parar, velocidad y menú contextual. Solo front. |
 | **Z-C · Siempre a mano** | ZON-1 (decisión de disposición), 2 o 3, 4, 5, 6, 45 | El mapa deja de ser un modal escondido. |
 | **Z-D · Sin sorpresas** ✅ 2026-10-05 | Exponer hostilidad y rutas → ZON-33, 50, 53, 16, 58 | El peligro se ve antes de que llegue. |
-| **Z-E · Que se sienta vivo** | ZON-37, 42, 43, 54, 56, 60, 61, 70-73, 82 (fichas con zoom; el tamaño fijo ya está hecho en ZON-11), 83, 84 | Animación, hora del día, cámara. |
+| **Z-E · Que se sienta vivo** | ZON-37, 42, 43, 54, 56, 60, 61, 70-73, 82 (fichas con zoom; el tamaño fijo ya está hecho), 83, 84 | Animación, hora del día, cámara. |
 | **Z-F · Profundidad** | ZON-12, 15, 44, 52, 55, 57, 74, 39, 85 (accesibilidad) | Retratos, compañeros, niebla, clima, marcas, terreno. |
 | **Siempre** | ZON-80…86 | Base técnica que acompaña a cada fase. |
 

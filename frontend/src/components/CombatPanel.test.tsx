@@ -26,12 +26,12 @@ function orco(targetedForKill: boolean): CombatNpcDisplay {
   return { slug: 'orco', name: 'Orco enfurecido', condicion: 'CONVALECIENTE', yaSaqueado: false, lootedItemNames: [], analizado: false, activeEffects: [], targetedForKill }
 }
 
-function panel(npcs: CombatNpcDisplay[], lastInitiativeRoll: InitiativeRollInfo | null = null, awaitingDefense = false, companeros: CompaneroDeCombateInfo[] = []) {
+function panel(npcs: CombatNpcDisplay[], lastInitiativeRoll: InitiativeRollInfo | null = null, awaitingDefense = false, companeros: CompaneroDeCombateInfo[] = [], energia = 70, abilities: SavedActionInfo[] = [ataqueBasico]) {
   const noop = vi.fn()
   return (
     <CombatPanel
       playerCondicion="HERIDO" playerActiveEffects={[]} playerAttributes={{ fuerza: 10, destreza: 6, constitucion: 7, inteligencia: 7, voluntad: 8, carisma: 6, magia: 2 } as never}
-      energia={70} npcs={npcs} companeros={companeros} selectedNpcSlug={null} onSelectNpc={noop} combatAbilities={[ataqueBasico]} selectedAbilityId={null}
+      energia={energia} npcs={npcs} companeros={companeros} selectedNpcSlug={null} onSelectNpc={noop} combatAbilities={abilities} selectedAbilityId={null}
       onSelectAbility={noop} combatItems={[]} selectedItemId={null} onSelectItem={noop} busy={false} ended={false} playerJustDied={false}
       awaitingDefense={awaitingDefense} lastInitiativeRoll={lastInitiativeRoll} onActuar={noop} onRegistrar={noop} onHuir={noop} onContinue={noop}
       onSaquearSeleccion={noop} onAbilityDetail={noop} onItemDetail={noop} enciclopedia={null}
@@ -205,5 +205,26 @@ describe('CombatPanel: filas de estado de rivales de igual nombre (P354)', () =>
       expect(n.className).toContain('shrink-0')
       expect(n.previousElementSibling?.className).toContain('truncate')
     }
+  })
+})
+
+// P485 (QA-530): sin energía para una habilidad, el panel lo dice con texto visible, no solo en el tooltip.
+describe('CombatPanel: aviso de energía (P485)', () => {
+  const basicoCon5 = { ...ataqueBasico, energyCost: 5 } as SavedActionInfo
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn()
+    Element.prototype.scrollTo = vi.fn()
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+  })
+  it('con 2 de energía y Ataque Básico a 5, avisa del bloqueo', () => {
+    render(panel([orco(false)], null, false, [], 2, [basicoCon5]))
+    expect(screen.getByTestId('combate-sin-energia').textContent).toMatch(/Sin energía suficiente/)
+  })
+  it('con energía de sobra, no hay aviso', () => {
+    render(panel([orco(false)], null, false, [], 70, [basicoCon5]))
+    expect(screen.queryByTestId('combate-sin-energia')).toBeNull()
   })
 })

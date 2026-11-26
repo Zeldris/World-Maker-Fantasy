@@ -959,7 +959,7 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   a veces se diagnosticó con `diagnosing-bugs` (2026-10-04): era un fallo real de `worldTick.ts`
   (la resolución anticipada se rendía con el candado del turno cogido y dejaba el viaje atascado),
   ya arreglado.
-- ~~**CR-8** Script de migración (§ 16). **M**~~ ✅ 2026-10-04: `services/cronista/migrarPartidas.ts`
+- ~~**CR-8** Script de migración (§ 16). **M**~~ ✅ 2026-10-04: `services/cronista/migrarPartidas.ts` **Pendiente (Q-25):** correrlo con `--aplicar` en la base real (sesión local, máquina real).
   (`migrarPartida`, `migrarTodasLasPartidas`) y `npm run cronista:migrar-partidas` (solo informa;
   `-- --aplicar` aplica; idempotente). Por partida: clona su mundo, pasa a `NpcState.muerto` sus
   `npcsRetiredForever` y los `Npc.muertoEnMundo` (en todas las partidas existentes, D-10; luego se
@@ -1480,65 +1480,6 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     caza en grupo; después, resumen y saqueo de cada caído como en la caza (sin despellejar); el
     que huye no deja nada. Campamentos de bandidos con cabecilla y refuerzos: tarea aparte en el
     `0.3` (`CR-50`). Pasos: 49a motor ✅ (`combatePersonas.ts`: banda por la `cantidad` de su punto, aliados de su facción a ≤ 3 casillas y la guardia de un interior; el turno que abre combate contra una persona con grupo abre el de varios) · 49b entradas ✅ (texto libre con objetivo citado, como lo envía el frontend; «Combatir» del encuentro y del modo dinámico; test del turno con Torgash en su campamento) · 49c bandas de verdad 🧭 (propuesta de lore escrita el 2026-10-05 en `propuestas-lore.md` § Personajes y NPCs; en cuanto se apruebe: puntos de patrulla de 2-3 en el mapa y los tres cabecillas; el motor ya las trata como banda por la `cantidad` de su punto) · 49d saqueo de personas ✅ (el resumen marca `esPersona` y el aviso de despellejar solo sale si cayó fauna; los caídos solitarios se resuelven con Matar/Capturar/Clemente como en el 1v1, por su `NpcState`; sin test propio: el cierre de un combate de varios con personas no tiene arnés todavía, queda para la fase de pruebas `0.7`).
-  - ~~**CR-52** Linajes y rastros~~ ✅ 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`,
-    migración `20261006070000_linajes`; linajes del canon y del personaje al avanzar el mundo, la cría
-    hereda o la pareja funda, rastro que se escinde a partir de 12, el linaje como actor del Libro
-    (reacción `LINAJE_EN_EL_LIBRO`), venganza heredada por un adulto vivo del linaje, rencor fuerte de
-    la familia en `npcsConRencor`, Leyendas › «Linajes» con árbol e historia. Los súbditos también
-    tienen linaje: quien llega trae el suyo (`REI-118`/`REI-119`) y las crías lo heredan (`REI-120`).
-    **Queda:** las deudas aún no pasan a la familia, solo venganzas y
-    recuerdos). (Fase C del `0.3`; idea de la usuaria del 2026-10-06, Q8-Q14): cada
-    familia es un **linaje** (nombre, pueblo, fundador; casta en los Goirntes) y todo NPC con nombre y todo
-    súbdito pertenece a uno; los del catálogo salen de su apellido (Ketg, Koh, Kiugh, Marn…). Herencia:
-    orcos, el apellido del progenitor de más rango (a igualdad, la madre, como Maktor); Goirntes, apellido y
-    casta del padre; Nabieus, de la madre; **Faerus: el rastro** (sin apellido; una pequeña manada dentro de
-    la gran manada que los suyos reconocen por los sentidos; se escribe «Tasko, del rastro Veyra», en corto
-    «Tasko de Veyra»; la cría nace en el de la madre y, si un rastro pasa de 12, una pareja puede fundar
-    otro). El linaje es actor del Libro; venganzas, deudas y recuerdos fuertes (importancia ≥ 6) pasan a la
-    familia (si muere el vengador, la toma otro adulto del linaje); cada pareja de súbditos sin linaje funda
-    uno; el personaje también tiene linaje. Leyendas › «Linajes» con su historia y su árbol. **L**
-  - ~~**CR-50** Campamentos de bandidos con cabecilla y refuerzos~~ ✅ 2026-10-07 (Bellwright, Medieval Dynasty). **M**
-    Va con `CR-37` en el `0.3`. Ronda de detalle aceptada el 2026-10-07 (Q1-Q9 en
-    [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
-    quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). Queda: sus razas
-    de verdad (semillas de la usuaria y lore; hoy los renegados de 49c), las expediciones de facción
-    (su interceptación necesita una facción hostil), la intensidad de `CR-67` y las cifras
-    provisionales para la fase de pruebas. Pasos:
-    - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
-      `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
-      refuerzos, tope); `services/campamentos.ts`: `revisarCampamentos` en el avance diario (1 por
-      región con ocupantes, en un lugar con camino sin asentamiento; a los 20 días de caer, en otro
-      sitio), con su punto NPC de banda en el mapa de zona (cantidad = gente + cabecilla). Hoy hay
-      campamentos en Llanuras, Meseta y Margen; Cristal Helado y la Ciénaga esperan a sus razas.
-    - ~~50b~~ ✅ 2026-10-07: `campamentos.ts`: `asaltoAlViajero` (en `GANCHOS.alCruzar`: a 2 tramos de
-      un campamento, 30 % por lugar; si ganan, se llevan las piezas y el campamento crece),
-      `asaltoACaravana` (en `avanzarComercio`), `lanzarAsaltosAlReino` (avance diario: los de la
-      región de la Capital, con 200 Goirnos o más en el Reino, cada 7 días, la mitad de su gente como
-      viajero `ASALTO`) y `volverAlCampamento` (`TRABAJOS.ASALTO.alVolver`). Los bandidos pelean con
-      el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
-      Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
-      facción hostil; va con 50c) y la intensidad de `CR-67`.
-    - ~~50c~~ ✅ 2026-10-07: `services/ataquesCampamento.ts`: `disolverCampamento` (cofre de 50 +
-      lo saqueado al Reino, +60 de reputación con las dueñas de la región, suceso nuevo
-      `CAMPAMENTO_DESTRUIDO`; cifras provisionales), `bajasDeCampamentoEnVivo` (en el cierre del combate
-      de varios de `turnResolution`), partida `ATAQUE` del Reino (`lanzarAtaqueACampamento`, solo a
-      campamentos conocidos; pelea de fondo contra la banda y su cabecilla al llegar) y
-      `patrullasContraCampamentos` (cada semana, 8 soldados de una facción dueña de la región).
-      Los asaltos de bandidos ya no cuentan como del Reino (`esDelReino`, `TIPOS_SIN_DUENO`): fuera
-      de Reino › Partidas, de «De paso por aquí» y de los avisos.
-    - ~~50d~~ ✅ 2026-10-07: suceso `CAMPAMENTO_NUEVO` al asentarse (llega como rumor);
-      `revisarConocidos` (estuviste allí, te llegó el rumor o lo ve una Torre) y
-      `campamentosConocidos`; en el mapa de Berig (⛺ en su lugar) y en Reino › Partidas
-      («Campamentos de bandidos», `CampamentosBandidos.tsx`, con quién va: grupos 2+, soldados,
-      vigías y cazadores; `POST /saves/:id/campamentos/:campamentoId/atacar`).
-      Tras la revisión de código: pasar por su lugar al viajar lo descubre (`turnResolution`); los GET
-      solo leen; hoy solo Las Llanuras tiene lugares con camino, así que solo hay campamento allí.
-  - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
-    del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del
-    Reino). Sistema nuevo de compraventa con Goirnos, como el mercader ambulante de Bellwright y
-    Medieval Dynasty: qué vende cada uno, de qué existencias (las de su facción) y a qué precio
-    (`precioDinamico` de `CR-47`, unidad a unidad). Pide ronda de diseño (`grilling` +
-    `domain-modeling`). Va al `0.3`, junto a «Charlar con NPC».
   - ~~**CR-45**~~ ✅ 2026-10-05 (capitán = el de más Inteligencia ≥ 20 del bando enemigo; `objetivoConcentrado` en `combateMultiple.ts` y `calcularEnganchesRonda`: él y los suyos van a por el más vulnerable, empatados al azar; «X ordena caer sobre Y» en el registro al empezar cada ronda; su caída hace tirar moral con desventaja, `moralGrupo.ts`. Restos cerrados el 2026-10-06: el capitán manda ya en la ronda de apertura (`iniciarCombatEncounter`) y el panel lo marca con «⚑ a por ti/<compañero>» junto a su barra de vida (`CombatEncounter.capitanId`/`objetivoCapitanId`, migración `20261006010000_capitan_objetivo`)) Capitán y ataques concentrados. **M** Inteligencia ≥ 20: concentra ataques y manda a
     los de su bando con menos Inteligencia (atacan a su objetivo). Objetivo = el más vulnerable (poca
     vida y poca defensa), no siempre el mismo (en BG3 cansa). Pasada previa por el bando al empezar
@@ -1846,34 +1787,6 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
     y Faerus mandan partidas de 8 genéricos (máx. 4) solo con 7 días de reserva de comida, al coto de
     su región con más fauna cazable, con orden permanente que se para si la reserva baja; al volver,
     lo comestible de sus piezas va a su comida; los que están fuera no cazan en agregado.
-- **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
-  como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
-  cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
-  Auditoría de lo implementado que hoy es invisible o abstracto (días + tirada al llegar):
-  - **Expediciones de facción** (`factionExpeditions.ts`): días de ida y vuelta; la intercepción se
-    tira al llegar; en el mapa, solo una bandera entre nodos de las Llanuras (`CR-46`).
-  - **Caravanas del Reino** (`caravanas.ts`, `CR-47`): igual; la «caravana local» comercia sin viajar.
-  - **Caravanas entre facciones** del narrador de fondo (suceso `CARAVANA`): solo un suceso y riqueza.
-  - **Patrulla de vasallaje** (`vasallaje.ts`): «20 guerreros a una zona», sin moverse.
-  - **Escaramuzas** del narrador: sin lugar; ya pelean (`CR-62`), pero no se ve dónde ni quién va.
-  - **Migración de fauna** (suceso `MIGRACION_FAUNA`): la población cambia de región de golpe.
-  - **Visitante ilustre** y **llegadas de súbditos** (`llegadas.ts`, `REI-119`): aparecen a tu puerta.
-  - **Salidas y desertores** (`salidas.ts`, facciones): «vuelven a su pueblo» desapareciendo.
-  - **Refugiados** (consecuencia `REFUGIADOS`): la población pasa a las regiones vecinas sin viajar.
-  - **Vengadores** (`VENGANZA_PARIENTE`): esperan un encuentro en vez de buscarte por el camino.
-  - **Informantes** (`CR-32`): su información llega sola cada semana; podrían ser mensajeros.
-  - **Propuestas diplomáticas** de las facciones al Reino (`CR-34` 34e): sin enviado.
-  - **Rumores y noticias** (`noticias.ts`): llegan por distancia en días; podrían viajar con quien
-    los lleva (mercaderes, mensajeros, refugiados).
-  - **Bandas de renegados** (`CR-49`): patrullan dentro de su zona, pero no cambian de zona.
-  - **Partidas de caza y captura** (`CR-63`): nacen ya como viajeros.
-  Pasos: infraestructura de viajeros (modelo, rutas por enlaces y celdas, avance diario, en el mapa,
-  encuentro con la jugadora y acciones) con `CR-63`; luego, uno a uno, cada sistema de la lista.
-  Hito `0.4` (va con el viaje largo entre regiones), salvo la infraestructura, que entra con `CR-63`
-  en el `0.3`. **XL**
-- **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
-  Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
-  una ronda de diseño. Hito `0.4`. **M**
 - ~~**CR-55** Ganadería~~ ✅ 2026-10-06 (Q9, Q11, Q13 de la Fase D; ronda propia aceptada el 2026-10-06, decisiones
   Q1-Q15 en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-55-ganadería-ronda-aceptada-por-la-usuaria-el-2026-10-06)).
   Pasos (todos hechos):
@@ -1895,14 +1808,6 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   - ~~56c~~ ✅ 2026-10-06: guardias de facción por versiones del rebaño inicial (`KingdomStats.ganadoVersion`, migración `20261006200000_ganado_version`): Serhu 6 Canizores, Feg Ger 3; sin ganadero.
   - **Queda** (fuera de `CR-56`): los guardias pelean con `CR-37` (en vivo o de fondo, ADR 0002); fauna de guardia de Cristal Helado, la Ciénaga y el Margen (lore); compañeros NPC Domadores con la postura de compañero (Fase E); el porte y la montura con `CR-57`.
   **M**
-- **CR-57** Monturas (Q14, hito `0.4`).
-  - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
-  - Montable si mide ≥ 60 % de la altura del jinete y pesa ≥ 3 veces lo que el jinete con su equipo,
-    con lomo.
-  - Velocidad de viaje y carga.
-  - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
-    costumbre de los Faerus de las Llanuras).
-  - Resuelve la duda del viaje largo del `0.4`. **L**
 - ~~**CR-65** Defensa del Reino y milicia~~ ✅ 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2026-10-07,
   decisiones en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-la-fase-e-conflicto-ronda-1-aceptada-por-la-usuaria-el-2026-10-07)).
   Empalizada (cobertura +2/+5 a quien defiende), Torre de vigía (aviso 1 día antes, ventaja al tirar
@@ -1975,6 +1880,10 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **Hecho cuando:** matar al hermano de un NPC abre un hilo de venganza y el vengador aparece;
   un compañero se queja y acaba yéndose si se le contraría repetidamente.
 
+- **CR-73** Recuerdo propio del NPC que vence a la jugadora. (propuesta aprobada, P233, 2026-10-19): que el vencedor recuerde el combate, no solo la etiqueta. **S**
+- **CR-74** No repetir «ha colgado nuevos avisos». (propuesta aprobada, P237, 2026-10-20): si hace pocos días del último aviso del mismo tablón, no se repite (narrador de fondo; la Fase 3 del `0.2` está cerrada). **S**
+- **CR-75** Colisión de combate con la posición real del hostil. (propuesta aprobada, P238, 2026-10-20): la puerta de colisión (`turnResolution.ts`) usa la posición de `NpcState` cuando la tenga y el ZonePoint de catálogo si no; hoy un ataque por texto a un hostil que deambula no abre combate y el narrador narra el golpe igual. **S**
+
 ### Fase 5 — Conocimiento y lo que ve el jugador · **M**
 - ~~**CR-18** Propagación y rumores (§ 9). **M**~~ ✅ 2026-10-05 (pasos 18a-18e abajo; lo que falta de la
   Fase 5 es lo que ve la jugadora: `CR-19`, `CR-20`).
@@ -2038,61 +1947,6 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   por días o semanas, Personajes, Facciones, Lugares y Línea temporal, filtro por familia, `INT-1`, `INT-2`
   e `INT-3`); 20b ✅ 2026-10-05 (`EnTuPartida.tsx` en la ficha de la Enciclopedia de un NPC, una facción
   o un lugar, con `GET /saves/:id/leyendas/ficha/:ficha/:slug`; no aparece si no se sabe nada).
-- **CR-69** Rumores que viajan con quien los vio (usuaria, 2026-10-15, de `QA-27` P179 y P184; contrastado
-  con los seis juegos, con más peso para BG3): hoy una noticia se extiende sola por importancia y
-  distancia (`conocimiento.ts`), sin nadie que la lleve, y el bando de la víctima sabe quién fue aunque
-  nadie lo viera. Modelo aprobado:
-  1. Sin testigos solo se sabe lo que se ve después (que el orco murió o no vuelve), no quién fue ni
-     cómo.
-  2. El testigo va a su asentamiento con el tiempo de viaje real y lo cuenta allí; si muere por el
-     camino, el rumor muere con él (BG3: el civil corre a avisar a los guardias y, si se le calla, no
-     hay denuncia; X4 y Medieval Dynasty: solo cuenta lo que se ve).
-  3. En el asentamiento lo saben su gente y su bando, sale en su tablón y se va olvidando (BG3: la
-     denuncia es local y se olvida; Bellwright: la confianza es de cada aldea; D&D 5e: un rumor tarda
-     en asentarse según el tamaño del lugar). Solo lo importante (≥ 7) pasa a otros pueblos con los
-     viajeros que van de uno a otro, con el retraso por distancia.
-  4. Lo enorme (9-10: una guerra, la muerte de un líder) se sabe en todas partes (BG3: los grandes
-     momentos del guion), pero quién fue solo si hubo testigo.
-  5. Los NPC comentan lo que hizo la jugadora («he oído que acabaste con el Orco enfurecido») solo si
-     les ha llegado así.
-  Toca `cronista/conocimiento.ts`, `difusion.ts`, `testigos.ts` y `viajeros.ts`; va con `CR-68`. **L**
-  🚧 2026-10-17, del punto 1 solo el texto: una muerte sin testigos corre por bandos y «¿Qué se cuenta?»
-  sin autor (`textoQueCorre`, de `QA-27` P184). Falta que el bando de la víctima no la tenga como
-  propia sin testigo (`alcanceDeSucesos`) y los puntos 2-5.
-- **CR-70** Centro de Control y mensajeros (usuaria, 2026-10-19, de P221 en la ronda Reino `QA-105`;
-  contrastado con los seis juegos: X4 marca el camino con sus agentes de diplomacia, plazas limitadas
-  que se amplían y misiones que tardan, fallan y dan experiencia; D&D 5e, los Bastiones del DMG de
-  2024, instalación que se amplía con empleados y órdenes; Manor Lords, el aviso de que viene un
-  asalto; nada equivalente en BG3, Medieval Dynasty ni Bellwright). Lo que pasa en el Reino solo te
-  llega si alguien lo presencia y lo cuenta:
-  1. **Testigos:** súbditos presentes o el vigía guardan cada suceso del Reino (asalto, llegada,
-     muerte, hambre) como noticia pendiente, con fecha y quién lo vio. Si estás allí, lo vives.
-  2. **Edificio** con escalones (necesita Ayuntamiento): cada escalón da más plazas de mensajero
-     (p. ej. 1/3/5). Nombre propio por raza (regla de `D-11`); «Centro de Control» solo encaja en los
-     goirntes; el resto, pendiente de lore.
-  3. **Mensajeros:** súbditos con ese oficio; cada encargo es un viajero de `CR-64` (tarda, se puede
-     interceptar, el mensajero puede morir o caer preso) y gana experiencia.
-  4. **Encargos:** informarte (lleva las noticias a tu zona; el vigía da el aviso previo de un
-     asalto); recoger rumores de una región; esparcir un rumor tuyo (más mensajeros, más sitios a la
-     vez; sobre `CR-18`/`CR-69`); diplomacia a distancia (tratado, alianza, paz de `CR-34c`; en persona
-     ante el líder sigue siendo al momento); extorsión (tirada de Carisma como `CR-32`; exige
-     Goirnos, que dejen de asaltarte un tiempo o que cambien una decisión de la facción; si falla,
-     rencor y riesgo de guerra). Los informantes de `CR-32` mandan lo suyo por mensajero.
-  5. Sin mensajero te enteras al volver al Reino o por rumores; hasta que entre, el aviso del asalto
-     sigue siendo instantáneo (`avisoDeViajero`).
-  Pasos: 70a testigos y noticias pendientes · 70b edificio y plazas · 70c informarte · 70d rumores ·
-  70e diplomacia · 70f extorsión. Va con `CR-64`. **L**
-- **CR-71** Hablar con súbditos (usuaria, 2026-10-19, de P222 en la ronda Reino `QA-105`; BG3: los
-  compañeros del campamento comentan lo que ha pasado; Medieval Dynasty y Bellwright: hablas con tus
-  aldeanos): hoy «hablo con Krarka» responde «¿A quién te refieres?». Cada súbdito entra en el RAG
-  con su ficha (oficio, cuándo llegó, qué ha vivido: asaltos, pareja, hijos; su ánimo) para que el
-  narrador lo reconozca y lleve la conversación. **M**
-- **CR-72** Nombres de edificios y elementos de facción por raza (usuaria, 2026-10-19, regla `D-11`;
-  X4: cada raza tiene su versión y su nombre de cada módulo de estación y nave): hoy 62 recetas de
-  construcción son variantes orcas y el resto tiene nombres comunes («un pequeño ayuntamiento»).
-  Repasar edificios, oficios de reino y elementos de facción, y dar a cada raza su nombre cuando el
-  lore lo traiga (pedido por `AGENTS.md`, nunca editando `docs/rpgtarkor/`); los comunes se quedan.
-  Va al `1.1`, cuando se juega con cualquier raza. **S**
 - **Hecho cuando:** un suceso lejano llega como rumor días después y aparece en Leyendas; nada que
   el personaje no sepa es visible.
 
@@ -2141,6 +1995,172 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
 - **CR-33** Envejecimiento de la jugadora (usuaria, 2026-10-04, Q10 de `CR-13`): su personaje también
   cumple años con las reglas de madurez, vejez y esperanza de vida de su raza (`CR-13`), sin romper
   la muerte permanente ni la dificultad. **M**
+
+---
+
+## 17b. Fuera de fase
+
+Tareas del Cronista que su hito no es el de la fase donde se definieron (Q-21, usuaria, 2026-11-26): se movieron aquí
+para que `cobertura.py` no las ligue a dos hitos. Su fase de origen queda en el texto de cada una.
+
+#### Hito `0.3`
+
+  - ~~**CR-50** Campamentos de bandidos con cabecilla y refuerzos~~ ✅ 2026-10-07 (Bellwright, Medieval Dynasty). **M**
+    Va con `CR-37` en el `0.3`. Ronda de detalle aceptada el 2026-10-07 (Q1-Q9 en
+    [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-50-campamentos-de-bandidos-ronda-aceptada-por-la-usuaria-el-2026-10-07));
+    quién los ocupa es dato de semilla (la usuaria añadirá razas «poco civilizadas»). Queda: sus razas
+    de verdad (semillas de la usuaria y lore; hoy los renegados de 49c), las expediciones de facción
+    (su interceptación necesita una facción hostil), la intensidad de `CR-67` y las cifras
+    provisionales para la fase de pruebas. Pasos:
+    - ~~50a~~ ✅ 2026-10-07: migración `20261008000000_campamentos` (modelo `Campamento`); semillas
+      `OCUPANTES_CAMPAMENTO` y reglas puras en `cronista/campamentosBandidos.ts` (aparición, sorteo,
+      refuerzos, tope); `services/campamentos.ts`: `revisarCampamentos` en el avance diario (1 por
+      región con ocupantes, en un lugar con camino sin asentamiento; a los 20 días de caer, en otro
+      sitio), con su punto NPC de banda en el mapa de zona (cantidad = gente + cabecilla). Hoy hay
+      campamentos en Llanuras, Meseta y Margen; Cristal Helado y la Ciénaga esperan a sus razas.
+    - ~~50b~~ ✅ 2026-10-07: `campamentos.ts`: `asaltoAlViajero` (en `GANCHOS.alCruzar`: a 2 tramos de
+      un campamento, 30 % por lugar; si ganan, se llevan las piezas y el campamento crece),
+      `asaltoACaravana` (en `avanzarComercio`), `lanzarAsaltosAlReino` (avance diario: los de la
+      región de la Capital, con 200 Goirnos o más en el Reino, cada 7 días, la mitad de su gente como
+      viajero `ASALTO`) y `volverAlCampamento` (`TRABAJOS.ASALTO.alVolver`). Los bandidos pelean con
+      el nivel de su semilla (`nivel`, 3 provisional) y su pueblo; el radar los llama por su grupo.
+      Cifras provisionales. Quedan: las expediciones de facción (su interceptación necesita una
+      facción hostil; va con 50c) y la intensidad de `CR-67`.
+    - ~~50c~~ ✅ 2026-10-07: `services/ataquesCampamento.ts`: `disolverCampamento` (cofre de 50 +
+      lo saqueado al Reino, +60 de reputación con las dueñas de la región, suceso nuevo
+      `CAMPAMENTO_DESTRUIDO`; cifras provisionales), `bajasDeCampamentoEnVivo` (en el cierre del combate
+      de varios de `turnResolution`), partida `ATAQUE` del Reino (`lanzarAtaqueACampamento`, solo a
+      campamentos conocidos; pelea de fondo contra la banda y su cabecilla al llegar) y
+      `patrullasContraCampamentos` (cada semana, 8 soldados de una facción dueña de la región).
+      Los asaltos de bandidos ya no cuentan como del Reino (`esDelReino`, `TIPOS_SIN_DUENO`): fuera
+      de Reino › Partidas, de «De paso por aquí» y de los avisos.
+    - ~~50d~~ ✅ 2026-10-07: suceso `CAMPAMENTO_NUEVO` al asentarse (llega como rumor);
+      `revisarConocidos` (estuviste allí, te llegó el rumor o lo ve una Torre) y
+      `campamentosConocidos`; en el mapa de Berig (⛺ en su lugar) y en Reino › Partidas
+      («Campamentos de bandidos», `CampamentosBandidos.tsx`, con quién va: grupos 2+, soldados,
+      vigías y cazadores; `POST /saves/:id/campamentos/:campamentoId/atacar`).
+      Tras la revisión de código: pasar por su lugar al viajar lo descubre (`turnResolution`); los GET
+      solo leen; hoy solo Las Llanuras tiene lugares con camino, así que solo hay campamento allí.
+  - **CR-51** Comercio en persona con NPC: mercaderes y caravanas de fondo (usuaria, 2026-10-06; sale
+    del resto de `CR-47` 47e). **L** Hoy el personaje no comercia con ningún NPC (solo el Mercado del
+    Reino). Sistema nuevo de compraventa con Goirnos, como el mercader ambulante de Bellwright y
+    Medieval Dynasty: qué vende cada uno, de qué existencias (las de su facción) y a qué precio
+    (`precioDinamico` de `CR-47`, unidad a unidad). Pide ronda de diseño (`grilling` +
+    `domain-modeling`). Va al `0.3`, junto a «Charlar con NPC».
+  - ~~**CR-52** Linajes y rastros~~ ✅ 2026-10-06 (`cronista/linajes.ts`; modelos `Linaje` y `LinajeMiembro`,
+    migración `20261006070000_linajes`; linajes del canon y del personaje al avanzar el mundo, la cría
+    hereda o la pareja funda, rastro que se escinde a partir de 12, el linaje como actor del Libro
+    (reacción `LINAJE_EN_EL_LIBRO`), venganza heredada por un adulto vivo del linaje, rencor fuerte de
+    la familia en `npcsConRencor`, Leyendas › «Linajes» con árbol e historia. Los súbditos también
+    tienen linaje: quien llega trae el suyo (`REI-118`/`REI-119`) y las crías lo heredan (`REI-120`).
+    **Queda:** las deudas aún no pasan a la familia, solo venganzas y
+    recuerdos). (Fase C del `0.3`; idea de la usuaria del 2026-10-06, Q8-Q14): cada
+    familia es un **linaje** (nombre, pueblo, fundador; casta en los Goirntes) y todo NPC con nombre y todo
+    súbdito pertenece a uno; los del catálogo salen de su apellido (Ketg, Koh, Kiugh, Marn…). Herencia:
+    orcos, el apellido del progenitor de más rango (a igualdad, la madre, como Maktor); Goirntes, apellido y
+    casta del padre; Nabieus, de la madre; **Faerus: el rastro** (sin apellido; una pequeña manada dentro de
+    la gran manada que los suyos reconocen por los sentidos; se escribe «Tasko, del rastro Veyra», en corto
+    «Tasko de Veyra»; la cría nace en el de la madre y, si un rastro pasa de 12, una pareja puede fundar
+    otro). El linaje es actor del Libro; venganzas, deudas y recuerdos fuertes (importancia ≥ 6) pasan a la
+    familia (si muere el vengador, la toma otro adulto del linaje); cada pareja de súbditos sin linaje funda
+    uno; el personaje también tiene linaje. Leyendas › «Linajes» con su historia y su árbol. **L**
+- **CR-69** Rumores que viajan con quien los vio (usuaria, 2026-10-15, de `QA-27` P179 y P184; contrastado
+  con los seis juegos, con más peso para BG3): hoy una noticia se extiende sola por importancia y
+  distancia (`conocimiento.ts`), sin nadie que la lleve, y el bando de la víctima sabe quién fue aunque
+  nadie lo viera. Modelo aprobado:
+  1. Sin testigos solo se sabe lo que se ve después (que el orco murió o no vuelve), no quién fue ni
+     cómo.
+  2. El testigo va a su asentamiento con el tiempo de viaje real y lo cuenta allí; si muere por el
+     camino, el rumor muere con él (BG3: el civil corre a avisar a los guardias y, si se le calla, no
+     hay denuncia; X4 y Medieval Dynasty: solo cuenta lo que se ve).
+  3. En el asentamiento lo saben su gente y su bando, sale en su tablón y se va olvidando (BG3: la
+     denuncia es local y se olvida; Bellwright: la confianza es de cada aldea; D&D 5e: un rumor tarda
+     en asentarse según el tamaño del lugar). Solo lo importante (≥ 7) pasa a otros pueblos con los
+     viajeros que van de uno a otro, con el retraso por distancia.
+  4. Lo enorme (9-10: una guerra, la muerte de un líder) se sabe en todas partes (BG3: los grandes
+     momentos del guion), pero quién fue solo si hubo testigo.
+  5. Los NPC comentan lo que hizo la jugadora («he oído que acabaste con el Orco enfurecido») solo si
+     les ha llegado así.
+  Toca `cronista/conocimiento.ts`, `difusion.ts`, `testigos.ts` y `viajeros.ts`; va con `CR-68`. **L**
+  🚧 2026-10-17, del punto 1 solo el texto: una muerte sin testigos corre por bandos y «¿Qué se cuenta?»
+  sin autor (`textoQueCorre`, de `QA-27` P184). Falta que el bando de la víctima no la tenga como
+  propia sin testigo (`alcanceDeSucesos`) y los puntos 2-5.
+- **CR-71** Hablar con súbditos (usuaria, 2026-10-19, de P222 en la ronda Reino `QA-105`; BG3: los
+  compañeros del campamento comentan lo que ha pasado; Medieval Dynasty y Bellwright: hablas con tus
+  aldeanos): hoy «hablo con Krarka» responde «¿A quién te refieres?». Cada súbdito entra en el RAG
+  con su ficha (oficio, cuándo llegó, qué ha vivido: asaltos, pareja, hijos; su ánimo) para que el
+  narrador lo reconozca y lleve la conversación. **M**
+
+#### Hito `0.4`
+
+- **CR-57** Monturas (Q14, hito `0.4`).
+  - Porte de cada especie y talla de cada pueblo (provisionales, en `propuestas-lore.md`).
+  - Montable si mide ≥ 60 % de la altura del jinete y pesa ≥ 3 veces lo que el jinete con su equipo,
+    con lomo.
+  - Velocidad de viaje y carga.
+  - Un Faerus del Margen viaja a pie tan rápido como montado (lore de la usuaria: montar es
+    costumbre de los Faerus de las Llanuras).
+  - Resuelve la duda del viaje largo del `0.4`. **L**
+- **CR-60** Ingresos pasivos del Reino y de las facciones (usuaria, 2026-10-06): fuentes de
+  Goirnos que no dependan de los trabajadores (hoy solo el comercio y las expediciones). Necesita
+  una ronda de diseño. Hito `0.4`. **M**
+- **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
+  como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
+  cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
+  Auditoría de lo implementado que hoy es invisible o abstracto (días + tirada al llegar):
+  - **Expediciones de facción** (`factionExpeditions.ts`): días de ida y vuelta; la intercepción se
+    tira al llegar; en el mapa, solo una bandera entre nodos de las Llanuras (`CR-46`).
+  - **Caravanas del Reino** (`caravanas.ts`, `CR-47`): igual; la «caravana local» comercia sin viajar.
+  - **Caravanas entre facciones** del narrador de fondo (suceso `CARAVANA`): solo un suceso y riqueza.
+  - **Patrulla de vasallaje** (`vasallaje.ts`): «20 guerreros a una zona», sin moverse.
+  - **Escaramuzas** del narrador: sin lugar; ya pelean (`CR-62`), pero no se ve dónde ni quién va.
+  - **Migración de fauna** (suceso `MIGRACION_FAUNA`): la población cambia de región de golpe.
+  - **Visitante ilustre** y **llegadas de súbditos** (`llegadas.ts`, `REI-119`): aparecen a tu puerta.
+  - **Salidas y desertores** (`salidas.ts`, facciones): «vuelven a su pueblo» desapareciendo.
+  - **Refugiados** (consecuencia `REFUGIADOS`): la población pasa a las regiones vecinas sin viajar.
+  - **Vengadores** (`VENGANZA_PARIENTE`): esperan un encuentro en vez de buscarte por el camino.
+  - **Informantes** (`CR-32`): su información llega sola cada semana; podrían ser mensajeros.
+  - **Propuestas diplomáticas** de las facciones al Reino (`CR-34` 34e): sin enviado.
+  - **Rumores y noticias** (`noticias.ts`): llegan por distancia en días; podrían viajar con quien
+    los lleva (mercaderes, mensajeros, refugiados).
+  - **Bandas de renegados** (`CR-49`): patrullan dentro de su zona, pero no cambian de zona.
+  - **Partidas de caza y captura** (`CR-63`): nacen ya como viajeros.
+  Pasos: infraestructura de viajeros (modelo, rutas por enlaces y celdas, avance diario, en el mapa,
+  encuentro con la jugadora y acciones) con `CR-63`; luego, uno a uno, cada sistema de la lista.
+  Hito `0.4` (va con el viaje largo entre regiones), salvo la infraestructura, que entra con `CR-63`
+  en el `0.3`. **XL**
+- **CR-70** Centro de Control y mensajeros (usuaria, 2026-10-19, de P221 en la ronda Reino `QA-105`;
+  contrastado con los seis juegos: X4 marca el camino con sus agentes de diplomacia, plazas limitadas
+  que se amplían y misiones que tardan, fallan y dan experiencia; D&D 5e, los Bastiones del DMG de
+  2024, instalación que se amplía con empleados y órdenes; Manor Lords, el aviso de que viene un
+  asalto; nada equivalente en BG3, Medieval Dynasty ni Bellwright). Lo que pasa en el Reino solo te
+  llega si alguien lo presencia y lo cuenta:
+  1. **Testigos:** súbditos presentes o el vigía guardan cada suceso del Reino (asalto, llegada,
+     muerte, hambre) como noticia pendiente, con fecha y quién lo vio. Si estás allí, lo vives.
+  2. **Edificio** con escalones (necesita Ayuntamiento): cada escalón da más plazas de mensajero
+     (p. ej. 1/3/5). Nombre propio por raza (regla de `D-11`); «Centro de Control» solo encaja en los
+     goirntes; el resto, pendiente de lore.
+  3. **Mensajeros:** súbditos con ese oficio; cada encargo es un viajero de `CR-64` (tarda, se puede
+     interceptar, el mensajero puede morir o caer preso) y gana experiencia.
+  4. **Encargos:** informarte (lleva las noticias a tu zona; el vigía da el aviso previo de un
+     asalto); recoger rumores de una región; esparcir un rumor tuyo (más mensajeros, más sitios a la
+     vez; sobre `CR-18`/`CR-69`); diplomacia a distancia (tratado, alianza, paz de `CR-34c`; en persona
+     ante el líder sigue siendo al momento); extorsión (tirada de Carisma como `CR-32`; exige
+     Goirnos, que dejen de asaltarte un tiempo o que cambien una decisión de la facción; si falla,
+     rencor y riesgo de guerra). Los informantes de `CR-32` mandan lo suyo por mensajero.
+  5. Sin mensajero te enteras al volver al Reino o por rumores; hasta que entre, el aviso del asalto
+     sigue siendo instantáneo (`avisoDeViajero`).
+  Pasos: 70a testigos y noticias pendientes · 70b edificio y plazas · 70c informarte · 70d rumores ·
+  70e diplomacia · 70f extorsión. Va con `CR-64`. **L**
+
+#### Hito `1.1`
+
+- **CR-72** Nombres de edificios y elementos de facción por raza (usuaria, 2026-10-19, regla `D-11`;
+  X4: cada raza tiene su versión y su nombre de cada módulo de estación y nave): hoy 62 recetas de
+  construcción son variantes orcas y el resto tiene nombres comunes («un pequeño ayuntamiento»).
+  Repasar edificios, oficios de reino y elementos de facción, y dar a cada raza su nombre cuando el
+  lore lo traiga (pedido por `AGENTS.md`, nunca editando `docs/rpgtarkor/`); los comunes se quedan.
+  Va al `1.1`, cuando se juega con cualquier raza. **S**
 
 ---
 

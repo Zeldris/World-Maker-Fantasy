@@ -92,3 +92,7 @@ Los dos de `iaRegistro.ts`, en `QA-520` (retro, 2026-11-20).
 - `iaRegistro.ts` `lineaDeLaDiferencia` (~170): si el bloque nuevo solo pierde la cola, `prefijo_linea` apunta a la última línea (igual) y no a la quitada; con `i = 0` y texto que empieza por `\n` da la segunda línea.
 - `iaRegistro.ts` (~175): `prefijo_linea` guarda los primeros 48 caracteres de la línea; en líneas largas (PERSONAJES AQUÍ…, INVENTARIO…) la diferencia queda más allá: guardar una ventana alrededor de la diferencia o su columna.
 - `iniciar-tarkor.sh`, `actualizar-mundo.sh`, `generar-dataset-dpo.sh`: Ollama fijo en `~/ollama-bin` sin respaldo a `~/.local/ollama` (como hace `ia-ronda.sh`) y `docs/arquitectura/04-decisiones-tecnicas.md:154` sigue con la ruta vieja.
+
+## Pendientes leves de la revisión de bloque de QA-531 (2026-11-26)
+
+- `narrador.ts` `JSON_LEAK_REGEX` (~2384): no casa `hitoMotivo"` (la alternativa `hito` pide `"` justo detrás); si el modelo escribe `"hitoMotivo": …` en `narration` sin otra clave antes, `stripLeakedJson` no lo corta. Arreglo: `hito(?:Motivo)?` y un caso en su test.
