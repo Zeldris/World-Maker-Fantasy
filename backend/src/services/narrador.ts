@@ -2770,8 +2770,9 @@ export function hasCombatVocabulary(narration: string): boolean {
 // artículo, y «sin inmutarse» no cuenta dentro de una subordinada con «que» (habla del rival, no del jugador).
 // P477 (ronda local 2, grupo 5 tanda C): con el golpe «de lleno», «se hunde en la arcilla… a escasos centímetros de su
 // cabeza» (el arma en el suelo, no en el rival) y, con el jugador a GRAVE, «soporta el impacto… apenas conmovido».
+// P486 (QA-531): con el golpe del NPC conectando y matando a Gorhorn, «recibe el golpe… pero su cuerpo no se dobla».
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos) de (su|sus|tu|tus|la|el) (cabeza|rostro|cara|cuello|garganta|pecho|cuerpo|oreja|ojo)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|(?<!\bque\b[^.;]{0,40})(sin inmutarse|(ni|no) se inmuta))\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos) de (su|sus|tu|tus|la|el) (cabeza|rostro|cara|cuello|garganta|pecho|cuerpo|oreja|ojo)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|no se (dobla|doblan|doblega|doblegan)|(?<!\bque\b[^.;]{0,40})(sin inmutarse|(ni|no) se inmuta))\b/i;
 
 export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean, nonExchangeAttackHitLanded?: boolean): boolean {
   if (!combatRealHitLanded && !nonExchangeAttackHitLanded) return false;
