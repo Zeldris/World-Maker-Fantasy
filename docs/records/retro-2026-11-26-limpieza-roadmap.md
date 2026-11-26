@@ -1,6 +1,6 @@
 # Retro · PR de `claude/wonderful-volta-662qt8` (QA-530, QA-531, QA-532, QA-540)
 
-**Estado:** pendiente de la usuaria.
+**Estado:** aprobada por la usuaria (2026-11-26) entera: R4 aplicada en este PR; R1-R3 al roadmap 0.7 como QA-541, QA-542 y QA-543; las dos de Galivelop-workflow, apuntadas abajo para `gw-harvest`.
 
 Fuentes: la sesión (206 llamadas desde 2026-11-25 20:02 UTC, 4 compactaciones), `task.py deviations`,
 `/gw-opt-tokens` (aplicado como `QA-540`).
