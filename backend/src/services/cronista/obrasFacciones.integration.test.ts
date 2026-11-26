@@ -56,6 +56,7 @@ describe('obras de las facciones (CR-36 36a)', () => {
     const obra = await prisma.obraFaccion.findUniqueOrThrow({ where: { factionId: faccionId } });
     expect(obra).toMatchObject({ recipeKey: 'pozo', tier: 1, dias: 1, diasHechos: 0, empezada: false });
     expect(obra.aviso).toMatch(/^Faltan materiales en el Almacén: /);
+    expect(obra.aviso).not.toContain('caravana');
     expect(await prisma.suceso.count({ where: { saveId, tipo: { in: ['OBRA_EMPEZADA', 'EDIFICIO_CONSTRUIDO'] } } })).toBe(0);
     // Otro día igual: sigue sin perder nada ni duplicar la obra.
     expect(await jornada()).toEqual({ empezadas: 0, avanzadas: 0, terminadas: 0 });
@@ -102,7 +103,7 @@ describe('obras de las facciones (CR-36 36a)', () => {
     expect(await prisma.obraFaccion.count({ where: { factionId: faccionId } })).toBe(0);
   });
 
-  it('la siembra deja a una facción sin Pozos, Cisternas ni Graneros con los de su población máxima, una sola vez y sin bajar lo que tenga', async () => {
+  it('la siembra deja a una facción sin Pozos, Cisternas ni Graneros con los de sus bocas de hoy + 25 %, una sola vez y sin bajar lo que tenga', async () => {
     const otra = await prisma.faction.create({
       data: {
         worldId, saveId, slug: 'clan-siembra-36a', name: 'Clan de la Siembra', raza: 'orcos', description: 'x', origenSlug: 'clan-siembra',
@@ -110,16 +111,17 @@ describe('obras de las facciones (CR-36 36a)', () => {
         buildings: { create: { saveId: null, locationId: casa, recipeKey: 'cocina-serhu', name: 'Cocina', kind: 'cocina', description: 'x', status: 'ACTIVO' } },
       },
     });
-    // Su población máxima (las filas civiles, trabajadores y soldados de `filasDeFaccion`) manda sobre las 80 bocas de
-    // hoy: 80 + 30 + 20 = 130. Una fila de otro nombre (p. ej. «-poblacion») no cuenta.
+    // Q-43: el máximo histórico de sus filas de población (80 + 30 + 20 = 130) no cuenta: se siembra para las 80 bocas de
+    // hoy + 25 % = 100.
     await prisma.worldPopulation.createMany({
       data: [['civiles', 40, 80], ['trabajadores', 20, 30], ['soldados', 10, 20], ['poblacion', 500, 500]].map(([c, p, m]) => ({ worldId, saveId, targetType: 'FACCION' as const, targetSlug: `clan-siembra-36a-${c}`, label: `${c}`, poblacion: p as number, poblacionMax: m as number, distribucion: {} })),
     });
     const hechas = await prisma.$transaction((tx) => sembrarSuministrosDeFacciones(tx, saveId));
     // Solo la nueva: la otra ya tiene Pozo.
     expect(hechas).toBe(1);
-    const esperado = suministrosParaBocas(130);
+    const esperado = suministrosParaBocas(Math.ceil(80 * 1.25));
     const filas = await prisma.building.findMany({ where: { factionId: otra.id, recipeKey: { in: ['pozo', 'cisterna', 'granero'] } } });
+    expect(esperado).not.toEqual(suministrosParaBocas(130));
     expect(Object.fromEntries(filas.map((b) => [b.recipeKey, b.cantidad]))).toEqual(esperado);
     expect(filas.every((b) => b.status === 'ACTIVO' && b.locationId === casa)).toBe(true);
     // Idempotente, y una cantidad que luego suba por obras no baja.

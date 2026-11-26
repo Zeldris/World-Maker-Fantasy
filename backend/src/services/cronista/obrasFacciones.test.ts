@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { CONSTRUCTION_RECIPES } from '../construction.js';
 import { suministrosDeEdificios } from './economiaReino.js';
 import {
+  avisoDeObraParada,
+  bocasParaSiembra,
   elegirObraDeFaccion,
   factorDePlazo,
   obrerosDisponibles,
@@ -85,6 +88,28 @@ describe('CR-36 36a: plazo según los obreros (Q29)', () => {
     expect(plazoDeObra(2, 100)).toBe(4);
     expect(plazoDeObra(1, 200)).toBe(1);
     expect(plazoDeObra(4, 0)).toBe(16);
+  });
+});
+
+describe('Q-43: la siembra cubre las bocas de hoy con un 25 % de margen', () => {
+  it('redondea hacia arriba y no llega al máximo histórico', () => {
+    expect(bocasParaSiembra(80)).toBe(100);
+    expect(bocasParaSiembra(33)).toBe(42);
+    expect(bocasParaSiembra(0)).toBe(0);
+  });
+});
+
+describe('Q-42: el aviso de una obra parada dice qué espera a una caravana', () => {
+  const receta = (key: string) => CONSTRUCTION_RECIPES.find((r) => r.key === key)!;
+  it('solo leña, piedra o fibra: el aviso de siempre', () => {
+    expect(avisoDeObraParada(receta('pozo'), ['6 de piedra'])).toBe('Faltan materiales en el Almacén: 6 de piedra.');
+  });
+  it('con hueso o cuerda que faltan, añade que los traerá una caravana', () => {
+    const r = CONSTRUCTION_RECIPES.find((x) => x.requirements.some((q) => q.match.kind === 'exact' && q.match.catalogSlug === 'cuerda-tendon'))!;
+    const aviso = avisoDeObraParada(r, ['2 de cuerda de tendón', '3 de piedra']);
+    expect(aviso).toBe('Faltan materiales en el Almacén: 2 de cuerda de tendón, 3 de piedra; cuerda de tendón: esperan a una caravana.');
+    // Si lo no recolectable no falta, no se menciona.
+    expect(avisoDeObraParada(r, ['3 de piedra'])).not.toContain('caravana');
   });
 });
 

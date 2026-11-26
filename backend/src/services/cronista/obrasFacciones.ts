@@ -114,14 +114,31 @@ export function suministrosParaBocas(bocasMax: number): { pozo: number; cisterna
 }
 
 const SUMINISTROS = ['pozo', 'cisterna', 'granero'] as const;
-/// Filas de población de una facción (`filasDeFaccion` en repartoFacciones.ts): los civiles y los trabajadores son su
-/// `poblacion` (los trabajadores, una parte de ella) y los soldados, aparte.
-const CAMPOS_DE_BOCA = ['civiles', 'trabajadores', 'soldados'] as const;
+/// Q-43: la siembra cubre las bocas de hoy con un 25 % de margen; el resto hasta el tope llega por obras.
+export const MARGEN_DE_SIEMBRA = 1.25;
+/// Puro (Q-43): bocas para las que se siembra una facción con `hoy` bocas (redondeo hacia arriba).
+export const bocasParaSiembra = (hoy: number) => Math.max(0, Math.ceil(hoy * MARGEN_DE_SIEMBRA - 1e-9));
 
-/// Q39: a las facciones del mundo que aún no tienen Pozo, Cisterna ni Granero se les siembran los que necesitan para su
-/// `poblacionMax` (la suma de sus tres filas de población, `repartoFacciones`), de modo que nadie arranque en
-/// carencia al pasar a las reglas del Reino. Idempotente: solo toca a las que no tienen ninguno de los tres, y cada fila
-/// queda en el mayor de lo que ya tenía y lo calculado (nunca baja una cantidad). Devuelve cuántas facciones sembró.
+/// Q-42: categorías de recurso que las partidas de acopio recolectan (`CATEGORIAS_ACOPIO` de partidasAcopio.ts; aquí
+/// duplicadas para no importar ese módulo, que ya importa casaDeObras).
+const CATEGORIAS_RECOLECTABLES = ['madera', 'piedra', 'fibras'];
+/// Puro (Q-42): el aviso de una obra parada. Lo que falta tal cual, y si entre ello hay materiales que no son leña, piedra
+/// ni fibra (hueso, cuerda, odre…), dice que esos los traerá una caravana (`CR-64`). `faltan` son los «n de <label>» de
+/// `gastarCuotaDelDia`.
+export function avisoDeObraParada(receta: ConstructionRecipe, faltan: string[]): string {
+  const base = `Faltan materiales en el Almacén: ${faltan.join(', ')}.`;
+  const caravana = receta.requirements
+    .filter((r) => !(r.match.kind === 'category' && r.match.tipo === 'RECURSO' && CATEGORIAS_RECOLECTABLES.includes(r.match.category)))
+    .filter((r) => faltan.some((f) => f.endsWith(` de ${r.label}`)))
+    .map((r) => r.label);
+  return caravana.length > 0 ? `${base.slice(0, -1)}; ${caravana.join(', ')}: esperan a una caravana.` : base;
+}
+
+/// Q39 y Q-43: a las facciones del mundo que aún no tienen Pozo, Cisterna ni Granero se les siembran los que necesitan
+/// para sus bocas de hoy (`KingdomStats`: población + soldados + visitantes) con un 25 % de margen; el resto hasta su
+/// tope llega por obras. Nadie arranca en carencia al pasar a las reglas del Reino. Idempotente: solo toca a las que no
+/// tienen ninguno de los tres, y cada fila queda en el mayor de lo que ya tenía y lo calculado (nunca baja una cantidad).
+/// Devuelve cuántas facciones sembró.
 export async function sembrarSuministrosDeFacciones(tx: Tx, saveId: string): Promise<number> {
   const sin = await tx.faction.findMany({
     where: { saveId, origenSlug: { not: null }, disueltaEn: null, buildings: { none: { recipeKey: { in: [...SUMINISTROS] } } } },
@@ -134,11 +151,9 @@ export async function sembrarSuministrosDeFacciones(tx: Tx, saveId: string): Pro
   });
   let n = 0;
   for (const f of sin) {
-    const filas = await tx.worldPopulation.findMany({ where: { saveId, targetType: 'FACCION', targetSlug: { in: CAMPOS_DE_BOCA.map((c) => `${f.slug}-${c}`) } }, select: { poblacion: true, poblacionMax: true } });
     const k = f.kingdomStats;
     const hoy = k ? k.poblacion + k.soldados + k.visitantes : 0;
-    const bocasMax = Math.max(hoy, filas.reduce((s, x) => s + Math.max(x.poblacion, x.poblacionMax), 0));
-    const necesita = suministrosParaBocas(bocasMax);
+    const necesita = suministrosParaBocas(bocasParaSiembra(hoy));
     const casa = f.buildings[0];
     for (const key of SUMINISTROS) {
       if (necesita[key] <= 0) continue;
@@ -208,7 +223,7 @@ export async function avanzarObrasDeFacciones(tx: Tx, saveId: string, ahora: num
     if (avance > 0) {
       const gasto = await gastarCuotaDelDia(tx, { factionId: f.id }, receta, obra.dias, obra.diasHechos, avance);
       if (!gasto.ok) {
-        const aviso = `Faltan materiales en el Almacén: ${gasto.faltan.join(', ')}.`;
+        const aviso = avisoDeObraParada(receta, gasto.faltan);
         if (obra.aviso !== aviso) await tx.obraFaccion.update({ where: { id: obra.id }, data: { aviso } });
         continue;
       }
