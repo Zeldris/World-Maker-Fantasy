@@ -48,7 +48,7 @@ Cuenta: 7 + 6 + 5 + 5 + 5 + 5 + 7 + 4 + 2 + 3 (solo locales: P244, P268, P271) =
 
 Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos así (cada id en un solo sitio):
 
-- **Fuera de tanda.** Locales (Ollama real, la Deck o arte, a «Para la sesión local»): P49 y P66 (arte), P251, P252, P262-P266, P272-P274 y P311.
+- **Fuera de tanda.** Locales (Ollama real, la Deck o arte, a «Para la sesión local»): P49 y P66 (arte), P251, P252, P262-P266, P272-P274 y P311. P266, P273 y P486 tienen arreglo de QA-531 (2026-11-26): ver con Ollama real que no vuelven.
   Decididas por la usuaria (2026-11-08, abajo): P248, P254, P259, P270 y P364 pasan a los lotes. Ya pasado a Álvaro: P317. De herramientas
   (`escenario.sh` y sus pasos, sin `QA-*` nuevo mientras nada bloquee): P370, P371, P374, P377, P382, P383 y P427.
 - **Tandas 89-91: la nota dice arreglado (o puede haberlo arreglado otro cambio) y falta jugarlo.** Se juega
