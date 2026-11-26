@@ -355,3 +355,31 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Contraste: X4 genera al crear el universo todas las estaciones de las facciones de golpe (el motor `god`) con sus cupos, y desde ahí la IA solo repone y amplía; es nuestra siembra única e idempotente. Lo de «a su máximo y no a la población de hoy» no sale de las fuentes (los cupos de inicio de X4 son por partida, no por población): es nuestro, para no tener regresión antes de 36b. En Bellwright el pueblo crece por prosperidad, con puntos de obra por nivel: encaja con que, pasado el arranque, crecer cueste obra. Fuentes: https://forum.egosoft.com/viewtopic.php?p=5223951 · https://forum.egosoft.com/viewtopic.php?p=4789241 · https://www.godisageek.com/2024/11/bellwright-villages-2-0-update-adds-new-mechanics-quality-of-life-improvements-and-more
 - Answer: ok, y al hacer 36b se repasa la siembra: población de hoy más un margen, y el resto por obras
 - Answered: 2026-11-26
+
+## Q-40
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36b: ¿cuándo sale una partida de acopio de una facción y qué trae?
+- Recommendation: Cuándo y qué trae: una facción lanza acopio cuando su obra está parada por falta de un material que se recolecta (piedra, madera, fibras). La partida va a la zona más cercana de su región que tenga un punto de recurso de esa categoría, trabaja un día y vuelve con 10 unidades por porteador (o lo que quede en el punto, que se descuenta). Al volver lo deja en el Almacén de la facción. Como máximo un acopio por facción a la vez, y cuenta dentro de las 4 partidas que ya tiene para cazar. Contraste: X4 hace lo mismo (la estación publica lo que le falta y sus naves mineras asignadas van al sector más cercano con ese recurso, llenan bodega y descargan); Manor Lords y Bellwright mandan a aldeanos a recoger, con un tope de carga por persona.
+
+## Q-41
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36b: ¿cuántos porteadores y cuántos guardias lleva una partida de acopio?
+- Recommendation: Quién va: porteadores genéricos de la facción (los trabajadores, como los cazadores de CR-63), 8 por partida, con el rol porteador. Guardias de sus soldados: 0 si la ruta no tiene riesgo; 2 si cruza un enlace con riesgo o pasa cerca de un campamento de bandidos; 4 si la facción está en guerra; nunca más de los soldados que le sobren por encima de la mitad de su guarnición. En el Reino la jugadora elige en Reino › Partidas cuántos súbditos con rol porteador y cuántos guardias (soldados o vigías), y mientras viajan no cuentan en la defensa. En el combate de camino, los guardias entran desde el primer asalto y los porteadores solo si no queda ningún guardia en pie (lo que ya decidimos en Q-37).
+
+## Q-42
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36b: ¿qué pasa con los materiales que no se pueden recolectar?
+- Recommendation: Los materiales que no se recolectan (hueso largo de gargantúa, cuerda de tendón, odre de agua para Corrales y Cocina) quedan fuera de 36b. La obra que los necesite se queda parada con un aviso que diga qué falta y que lo traerá una caravana (CR-64, en el 0.4). Así las obras de agua y granero, que solo piden piedra o fibra, ya funcionan del todo con el acopio.
+
+## Q-43
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36b: ¿con qué margen se repasa la siembra de suministros?
+- Recommendation: Repasar la siembra en el mismo paso: la siembra se calcula para la población de hoy más un 25 % de margen, en vez de para su tope de población. Lo que falte hasta el tope lo construyen sus obras con el acopio. Solo afecta a partidas nuevas; las ya sembradas no pierden edificios, porque la siembra nunca baja cantidades.
