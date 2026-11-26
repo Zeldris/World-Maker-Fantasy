@@ -182,3 +182,48 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: después del lote, pasar al paso 4 (limpieza del roadmap) y dejar a la Deck lo que solo sale con Ollama real o arte
 - Answer: ok (paso 4 tras el lote)
 - Answered: 2026-11-26
+
+## Q-21
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: Tareas del Cronista del 0.3 o posteriores metidas en fases del 0.2 (CR-50…52, 57, 60, 64, 69…72): a) moverlas a una sección «Fuera de fase» de su hito en roadmap-cronista.md; b) tolerarlas con una lista de excepciones en cobertura.py
+- Recommendation: a) sección «Fuera de fase» por hito en roadmap-cronista.md y mover allí esas líneas
+- Answer: a
+- Answered: 2026-11-26
+
+## Q-22
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: Las 8 propuestas aprobadas de tipo QA (filas 1-3, 6 y 10-13 de propuestas-aprobadas.md): a) al hito 0.7, cada una con su id QA-n; b) dejarlas sin hito hasta cerrar las pruebas
+- Recommendation: a) una fila «QA de las pruebas» en el hito 0.7, un QA-n por propuesta
+- Answer: a
+- Answered: 2026-11-26
+
+## Q-23
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: CFG-20 («dónde se muestran» las tiradas) está a medias: ¿se queda 🚧 en el 0.2, con lo que falta apuntado?
+- Recommendation: sí: CFG-20 queda 🚧 en el 0.2 con lo que falta apuntado
+- Answer: sí
+- Answered: 2026-11-26
+
+## Q-24
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: ¿Pasan a «Preguntas abiertas para Álvaro» el objetivo de turno de la Fase F del 0.1 y CR-49c?
+- Recommendation: sí
+- Answer: sí
+- Answered: 2026-11-26
+
+## Q-25
+- Refs: QA-532
+- Status: answered
+- Asked: 2026-11-26
+- Question: ¿Se marcan el 0.1 y el 0.2 como «cerrados salvo Álvaro», con la lista de lo que espera (Fase E de súbditos, objetivo de turno, ZON-1/UX-14, CR-49c, etiquetas v0.1.0/v0.2.0; la Fase G del 0.1 pasa al 0.7; CR-8 falta correrlo con --aplicar en la base real)?
+- Recommendation: sí
+- Answer: sí
+- Answered: 2026-11-26
