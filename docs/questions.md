@@ -158,21 +158,27 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-18
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: Siguiente lote de la puerta (paso 3): a) arreglos de código en la nube P266+P273+P486; b) tanda de juego P131 (huir en combate) y P429 (Interactuar sobre el recinto); c) los dos
 - Recommendation: a) lote de arreglos en la nube: P266 (frase fija del guion), P273 (el registro de IA dice por qué rechaza), P486 (narración contra la tarjeta de defensa); con test en rojo y jugado con el simulado
+- Answer: a
+- Answered: 2026-11-26
 
 ## Q-19
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: P311 (Interactuar no ofrece regalar): ¿se cierra por no haber regalo, o se abre un camino para regalar?
 - Recommendation: cerrar P311: no hay camino de regalo en Interactuar y lo que queda es voz del narrador (Ollama real, ya en «Para la sesión local»)
+- Answer: ok (cerrar P311)
+- Answered: 2026-11-26
 
 ## Q-20
 - Refs:
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: Lo que queda de la puerta depende casi todo de Ollama real o de arte: ¿tras este lote pasamos al paso 4 (limpieza del roadmap)?
 - Recommendation: después del lote, pasar al paso 4 (limpieza del roadmap) y dejar a la Deck lo que solo sale con Ollama real o arte
+- Answer: ok (paso 4 tras el lote)
+- Answered: 2026-11-26

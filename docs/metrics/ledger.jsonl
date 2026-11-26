@@ -788,3 +788,4 @@
 {"agent":"gw-worker","branch":"claude/wonderful-volta-662qt8","cacheRead":1117690,"cacheWrite":72466,"date":"2026-11-25","input":54,"model":"claude-sonnet-5-5","output":7472,"recorded":"2026-11-25T23:10:52Z","refs":["QA-530"],"session":"f0ae840d"}
 {"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":1773894,"cacheWrite":45674,"date":"2026-11-25","input":29,"model":"claude-opus-5-5","output":5066,"recorded":"2026-11-25T23:10:52Z","refs":["QA-530"],"session":"f0ae840d"}
 {"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":948493,"cacheWrite":50693,"date":"2026-11-26","input":19,"model":"claude-opus-5-5","output":3307,"recorded":"2026-11-26T07:18:36Z","refs":["QA-530"],"session":"d2f793b9"}
+{"agent":"main","branch":"claude/wonderful-volta-662qt8","cacheRead":442562,"cacheWrite":2774,"date":"2026-11-26","input":8,"model":"claude-opus-5-5","output":1213,"recorded":"2026-11-26T07:19:23Z","refs":[],"session":"d2f793b9"}
