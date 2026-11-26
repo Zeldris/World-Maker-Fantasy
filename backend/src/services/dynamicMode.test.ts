@@ -255,3 +255,10 @@ describe('acotarEscenasFijasGistera (QA-356, P464)', () => {
     expect(acotarEscenasFijasGistera('Gorhorn avanza por el barro.')).toBe('Gorhorn avanza por el barro.');
   });
 });
+
+describe('presentación de Gistera sin el clan del jugador (P266)', () => {
+  it('no nombra la marca ni el clan Maktor: Gistera no sabe de qué clan es el jugador', () => {
+    expect(GISTERA_TEXTO_PRESENTACION).not.toContain('Maktor');
+    expect(narrarVueltaGistera(2, 'acercarse').narration).not.toContain('Maktor');
+  });
+});
