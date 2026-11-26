@@ -850,6 +850,13 @@ describe('hasFalseCombatMiss', () => {
     expect(hasFalseCombatMiss('El hacha pasa a escasos centímetros de su cabeza.', true)).toBe(true);
   });
 
+  it('P486: negar el efecto del golpe recibido («su cuerpo no se dobla») cuando conecta', () => {
+    const n = 'Gorhorn, con su brazo en cruz, recibe el golpe en la espalda, pero su cuerpo no se dobla.';
+    expect(hasFalseCombatMiss(n, true)).toBe(true);
+    expect(hasFalseCombatMiss('Gorhorn recibe el golpe en la espalda y su cuerpo se dobla hacia delante.', true)).toBe(false);
+    expect(hasFalseCombatMiss(n, false)).toBe(false);
+  });
+
   it('P477: no dispara con la hoja que se clava en la carne del rival', () => {
     expect(hasFalseCombatMiss('La hoja se clava en la carne del orco, que ruge de dolor.', true)).toBe(false);
   });
