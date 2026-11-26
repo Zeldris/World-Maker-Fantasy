@@ -6,13 +6,14 @@ import type { Prisma } from '@prisma/client';
 import { MAX_COMBATIENTES_POR_BANDO } from './combateMultiple.js';
 import { esAdultoSubdito, rolDeSubdito, subditosSinArma } from './cronista/subditos.js';
 import { prepararCaptura } from './partidasCaptura.js';
+import { CATEGORIAS_ACOPIO, TIPO_ACOPIO, recursosPorLugar, type CategoriaAcopio } from './partidasAcopio.js';
 import { crearViajero, enlacesDelMundo, rutaMasCorta, TIPOS_SIN_DUENO, type OrdenViajero } from './viajeros.js';
 
 type Tx = Prisma.TransactionClient;
 
 export const MAX_GRUPOS_PARTIDA = 4;
 export const MAX_MIEMBROS_PARTIDA = MAX_GRUPOS_PARTIDA * MAX_COMBATIENTES_POR_BANDO;
-export const TIPOS_PARTIDA = ['CAZA', 'CAPTURA'] as const;
+export const TIPOS_PARTIDA = ['CAZA', 'CAPTURA', TIPO_ACOPIO] as const;
 export type TipoPartida = (typeof TIPOS_PARTIDA)[number];
 
 const enMarcha = { estado: { not: 'TERMINADO' } };
@@ -76,7 +77,18 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
     });
   // Revisión C2 (leve 5): el aviso de «repara» solo si es un edificio dañado lo que falta para salir.
   const origenDanado = !origen && (await tx.building.count({ where: { saveId, status: 'DANADO', locationId: { not: null } } })) > 0;
-  return { origen, origenDanado, cazadores, cazadoresFuera, grupos, destinos };
+  // Q-35 (CR-36b): el acopio del Reino. Porteadores: cualquier súbdito adulto que no esté fuera; guardias: soldados o vigías.
+  const recursos = await recursosPorLugar(tx, saveId, save.worldId);
+  const libres = subditos.filter((s) => !fuera.subjects.has(s.id) && esAdultoSubdito(s, ahora));
+  const lugaresAcopio = await tx.location.findMany({ where: { id: { in: [...recursos.keys()] } }, select: { id: true, name: true, region: true }, orderBy: { name: 'asc' } });
+  const acopio = {
+    destinos: lugaresAcopio
+      .filter((l) => origen && rutaMasCorta(enlaces, origen.id, l.id) !== null)
+      .map((l) => ({ ...l, categorias: [...recursos.get(l.id)!].map(([categoria, cantidad]) => ({ categoria, cantidad })) })),
+    porteadores: libres.filter((s) => rolDeSubdito(s.role) !== 'visitante').map((s) => ({ id: s.id, name: s.name })),
+    guardias: libres.filter((s) => ['soldado', 'vigia'].includes(rolDeSubdito(s.role))).map((s) => ({ id: s.id, name: s.name, sinArma: sinArma.has(s.id) })),
+  };
+  return { origen, origenDanado, cazadores, cazadoresFuera, grupos, destinos, acopio };
 }
 
 export interface PeticionPartida {
@@ -86,6 +98,41 @@ export interface PeticionPartida {
   companionIds?: string[];
   subjectIds?: string[];
   permanente?: boolean;
+  /// Acopio (Q-35): categoría, súbditos porteadores y súbditos guardias (los compañeros guardias, en `companionIds`).
+  categoria?: string;
+  porteadorIds?: string[];
+  guardiaIds?: string[];
+}
+
+/// Q-35/Q-41: una partida de acopio del Reino, de un viaje: porteadores y guardias (rol «guardia») a por madera, piedra o fibras.
+async function lanzarAcopio(tx: Tx, saveId: string, p: PeticionPartida, op: Awaited<ReturnType<typeof opcionesDePartida>>, ahora: number): Promise<{ ok: true; id: string } | { ok: false; motivo: string }> {
+  const categoria = p.categoria as CategoriaAcopio;
+  if (!(CATEGORIAS_ACOPIO as readonly string[]).includes(p.categoria ?? '')) return { ok: false, motivo: 'Elige qué traer: leña, piedra o fibra.' };
+  const destino = op.acopio.destinos.find((d) => d.id === p.destinoLocationId);
+  if (!destino) return { ok: false, motivo: 'No hay recursos que recoger en ese lugar o no hay camino hasta él.' };
+  const hay = destino.categorias.find((c) => c.categoria === categoria);
+  if (!hay || hay.cantidad <= 0) return { ok: false, motivo: `No quedan recursos de ${categoria} en ${destino.name} por ahora.` };
+  const porteadorIds = [...new Set(p.porteadorIds ?? [])];
+  const guardiaIds = [...new Set(p.guardiaIds ?? [])];
+  const companionIds = [...new Set(p.companionIds ?? [])];
+  if (porteadorIds.length === 0) return { ok: false, motivo: 'Elige al menos un porteador.' };
+  if (porteadorIds.some((id) => guardiaIds.includes(id))) return { ok: false, motivo: 'Alguien no puede ir de porteador y de guardia a la vez.' };
+  const libresPor = new Set(op.acopio.porteadores.map((s) => s.id));
+  const libresGua = new Map(op.acopio.guardias.map((s) => [s.id, s]));
+  const libresComp = new Set(op.grupos.flatMap((g) => g.companeros.map((c) => c.id)));
+  if (porteadorIds.some((id) => !libresPor.has(id)) || guardiaIds.some((id) => !libresGua.has(id)) || companionIds.some((id) => !libresComp.has(id))) return { ok: false, motivo: 'Alguno de los que eliges no puede salir ahora.' };
+  const desarmados = guardiaIds.map((id) => libresGua.get(id)!).filter((g) => g.sinArma);
+  if (desarmados.length > 0) return { ok: false, motivo: `${desarmados.map((c) => c.name).join(', ')} no ${desarmados.length === 1 ? 'tiene' : 'tienen'} arma: un guardia sale armado como un soldado.` };
+  const total = porteadorIds.length + guardiaIds.length + companionIds.length;
+  if (total > MAX_MIEMBROS_PARTIDA) return { ok: false, motivo: `Una partida lleva como mucho ${MAX_MIEMBROS_PARTIDA} (${MAX_GRUPOS_PARTIDA} grupos de ${MAX_COMBATIENTES_POR_BANDO}).` };
+  return crearViajero(tx, {
+    saveId, tipo: TIPO_ACOPIO, objetivo: categoria, origenLocationId: op.origen!.id, destinoLocationId: destino.id, dia: Math.floor(ahora / 1440),
+    miembros: [
+      ...porteadorIds.map((subjectId) => ({ subjectId, rol: 'porteador' })),
+      ...guardiaIds.map((subjectId) => ({ subjectId, rol: 'guardia' })),
+      ...companionIds.map((companionId) => ({ companionId, rol: 'guardia' })),
+    ],
+  });
 }
 
 /// Q3/Q7: lanza una partida del Reino.
@@ -93,6 +140,7 @@ export async function lanzarPartida(tx: Tx, saveId: string, p: PeticionPartida, 
   if (!(TIPOS_PARTIDA as readonly string[]).includes(p.tipo)) return { ok: false, motivo: `Tipo de partida desconocido: ${p.tipo}` };
   const op = await opcionesDePartida(tx, saveId, ahora);
   if (!op.origen) return { ok: false, motivo: 'Tu Reino no tiene ningún edificio desde el que salir.' };
+  if (p.tipo === TIPO_ACOPIO) return lanzarAcopio(tx, saveId, p, op, ahora);
   const destino = op.destinos.find((d) => d.id === p.destinoLocationId);
   if (!destino) return { ok: false, motivo: 'No conoces ese lugar o no hay camino hasta él.' };
   const especie = destino.especies.find((e) => e.slug === p.especie);
@@ -139,6 +187,7 @@ export async function ordenarPartida(tx: Tx, saveId: string, id: string, accion:
     return { ok: true };
   }
   if (accion === 'destino' && destinoLocationId) {
+    if (v.tipo === TIPO_ACOPIO) return { ok: false, motivo: 'Un acopio no cambia de destino: haz que vuelva y lanza otro.' };
     if (v.estado !== 'IDA') return { ok: false, motivo: 'Solo se cambia el destino de una partida que aún va de camino.' };
     // Las mismas reglas que al lanzarla: un lugar que conoces y donde has visto su presa.
     const [visitado, presa] = await Promise.all([
@@ -167,8 +216,10 @@ export async function partidasDelReino(tx: Tx, saveId: string) {
   return filas.map((f) => ({
     id: f.id, tipo: f.tipo, estado: f.estado, especie: f.objetivo, especieNombre: fauna.get(f.objetivo ?? '') ?? f.objetivo,
     ubicacion: f.ubicacion.name, destino: f.destino.name, permanente: !!(f.orden as OrdenViajero | null)?.repetir,
-    miembros: f.miembros.map((m) => m.companion?.name ?? m.subject?.name ?? `${m.genericos} cazadores`),
+    miembros: f.miembros.map((m) => m.companion?.name ?? m.subject?.name ?? `${m.genericos} ${m.rol === 'porteador' ? 'porteadores' : m.rol === 'guardia' ? 'guardias' : 'cazadores'}`),
     carga: f.carga as { piezas?: number; capturados?: number; resumen?: string } | null,
+    /// Acopio: la categoría y lo que trae (al llegar a su destino).
+    acopio: f.tipo === TIPO_ACOPIO ? { categoria: f.objetivo, total: ((f.carga as { items?: { n: number }[] } | null)?.items ?? []).reduce((t, i) => t + i.n, 0) } : null,
     /// P283: el día en que volvió a casa.
     vueltaDia: f.estado === 'TERMINADO' ? f.ultimoDia : null,
   }));

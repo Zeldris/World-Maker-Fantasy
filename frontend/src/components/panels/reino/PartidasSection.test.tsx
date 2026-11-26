@@ -114,4 +114,44 @@ describe('PartidasSection (CR-63 63d)', () => {
     expect(await findByText(/necesita un edificio/)).toBeTruthy()
     expect(queryByText(/dañados/)).toBeNull()
   })
+
+  // CR-36b (Q-35): el acopio del Reino manda porteadores y guardias a por una categoría.
+  it('acopio: filtra el destino por categoría y envía porteadores y guardias', async () => {
+    const conAcopio: OpcionesPartida = {
+      ...opciones,
+      acopio: {
+        destinos: [
+          { id: 'cantera', name: 'La Cantera', region: 'Sierra', categorias: [{ categoria: 'piedra', cantidad: 40 }] },
+          { id: 'bosque', name: 'El Bosque', region: 'Llanuras', categorias: [{ categoria: 'madera', cantidad: 25 }] },
+        ],
+        porteadores: [{ id: 'p1', name: 'Carga' }, { id: 'g1', name: 'Escolta' }],
+        guardias: [{ id: 'g1', name: 'Escolta' }, { id: 'g2', name: 'Sin lanza', sinArma: true }],
+      },
+    }
+    vi.mocked(getPartidas).mockResolvedValue({ partidas: [{ ...partida, id: 'a1', tipo: 'ACOPIO', especie: 'piedra', especieNombre: 'piedra', permanente: false, acopio: { categoria: 'piedra', total: 30 }, carga: null, estado: 'VUELTA' }], opciones: conAcopio })
+    vi.mocked(postLanzarPartida).mockResolvedValue({ ok: true, id: 'v3' })
+    const { findByText, getByRole, getByLabelText, getByText } = render(<PartidasSection saveId="s" onRefreshSave={async () => {}} />)
+    expect(await findByText('Acopio de Piedra · de vuelta, en Los Pilares → La Hondonada')).toBeTruthy()
+    expect(getByText('Trae 30 de Piedra')).toBeTruthy()
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: /Tipo de partida/ }))
+    })
+    await act(async () => {
+      fireEvent.click(getByRole('option', { name: /Acopio/ }))
+    })
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: /Categoría/ }))
+    })
+    await act(async () => {
+      fireEvent.click(getByRole('option', { name: /Piedra/ }))
+    })
+    expect(getByText(/La Cantera/)).toBeTruthy()
+    expect(getByLabelText('Guardia Sin lanza')).toHaveProperty('disabled', true)
+    fireEvent.click(getByLabelText('Porteador Carga'))
+    fireEvent.click(getByLabelText('Guardia Escolta'))
+    await act(async () => {
+      fireEvent.click(getByRole('button', { name: 'Lanzar acopio (1 + 1)' }))
+    })
+    expect(postLanzarPartida).toHaveBeenCalledWith('s', { tipo: 'ACOPIO', especie: '', categoria: 'piedra', destinoLocationId: 'cantera', porteadorIds: ['p1'], guardiaIds: ['g1'], companionIds: [] })
+  })
 })

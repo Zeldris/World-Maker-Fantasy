@@ -56,6 +56,8 @@ export async function asentamientosDelReino(tx: Tx, saveId: string): Promise<Ase
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   });
   const capital = nucleos.find((n) => n.recipeKey === 'ayuntamiento');
+  // Q-41: quien va de guardia con un viajero en marcha no defiende el asentamiento mientras viaja.
+  const viajando = new Set((await tx.viajeroMiembro.findMany({ where: { subjectId: { not: null }, viajero: { saveId, estado: { not: 'TERMINADO' } } }, select: { subjectId: true } })).map((m) => m.subjectId));
   const [modulos, subditos] = await Promise.all([
     tx.building.findMany({ where: { saveId, recipeKey: { in: DEFENSA_RECIPE_KEYS }, status: { in: ['ACTIVO', 'DANADO'] } }, select: { id: true, status: true, recipeKey: true, name: true, tier: true, golpesDefensa: true, caida: true, equiposMilicia: true, location: { select: { region: true } } } }),
     tx.subject.findMany({ where: { saveId, estado: 'ACTIVO' }, select: { id: true, name: true, role: true, asentamientoId: true }, orderBy: { createdAt: 'asc' } }),
@@ -65,7 +67,7 @@ export async function asentamientosDelReino(tx: Tx, saveId: string): Promise<Ase
     // P296: un módulo DANADO sale en la lista (para repararlo) pero no suma; la Empalizada dañada cuenta como caída.
     const escalon = (k: string) => aqui.find((m) => m.recipeKey === k && (m.status === 'ACTIVO' || k === 'empalizada'))?.tier ?? 0;
     const guarnicion = subditos
-      .filter((s) => esGuarnicion(s.role) && (s.asentamientoId === n.id || (!s.asentamientoId && n.id === capital?.id)))
+      .filter((s) => esGuarnicion(s.role) && !viajando.has(s.id) && (s.asentamientoId === n.id || (!s.asentamientoId && n.id === capital?.id)))
       .map((s) => ({ id: s.id, nombre: s.name, rol: esGuarnicion(s.role)! }));
     const m: ModulosAsentamiento = {
       empalizada: escalon('empalizada'),

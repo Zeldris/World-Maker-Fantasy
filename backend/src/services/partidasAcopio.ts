@@ -150,6 +150,25 @@ export async function lanzarAcopiosDeFacciones(prisma: PrismaClient, saveId: str
 }
 
 const genericosDe = (v: ViajeroFila, rol: string) => v.miembros.filter((m) => m.rol === rol).reduce((s, m) => s + m.genericos, 0);
+/// Los que cargan: los genéricos y también los súbditos con nombre que el Reino manda de porteadores.
+const cuentaDe = (v: ViajeroFila, rol: string) => v.miembros.filter((m) => m.rol === rol).reduce((s, m) => s + m.genericos + (m.subjectId || m.companionId ? 1 : 0), 0);
+
+/// Q-35: lo que hay por recolectar en cada lugar, por categoría (puntos de recurso activos con cantidad), para
+/// que el Reino elija destino en Reino › Partidas.
+export async function recursosPorLugar(tx: Tx, saveId: string, worldId: string): Promise<Map<string, Map<CategoriaAcopio, number>>> {
+  const out = new Map<string, Map<CategoriaAcopio, number>>();
+  for (const categoria of CATEGORIAS_ACOPIO) {
+    const fuentes = await itemsDeCategoria(tx, worldId, categoria);
+    if (fuentes.size === 0) continue;
+    const puntos = await tx.zonePoint.findMany({ where: { saveId, tipo: 'RECURSO', activo: true, cantidad: { gt: 0 }, targetSlug: { in: [...fuentes.keys()] } }, select: { locationId: true, cantidad: true } });
+    for (const p of puntos) {
+      const lugar = out.get(p.locationId) ?? new Map<CategoriaAcopio, number>();
+      lugar.set(categoria, (lugar.get(categoria) ?? 0) + p.cantidad);
+      out.set(p.locationId, lugar);
+    }
+  }
+  return out;
+}
 
 /// Un día de trabajo en el destino: recoge del lugar hasta 10 por porteador vivo, restando de los puntos de recurso.
 async function acopiarEnDestino(tx: Tx, v: ViajeroFila): Promise<CargaAcopio | null> {
@@ -157,7 +176,7 @@ async function acopiarEnDestino(tx: Tx, v: ViajeroFila): Promise<CargaAcopio | n
   if (!categoria || !CATEGORIAS_ACOPIO.includes(categoria)) return null;
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
   const fuentes = await itemsDeCategoria(tx, worldId, categoria);
-  let quedan = UNIDADES_POR_PORTEADOR * genericosDe(v, 'porteador');
+  let quedan = UNIDADES_POR_PORTEADOR * cuentaDe(v, 'porteador');
   const puntos = await tx.zonePoint.findMany({ where: { saveId: v.saveId, locationId: v.ubicacionLocationId, tipo: 'RECURSO', activo: true, cantidad: { gt: 0 }, targetSlug: { in: [...fuentes.keys()] } }, orderBy: [{ cantidad: 'desc' }, { id: 'asc' }] });
   const porItem = new Map<string, { slug: string; name: string; description: string; n: number }>();
   for (const p of puntos) {

@@ -1673,7 +1673,7 @@ export interface CorralesInfo {
 // CR-63 (63d): Reino › Partidas — partidas de caza y captura.
 export interface PartidaInfo {
   id: string
-  tipo: 'CAZA' | 'CAPTURA' | 'ATAQUE' | 'ATAQUE_ASENTAMIENTO'
+  tipo: 'CAZA' | 'CAPTURA' | 'ACOPIO' | 'ATAQUE' | 'ATAQUE_ASENTAMIENTO'
   estado: 'IDA' | 'TRABAJANDO' | 'VUELTA' | 'TERMINADO'
   especie: string | null
   especieNombre: string | null
@@ -1682,6 +1682,8 @@ export interface PartidaInfo {
   permanente: boolean
   miembros: string[]
   carga: { piezas?: number; capturados?: number; resumen?: string } | null
+  /// Acopio (CR-36b): la categoría y lo que trae (0 hasta que llega).
+  acopio?: { categoria: string | null; total: number } | null
   /// Día en que volvió a casa (solo las que ya terminaron).
   vueltaDia?: number | null
 }
@@ -1695,7 +1697,14 @@ export interface OpcionesPartida {
   cazadoresFuera?: string[]
   grupos: { slotIndex: number; nombre: string; companeros: { id: string; name: string }[] }[]
   destinos: { id: string; name: string; region: string; especies: { slug: string; name: string; cantidad: number; capturable: boolean }[] }[]
+  /// Acopio del Reino (CR-36b, Q-35): destinos con recursos por categoría, porteadores y guardias libres.
+  acopio?: {
+    destinos: { id: string; name: string; region: string; categorias: { categoria: CategoriaAcopio; cantidad: number }[] }[]
+    porteadores: { id: string; name: string }[]
+    guardias: { id: string; name: string; sinArma?: boolean }[]
+  }
 }
+export type CategoriaAcopio = 'madera' | 'piedra' | 'fibras'
 /// CR-50 (Q7): un campamento de bandidos que conoces.
 export interface CampamentoInfo {
   id: string
@@ -1711,7 +1720,8 @@ export async function getPartidas(saveId: string): Promise<{ partidas: PartidaIn
 }
 export async function postLanzarPartida(
   saveId: string,
-  p: { tipo: 'CAZA' | 'CAPTURA'; especie: string; destinoLocationId: string; companionIds: string[]; subjectIds: string[]; permanente: boolean },
+  p: { tipo: 'CAZA' | 'CAPTURA'; especie: string; destinoLocationId: string; companionIds: string[]; subjectIds: string[]; permanente: boolean }
+    | { tipo: 'ACOPIO'; especie: ''; categoria: CategoriaAcopio; destinoLocationId: string; porteadorIds: string[]; guardiaIds: string[]; companionIds: string[] },
 ): Promise<{ ok: boolean; id: string }> {
   return fetchJson(`${apiBaseUrl()}/saves/${saveId}/partidas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) })
 }

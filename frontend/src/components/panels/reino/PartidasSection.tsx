@@ -4,8 +4,15 @@ import { ErrorBanner } from '../../ErrorBanner'
 import { SelectorJuego } from '../../SelectorJuego'
 import { useErrorConReintento } from '../../../hooks/useErrorConReintento'
 import { useModoConsulta } from '../../../context/useModoConsulta'
-import { getPartidas, postAtacarCampamento, postLanzarPartida, postOrdenPartida, type CampamentoInfo, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
+import { getPartidas, postAtacarCampamento, postLanzarPartida, postOrdenPartida, type CampamentoInfo, type CategoriaAcopio, type OpcionesPartida, type PartidaInfo } from '../../../lib/api'
 import { CampamentosBandidos } from './CampamentosBandidos'
+
+const CATEGORIAS: { value: CategoriaAcopio; label: string }[] = [
+  { value: 'madera', label: 'Leña' },
+  { value: 'piedra', label: 'Piedra' },
+  { value: 'fibras', label: 'Fibra' },
+]
+const ETIQUETA_CATEGORIA: Record<string, string> = Object.fromEntries(CATEGORIAS.map((c) => [c.value, c.label]))
 
 const ESTADO: Record<PartidaInfo['estado'], string> = {
   IDA: 'de camino',
@@ -16,6 +23,10 @@ const ESTADO: Record<PartidaInfo['estado'], string> = {
 
 /// Puro: «Caza de Múrgol · de camino, en Los Pilares → La Hondonada».
 export function lineaDePartida(p: PartidaInfo): string {
+  if (p.tipo === 'ACOPIO') {
+    const donde = p.estado === 'TERMINADO' ? (p.vueltaDia != null ? `${ESTADO.TERMINADO} desde el día ${p.vueltaDia}` : ESTADO.TERMINADO) : `${ESTADO[p.estado]}, en ${p.ubicacion} → ${p.destino}`
+    return `Acopio de ${ETIQUETA_CATEGORIA[p.acopio?.categoria ?? ''] ?? 'recursos'} · ${donde}`
+  }
   const que = p.tipo === 'ATAQUE' ? 'Ataque al campamento' : p.tipo === 'ATAQUE_ASENTAMIENTO' ? 'Ataque a su casa' : `${p.tipo === 'CAPTURA' ? 'Captura' : 'Caza'} de ${p.especieNombre ?? 'presas'}`
   // P283: la que ya volvió dice desde qué día está en casa.
   const donde = p.estado === 'TERMINADO' ? (p.vueltaDia != null ? `${ESTADO.TERMINADO} desde el día ${p.vueltaDia}` : ESTADO.TERMINADO) : `${ESTADO[p.estado]}, en ${p.ubicacion} → ${p.destino}`
@@ -24,6 +35,7 @@ export function lineaDePartida(p: PartidaInfo): string {
 
 /// Puro: lo que trae una partida.
 export function cargaDePartida(p: PartidaInfo): string | null {
+  if (p.tipo === 'ACOPIO') return p.acopio && p.acopio.total > 0 ? `Trae ${p.acopio.total} de ${ETIQUETA_CATEGORIA[p.acopio.categoria ?? ''] ?? 'recursos'}` : null
   const partes = [p.carga?.piezas ? `${p.carga.piezas} pieza${p.carga.piezas === 1 ? '' : 's'}` : null, p.carga?.capturados ? `${p.carga.capturados} atado${p.carga.capturados === 1 ? '' : 's'}` : null].filter(Boolean)
   return partes.length > 0 ? `Trae ${partes.join(' y ')}` : null
 }
@@ -37,11 +49,15 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
   const [campamentos, setCampamentos] = useState<CampamentoInfo[]>([])
   const [guerreros, setGuerreros] = useState<{ id: string; name: string; rol: string }[]>([])
   const [busy, setBusy] = useState(false)
-  const [tipo, setTipo] = useState<'CAZA' | 'CAPTURA'>('CAZA')
+  const [tipo, setTipo] = useState<'CAZA' | 'CAPTURA' | 'ACOPIO'>('CAZA')
   const [destinoId, setDestinoId] = useState('')
   const [especie, setEspecie] = useState('')
   const [elegidos, setElegidos] = useState<Set<string>>(new Set())
   const [permanente, setPermanente] = useState(false)
+  const [categoria, setCategoria] = useState<CategoriaAcopio>('madera')
+  const [destinoAcopioId, setDestinoAcopioId] = useState('')
+  const [porteadores, setPorteadores] = useState<Set<string>>(new Set())
+  const [guardias, setGuardias] = useState<Set<string>>(new Set())
   const { fallo, informar, limpiar } = useErrorConReintento()
   const consulta = useModoConsulta()
 
@@ -87,6 +103,18 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
       else s.add(id)
       return s
     })
+  const alternarEn = (set: Set<string>, poner: (s: Set<string>) => void, id: string) => {
+    const s = new Set(set)
+    if (s.has(id)) s.delete(id)
+    else s.add(id)
+    poner(s)
+  }
+  // Acopio (CR-36b, Q-35): destinos con recursos de la categoría, porteadores (cualquier súbdito libre) y guardias (soldados o vigías).
+  const acopio = opciones.acopio
+  const destinosAcopio = (acopio?.destinos ?? []).filter((d) => d.categorias.some((c) => c.categoria === categoria && c.cantidad > 0))
+  const destinoAcopio = destinosAcopio.find((d) => d.id === destinoAcopioId) ?? destinosAcopio[0]
+  const guardiasValidos = [...guardias].filter((id) => !porteadores.has(id) && (acopio?.guardias ?? []).some((g) => g.id === id && !g.sinArma))
+  const porteadoresValidos = [...porteadores].filter((id) => !guardias.has(id))
   const enMarcha = partidas.filter((p) => p.estado !== 'TERMINADO')
   const vueltas = partidas.filter((p) => p.estado === 'TERMINADO')
   const nadieDisponible = opciones.cazadores.length === 0 && opciones.grupos.length === 0
@@ -145,27 +173,88 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
               : 'Tu Reino necesita un edificio desde el que salir.'}
           </p>
         )}
-        {opciones.origen && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Ahora mismo no hay ningún lugar que conozcas con presas a la vista: o aún no has explorado donde las hay, o ya cazaste las de los que conoces, o ninguno tiene camino desde tu Reino. Explora otros lugares antes de mandar a nadie.</p>}
-        {opciones.origen && nadieDisponible && (
+        {opciones.origen && (
+          <SelectorJuego
+            ariaLabel="Tipo de partida"
+            value={tipo}
+            opciones={[
+              { value: 'CAZA', label: 'Caza', descripcion: 'Vuelve con piezas que se estropean en 3 días: el Desolladero las aprovecha.' },
+              { value: 'CAPTURA', label: 'Captura', descripcion: 'Lleva cuerdas y necesita una Jaula libre: trae los animales atados.' },
+              { value: 'ACOPIO', label: 'Acopio', descripcion: 'Porteadores a por leña, piedra o fibra, con guardias que escoltan: lo traen a tu Almacén.' },
+            ]}
+            onChange={(v) => setTipo(v)}
+            className="min-w-[7rem] self-start"
+          />
+        )}
+        {opciones.origen && tipo === 'ACOPIO' && (
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <SelectorJuego ariaLabel="Categoría" value={categoria} opciones={CATEGORIAS.map((c) => ({ value: c.value, label: c.label }))} onChange={(v) => setCategoria(v)} className="min-w-[7rem]" />
+              {destinoAcopio ? (
+                <SelectorJuego
+                  ariaLabel="Destino"
+                  value={destinoAcopio.id}
+                  opciones={destinosAcopio.map((d) => ({ value: d.id, label: d.name, descripcion: `${d.region} · ${d.categorias.find((c) => c.categoria === categoria)?.cantidad ?? 0} a recoger` }))}
+                  onChange={(v) => setDestinoAcopioId(v)}
+                  className="min-w-[10rem]"
+                />
+              ) : (
+                <span className="text-2xs text-wood-500">Ningún lugar con {ETIQUETA_CATEGORIA[categoria]?.toLowerCase()} a la vista y con camino desde tu Reino.</span>
+              )}
+            </div>
+            <fieldset className="flex flex-col gap-1">
+              <legend className="text-2xs uppercase tracking-[0.12em] text-wood-500">Porteadores (cada uno carga 10)</legend>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {(acopio?.porteadores ?? []).length === 0 && <span className="text-2xs text-wood-500">No hay súbditos libres.</span>}
+                {(acopio?.porteadores ?? []).map((s) => (
+                  <label key={s.id} className="flex items-center gap-1 text-2xs text-wood-200">
+                    <input type="checkbox" aria-label={`Porteador ${s.name}`} checked={porteadores.has(s.id)} disabled={guardias.has(s.id)} onChange={() => alternarEn(porteadores, setPorteadores, s.id)} />
+                    {s.name}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset className="flex flex-col gap-1">
+              <legend className="text-2xs uppercase tracking-[0.12em] text-wood-500">Guardias (soldados o vigías: no defienden mientras viajan)</legend>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {(acopio?.guardias ?? []).length === 0 && <span className="text-2xs text-wood-500">No hay soldados ni vigías libres.</span>}
+                {(acopio?.guardias ?? []).map((s) => (
+                  <label key={s.id} className="flex items-center gap-1 text-2xs text-wood-200">
+                    <input type="checkbox" aria-label={`Guardia ${s.name}`} checked={guardias.has(s.id)} disabled={!!s.sinArma || porteadores.has(s.id)} onChange={() => alternarEn(guardias, setGuardias, s.id)} />
+                    {s.name}
+                    {!!s.sinArma && <span className="text-amber-300"> (sin arma)</span>}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <button
+              type="button"
+              disabled={busy || !!consulta || !destinoAcopio || porteadoresValidos.length === 0}
+              title={consulta ?? undefined}
+              onClick={() =>
+                void accion(async () => {
+                  await postLanzarPartida(saveId, { tipo: 'ACOPIO', especie: '', categoria, destinoLocationId: destinoAcopio!.id, porteadorIds: porteadoresValidos, guardiaIds: guardiasValidos, companionIds: [] })
+                  setPorteadores(new Set())
+                  setGuardias(new Set())
+                }, 'No se pudo lanzar el acopio.')
+              }
+              className="tactile self-start rounded-lg border border-accent-600 bg-gradient-to-b from-accent-400 to-accent-600 px-3 py-1.5 text-2xs font-bold uppercase tracking-wide text-wood-950 disabled:opacity-50"
+            >
+              Lanzar acopio ({porteadoresValidos.length} + {guardiasValidos.length})
+            </button>
+          </div>
+        )}
+        {opciones.origen && tipo !== 'ACOPIO' && opciones.destinos.length === 0 && <p className="text-xs text-wood-500">Ahora mismo no hay ningún lugar que conozcas con presas a la vista: o aún no has explorado donde las hay, o ya cazaste las de los que conoces, o ninguno tiene camino desde tu Reino. Explora otros lugares antes de mandar a nadie.</p>}
+        {opciones.origen && tipo !== 'ACOPIO' && nadieDisponible && (
           <p className="text-xs text-wood-500">
             {fuera.length > 0
               ? `Tus cazadores (${fuera.join(', ')}) están fuera con una partida: cuando vuelvan podrás mandarlos otra vez.`
               : 'No hay nadie libre: da a algún súbdito el rol de cazador (Súbditos) o forma un grupo de combate 2 o más.'}
           </p>
         )}
-        {opciones.origen && destino && !nadieDisponible && (
+        {opciones.origen && tipo !== 'ACOPIO' && destino && !nadieDisponible && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">
-              <SelectorJuego
-                ariaLabel="Tipo de partida"
-                value={tipo}
-                opciones={[
-                  { value: 'CAZA', label: 'Caza', descripcion: 'Vuelve con piezas que se estropean en 3 días: el Desolladero las aprovecha.' },
-                  { value: 'CAPTURA', label: 'Captura', descripcion: 'Lleva cuerdas y necesita una Jaula libre: trae los animales atados.' },
-                ]}
-                onChange={(v) => setTipo(v)}
-                className="min-w-[7rem]"
-              />
               <SelectorJuego ariaLabel="Destino" value={destino.id} opciones={opciones.destinos.map((d) => ({ value: d.id, label: d.name, descripcion: d.region }))} onChange={(v) => setDestinoId(v)} className="min-w-[10rem]" />
               {especieElegida ? (
                 <SelectorJuego ariaLabel="Especie" value={especieElegida.slug} opciones={especies.map((e) => ({ value: e.slug, label: e.name, descripcion: e.cantidad > 0 ? `${e.cantidad} a la vista` : 'sin presas por ahora' }))} onChange={(v) => setEspecie(v)} className="min-w-[8rem]" />
@@ -208,7 +297,7 @@ export function PartidasSection({ saveId, onRefreshSave }: { saveId: string; onR
               title={consulta ?? undefined}
               onClick={() =>
                 void accion(async () => {
-                  await postLanzarPartida(saveId, { tipo, especie: especieElegida!.slug, destinoLocationId: destino.id, companionIds, subjectIds, permanente })
+                  await postLanzarPartida(saveId, { tipo: tipo as 'CAZA' | 'CAPTURA', especie: especieElegida!.slug, destinoLocationId: destino.id, companionIds, subjectIds, permanente })
                   setElegidos(new Set())
                 }, 'No se pudo lanzar la partida.')
               }
