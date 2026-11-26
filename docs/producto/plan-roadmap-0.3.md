@@ -486,7 +486,7 @@ Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece.
 
 ## Decisiones de `CR-36` las facciones construyen (ronda aceptada por la usuaria el 2026-11-26)
 
-Preguntas Q-27…Q-37 de [`docs/questions.md`](../questions.md), contrastadas con los referentes (X4 primero) y con el
+Preguntas Q-27…Q-43 de [`docs/questions.md`](../questions.md), contrastadas con los referentes (X4 primero) y con el
 [ADR 0003](../adr/0003-todo-viaja-de-verdad.md): **las acciones viven en el mapa** (usuaria).
 
 - **Q-27 Carencias:** las facciones pasan a las reglas del Reino (topes de almacén y agua por fuente); al migrar se
@@ -517,6 +517,18 @@ Preguntas Q-27…Q-37 de [`docs/questions.md`](../questions.md), contrastadas co
   en un modelo propio `ObraFaccion` (una a la vez), aparte de la cola del Reino. Como los cupos de módulos de X4.
 - **Q-39 Siembra:** al migrar, para su `poblacionMax` (agua 20 + 12 por Pozo con 10 % de margen; Cisternas y Graneros
   para 30 días). **Pendiente en `36b`:** repasarla a la población de hoy más un margen, y el resto por obras.
+
+- **Q-40 Acopio de facción:** sale cuando una obra está parada por piedra, madera o fibra; va a la zona más cercana de
+  su región con un punto de recurso de esa categoría, trabaja un día y vuelve con 10 unidades por porteador (o lo que
+  quede, descontado del punto) a su Almacén. Un acopio a la vez, dentro de sus 4 partidas (X4: naves mineras asignadas).
+- **Q-41 Porteadores y guardias:** 8 porteadores genéricos (de sus trabajadores, rol «porteador»); guardias de sus
+  soldados: 0 sin riesgo, 2 con enlace de riesgo o campamento cerca, 4 en guerra, sin bajar de la mitad de su
+  guarnición. El Reino elige en Reino › Partidas porteadores (súbditos) y guardias (soldados o vigías), que no
+  defienden mientras viajan. Guardias desde el primer asalto; porteadores solo si caen todos los guardias.
+- **Q-42 Materiales no recolectables** (hueso, cuerda, odre de Corrales y Cocina): fuera de `36b`; la obra queda
+  parada con aviso de que lo traerá una caravana (`CR-64`).
+- **Q-43 Siembra:** a la población de hoy + 25 % de margen; el resto hasta el tope, por obras. Solo partidas nuevas;
+  la siembra nunca baja cantidades.
 
 Fuentes: [Egosoft, Defend Commander](https://wiki.egosoft.com/X4%20Foundations%20Wiki/Manual%20and%20Guides/Objects%20in%20the%20Game%20Universe/Orders%2C%20Behaviours%20and%20Assignments/Defend%20Commander%20%28Assignment%29/),
 [foro de Egosoft](https://forum.egosoft.com/viewtopic.php?p=4781138),
