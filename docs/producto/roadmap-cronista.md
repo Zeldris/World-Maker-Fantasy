@@ -1593,7 +1593,12 @@ Cada fase es usable por sí sola. "Hecho cuando" = criterio de aceptación.
   oportunidad queda para cuando ese suceso tenga un NPC concreto.)
 - **CR-36** Las facciones del mundo construyen (`CR-34` Q3, va al `0.3` con el Reino profundo): obras
   con coste y plazo según sus carencias (pozo, granero…), con los números de la economía de
-  supervivencia. **M**
+  supervivencia. Ronda aceptada el 2026-11-26 (Q-27…Q-37, en
+  [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-cr-36-las-facciones-construyen-ronda-aceptada-por-la-usuaria-el-2026-11-26)):
+  todo vive en el mapa (ADR 0003). Pasos: **36a** obras (Pozo, Granero, Cisterna, taller del oficio) con los
+  materiales de la receta sacados del Almacén y prioridad sed > hambre > oficio · **36b** partidas de acopio
+  (viajeros con el motor de `CR-63`) para facciones y Reino, con guardias · **36c** obreros que viajan,
+  pausa en guerra o asalto y avisos. **L**
 - ~~**CR-37** Guerra de una facción contra el Reino de la jugadora~~ ✅ 2026-10-08 (`CR-34` Q7, `0.3`): solo cuando
   existan los edificios de defensa (ya están, `CR-65`). Ronda de detalle aceptada el 2026-10-08 (Q1-Q7
   en [`plan-roadmap-0.3.md`](plan-roadmap-0.3.md#decisiones-de-detalle-de-cr-37-guerra-contra-el-reino-ronda-aceptada-por-la-usuaria-el-2026-10-08)).
@@ -2107,6 +2112,9 @@ para que `cobertura.py` no las ligue a dos hitos. Su fase de origen queda en el 
 - **CR-64** Todo viaja de verdad ([ADR 0003](../adr/0003-todo-viaja-de-verdad.md), usuaria 2026-10-07,
   como en X4): lo que se mueve es un **viajero** con ruta real de zona en zona, visible y con quien
   cruzarse e interactuar (preguntar por las regiones que ha atravesado, comerciar, escoltar, asaltar).
+  **Guardias** (usuaria, 2026-11-26, Q-37): todo viajero, del Reino o de una facción, puede llevar guardias
+  (rol «guardia» de `ViajeroMiembro`), sacados de sus soldados o vigías; van a su paso y pelean primero. El
+  acopio los estrena en `CR-36` (36b); caravanas, expediciones y mensajeros, aquí.
   Auditoría de lo implementado que hoy es invisible o abstracto (días + tirada al llegar):
   - **Expediciones de facción** (`factionExpeditions.ts`): días de ida y vuelta; la intercepción se
     tira al llegar; en el mapa, solo una bandera entre nodos de las Llanuras (`CR-46`).

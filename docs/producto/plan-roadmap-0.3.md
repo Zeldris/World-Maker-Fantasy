@@ -23,7 +23,7 @@ nuevo del motor y se intercala entre fases.
 | **A — Personas que recuerdan** | `CR-14` etiquetas, `CR-15` aprobación con valores, `CR-16` recuerdos de NPC, `CR-17` buscadores de historias e hilos, `CR-42` compañeros que cuentan lo de su tierra, `CR-32` reclutamiento pacífico e informantes ([Cronista Fase 4](roadmap-cronista.md#fase-4--personas-que-recuerdan--m)) | — | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-14`, `CR-15`, `CR-16`, `CR-17`, `CR-42`, `CR-32`; la escena de confianza > 80 va con la Fase F y lo que el narrador cuenta de recuerdos e hilos, con la B) |
 | **B — Memoria del narrador** | `CR-21` verdad obligatoria, `CR-22` callbacks por entidad, `CR-23` puntuación de recuerdos ([Cronista Fase 6](roadmap-cronista.md#fase-6--memoria-del-narrador--m)) | A | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-21`, `CR-22`, `CR-23` en `memoriaNarrador.ts`) |
 | **C — Población del Reino** | `REI-118` súbditos como personas, `REI-119` llegadas, `REI-120` parejas y crías, `REI-121` salidas y muerte, `CR-52` linajes y rastros ([propuesta aprobada](../borradores-opencode/propuestas-aprobadas.md), «Ciclo vital de los pueblos») · súbditos en el panel (`REI-53`, `REI-54`) | — (vivienda del `0.1`, `CR-13`) | ✅ 2026-10-06, retro ✅ 2026-10-07 (`CR-52`, `REI-118`…`REI-121`, `REI-54`; queda `REI-53` en parte —territorio de residencia y estado— y la muerte de súbditos en combate, que va con `CR-37` en la Fase E; los números del hambre son provisionales para la ronda de la Fase D) |
-| **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ y ~~`CR-56`~~ ✅ 2026-10-06 |
+| **D — Economía, ganadería y obras** | `CR-53` economía de supervivencia del Reino, `CR-54` de las facciones, `CR-58` factura de equipo, `CR-59` vasallaje y deuda · `CR-55` ganadería (oficio de ganadero y corrales por especie), `CR-56` usos de la fauna, `CR-61` comida por oficios · estaciones sin oficio (Leñera, Cantera, Fibrería) si hacen falta · edificios de defensa · `CR-36` las facciones construyen | C | 🚧 ronda 1 aceptada (2026-10-06, decisiones abajo, portes incluidos); ~~`CR-53`~~ ✅, ~~`CR-54`~~ ✅, ~~`CR-58`~~ ✅ y ~~`CR-59`~~ ✅ 2026-10-06; ronda de `CR-55` aceptada (2026-10-06, decisiones abajo; tarea nueva `CR-61`); ~~`CR-55`~~ ✅ y ~~`CR-56`~~ ✅ 2026-10-06; ronda de `CR-36` aceptada (2026-11-26, decisiones abajo; pasos 36a-36c) |
 | **E — Conflicto** | ~~`CR-62`~~ ✅ 2026-10-07 combate de fondo para escaramuzas y patrullas · ~~`CR-65`~~ ✅ 2026-10-07 defensa y milicia (los edificios de defensa de la Fase D) · ~~`CR-50`~~ ✅ 2026-10-07 campamentos de bandidos · ~~`CR-37`~~ ✅ 2026-10-08 guerra contra el Reino · `CR-39` territorios y expansión · `CR-66` postura de compañero · ~~`CR-67`~~ ✅ 2026-10-08 intensidad de asaltos · `CMB-1`…`CMB-8` | C, D | 🚧 ronda 1 aceptada (2026-10-07, decisiones abajo) |
 | **F — Hablar y comerciar con NPC** | «Charlar con NPC» enriquecido (Franja 4: lore, reclutar, interrogar tras Clemente) · `CR-51` comercio en persona con NPC y caravanas | A | 🧭 falta la especificación (ronda de diseño) |
 | **G — Interfaz** (se intercala) | Reino R-B, R-C, R-D, R-E y `PAN-7` · `DiceTray` `DAD-7`…`DAD-12` (con el resto de `CFG-20`) · `HUD-1`…`HUD-5`, `HUD-7`…`HUD-11`, `HUD-13` · `NAR-1`…`NAR-8`, `NAR-10`, `NAR-11` · `PAN-1`…`PAN-6`, `PAN-11`…`PAN-14` · `UX-18` (epílogo con plantillas), `UX-19`, `UX-20` · `INT-5`…`INT-8`, `INT-10`, `INT-11` · `CFG-36` · UX-F `UX-32`…`UX-34`, `UX-39` | — | Pendiente |
@@ -483,6 +483,42 @@ Kha'ak atacan cuando han reunido fuerza y hay un objetivo que lo merece.
   velocidad de refuerzo; nunca llega a cero.
 - **Q7 Mismo sistema para todos:** también decide cuándo un campamento sale a por viajeros; más
   adelante, expediciones y guerras entre facciones.
+
+## Decisiones de `CR-36` las facciones construyen (ronda aceptada por la usuaria el 2026-11-26)
+
+Preguntas Q-27…Q-37 de [`docs/questions.md`](../questions.md), contrastadas con los referentes (X4 primero) y con el
+[ADR 0003](../adr/0003-todo-viaja-de-verdad.md): **las acciones viven en el mapa** (usuaria).
+
+- **Q-27 Carencias:** las facciones pasan a las reglas del Reino (topes de almacén y agua por fuente); al migrar se
+  les siembran los edificios que ya necesitan, para que nadie arranque en carencia.
+- **Q-28 Obras:** Pozo, Granero, Cisterna y el taller de su oficio (Cocina, Corrales). No Leñera, Cantera ni Fibrería.
+- **Q-29 Coste y plazo:** los materiales reales de la receta (`construction.ts`), sacados del Almacén de la facción;
+  los obreros viajan como viajeros; con pocos obreros el plazo sube hasta ×4; una obra a la vez; antes de empezar
+  guardan 7 días de comida.
+- **Q-30 Prioridad:** fija, sed > hambre (granero) > oficio; `CR-38` la ajustará.
+- **Q-31 Lo que ves:** noticia al empezar y al acabar, y el edificio en el mapa de la zona.
+- **Q-32 Guerra:** la obra se pausa durante una guerra o un asalto y sigue sin perder lo pagado; el sabotaje, más
+  adelante.
+- **Q-33 Acopio:** partidas de acopio como viajeros con el motor de `CR-63`, a la fuente más cercana de su región
+  (puntos de recurso de la zona hasta `CR-39`); comprar por caravana, con `CR-64` en el `0.4`.
+- **Q-34 Riesgos:** en el camino las partidas corren los riesgos de cualquier viajero, y la jugadora puede
+  preguntarles, comerciar, escoltarlas o asaltarlas.
+- **Q-35 El Reino:** usa las mismas partidas de acopio desde Reino › Partidas; depositar a mano sigue valiendo.
+- **Q-36 Pasos (M→L):** `36a` obras con materiales del Almacén y prioridad · `36b` partidas de acopio de facciones
+  y Reino, con guardias · `36c` obreros que viajan, pausa en guerra y avisos.
+- **Q-37 Guardias** (la usuaria los pide para partidas, caravanas y otras acciones): una regla para todo viajero,
+  con el rol «guardia» de `ViajeroMiembro`. Salen de los soldados o vigías del Reino y de los soldados de la
+  facción, y no defienden el asentamiento mientras viajan. Van al paso del viajero y entran en el encuentro desde
+  el primer asalto (X4 los asigna con una orden fija, pero sus escoltas solo reaccionan tras el primer golpe). Los
+  porteadores pelean solo si caen los guardias. Las facciones eligen cuántos según el riesgo de la ruta (fauna,
+  bandidos, guerra) y lo que les sobre. Entra en `36b` para el acopio y en la base de `CR-64` para lo demás;
+  escoltar viajeros ajenos sigue en `CR-64`.
+
+Fuentes: [Egosoft, Defend Commander](https://wiki.egosoft.com/X4%20Foundations%20Wiki/Manual%20and%20Guides/Objects%20in%20the%20Game%20Universe/Orders%2C%20Behaviours%20and%20Assignments/Defend%20Commander%20%28Assignment%29/),
+[foro de Egosoft](https://forum.egosoft.com/viewtopic.php?p=4781138),
+[Bellwright, Caravan Station](https://noobfeed.com/articles/bellwright-small-caravan-station-trade),
+[Manor Lords, comercio](https://www.pcgamesn.com/manor-lords/trade),
+[D&D 5e, Hirelings](https://roll20.net/compendium/dnd5e/Hirelings); las de Q-27…Q-32, en `docs/questions.md`.
 
 ## Generadores en 0.3
 

@@ -329,7 +329,9 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-37
 - Refs: CR-64
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: Guardias de partidas y caravanas: ¿cómo funcionan y dónde entran?
 - Recommendation: Una sola regla para todo viajero (acopio, caza, caravanas, expediciones, mensajeros), del Reino y de las facciones: el rol «guardia» que ya prevé ViajeroMiembro. Los guardias salen de tus soldados o vigías y, en las facciones, de sus soldados, y dejan de defender el asentamiento mientras viajan. En un encuentro pelean primero y los porteadores solo si caen los guardias. Las facciones eligen cuántos según el riesgo de la ruta (fauna, bandidos, guerra) y lo que les sobre. Entra en 36b para el acopio y en la infraestructura de CR-64 para lo demás; «escoltar» a viajeros ajenos sigue en CR-64. Contraste: X4 asigna la escolta como orden persistente de «defender al comandante», pero sus escoltas se adelantan o llegan tarde porque solo reaccionan tras el primer golpe (wiki.egosoft.com, Defend Commander; forum.egosoft.com p=4781138). Aquí los guardias van al paso del viajero, en el mismo grupo, y entran en el encuentro desde el primer asalto. Bellwright, Manor Lords y Medieval Dynasty no tienen escolta (en Bellwright solo existe por mod); D&D 5e paga a un guardia como asalariado cualificado, 2 po/día (PHB, Hirelings).
+- Answer: ok
+- Answered: 2026-11-26
