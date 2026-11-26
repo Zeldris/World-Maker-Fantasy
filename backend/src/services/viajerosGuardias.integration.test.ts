@@ -4,6 +4,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 // ronda de «caen los guardias», que se fuerza).
 const llamadas: { nombres: string[] }[] = [];
 let forzarGuardiasCaidos = false;
+let forzarTodosCaen = false;
 vi.mock('./combateDeFondo.js', async (importOriginal) => {
   const real = await importOriginal<typeof import('./combateDeFondo.js')>();
   return {
@@ -12,6 +13,10 @@ vi.mock('./combateDeFondo.js', async (importOriginal) => {
       llamadas.push({ nombres: cs.filter((c) => c.bando === 'A').map((c) => c.nombre) });
       if (forzarGuardiasCaidos && llamadas.length === 1) {
         return { ganador: 'B' as const, retiradas: [], subcombates: 1, rondas: 1, estados: cs.map((c) => ({ id: c.id, condicion: c.bando === 'A' ? ('CONVALECIENTE' as const) : ('ILESO' as const), huido: false, muerto: false })) };
+      }
+      if (forzarTodosCaen && llamadas.length === 1) {
+        // Caen todos los guardias y también todos los enemigos.
+        return { ganador: 'B' as const, retiradas: [], subcombates: 1, rondas: 1, estados: cs.map((c) => ({ id: c.id, condicion: 'CONVALECIENTE' as const, huido: false, muerto: false })) };
       }
       return real.simularCombateDeFondo(cs, random);
     },
@@ -50,13 +55,14 @@ describe('guardias y porteadores en el combate (CR-36b)', () => {
     await prisma.save.delete({ where: { id: saveId } });
   });
 
-  const pelear = async (cantidad: number) => {
+  const pelear = async (cantidad: number, id = viajeroId) => {
     const punto = await prisma.zonePoint.create({ data: { saveId, locationId: lugar, tipo: 'FAUNA', targetSlug: 'rondador-de-brasas', x: 1, y: 1, cantidad } });
     const npc = await prisma.npc.findFirstOrThrow({ where: { slug: 'rondador-de-brasas', saveId: null } });
-    const v = await prisma.viajero.findUniqueOrThrow({ where: { id: viajeroId }, include: { miembros: true } });
+    const v = await prisma.viajero.findUniqueOrThrow({ where: { id }, include: { miembros: true } });
     llamadas.length = 0;
-    await prisma.$transaction((tx) => pelearEncuentro(tx, v, { punto, npc }, 11, () => 0.5));
-    await prisma.zonePoint.delete({ where: { id: punto.id } });
+    const ganan = await prisma.$transaction((tx) => pelearEncuentro(tx, v, { punto, npc }, 11, () => 0.5));
+    await prisma.zonePoint.deleteMany({ where: { id: punto.id } });
+    return ganan;
   };
 
   it('solo pelean los guardias mientras alguno siga en pie', async () => {
@@ -71,5 +77,23 @@ describe('guardias y porteadores en el combate (CR-36b)', () => {
     expect(llamadas).toHaveLength(2);
     expect(llamadas[0]!.nombres).toEqual(['Guardia', 'Guardia']);
     expect(llamadas[1]!.nombres).toEqual(Array(6).fill('Porteador'));
+  });
+
+  it('si caen todos los guardias y también todos los enemigos, se quedan con el campo', async () => {
+    forzarGuardiasCaidos = false;
+    forzarTodosCaen = true;
+    expect(await pelear(1)).toBe(true);
+    forzarTodosCaen = false;
+  });
+
+  it('con más guardias que plazas, la 2.ª ronda mete primero a los guardias que no pelearon', async () => {
+    forzarGuardiasCaidos = true;
+    const r = await prisma.$transaction((tx) => crearViajero(tx, { saveId, tipo: 'ACOPIO', origenLocationId: lugar, destinoLocationId: lugar, dia: 10, miembros: [{ genericos: 6, rol: 'porteador' }, { genericos: 10, rol: 'guardia' }] }));
+    if (!r.ok) throw new Error(r.motivo);
+    await pelear(2, r.id);
+    expect(llamadas).toHaveLength(2);
+    expect(llamadas[0]!.nombres).toEqual(Array(8).fill('Guardia'));
+    expect(llamadas[1]!.nombres.sort()).toEqual(['Guardia', 'Guardia', ...Array(6).fill('Porteador')]);
+    forzarGuardiasCaidos = false;
   });
 });

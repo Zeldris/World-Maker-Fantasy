@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { prisma } from '../lib/prisma.js';
 import { getDefaultUserId } from '../lib/defaultUser.js';
 import { ownerKeyFor } from './reinoOwner.js';
-import { enlacesDelMundo, TRABAJOS } from './viajeros.js';
+import { enlacesDelMundo, crearViajero, TRABAJOS } from './viajeros.js';
 import { lanzarPartida, opcionesDePartida, partidasDelReino } from './partidasReino.js';
 import { asentamientosDelReino } from './defensaReino.js';
 
@@ -32,6 +32,7 @@ describe('partidas de acopio del Reino (CR-36b)', () => {
     zona = enlaces[0]!.toId;
     await prisma.building.create({ data: { saveId, locationId: casa, recipeKey: 'ayuntamiento', name: 'Ayuntamiento', kind: 'ayuntamiento', description: 'x', status: 'ACTIVO', tier: 1 } });
     await prisma.zonePoint.create({ data: { saveId, locationId: zona, tipo: 'RECURSO', targetSlug: FUENTE, x: 1, y: 1, cantidad: 100 } });
+    await prisma.locationVisit.create({ data: { saveId, locationId: zona } });
     porteador = (await prisma.subject.create({ data: { saveId, name: 'Carga', role: 'trabajador', notes: '', pueblo: 'orcos', createdAt: new Date(Date.now() - 60000) } })).id;
     guardia = (await prisma.subject.create({ data: { saveId, name: 'Escolta', role: 'soldado', notes: '', pueblo: 'orcos', createdAt: new Date(Date.now() - 50000) } })).id;
   });
@@ -77,5 +78,36 @@ describe('partidas de acopio del Reino (CR-36b)', () => {
     expect((await prisma.zonePoint.findFirstOrThrow({ where: { saveId, locationId: zona } })).cantidad).toBe(90);
     await prisma.$transaction(async (tx) => TRABAJOS.ACOPIO!.alVolver!(tx, await recargar(), HOY + 2, () => 0.5));
     expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(10);
+  });
+
+  it('al volver, el Reino respeta el tope de materiales del Almacén y avisa de lo que no cupo', async () => {
+    const v = await prisma.viajero.findFirstOrThrow({ where: { saveId, tipo: 'ACOPIO' } });
+    // Tope base 60: ya hay 10; se llena hasta dejar 5 de hueco y la carga trae 10.
+    const item = await prisma.almacenItem.findFirstOrThrow({ where: { saveId }, select: { name: true, description: true, catalogSlug: true } });
+    await prisma.almacenItem.createMany({ data: Array.from({ length: 45 }, () => ({ saveId, ...item })) });
+    await prisma.viajero.update({ where: { id: v.id }, data: { carga: { categoria: 'piedra', items: [{ slug: item.catalogSlug, name: item.name, description: item.description, n: 10 }] } } });
+    const antes = await prisma.almacenItem.count({ where: { saveId } });
+    await prisma.$transaction(async (tx) => TRABAJOS.ACOPIO!.alVolver!(tx, await prisma.viajero.findUniqueOrThrow({ where: { id: v.id }, include: { miembros: true } }), HOY + 3, () => 0.5));
+    expect(await prisma.almacenItem.count({ where: { saveId } })).toBe(antes + 5);
+    await prisma.viajero.update({ where: { id: v.id }, data: { estado: 'TERMINADO' } });
+  });
+
+  it('solo cargan los porteadores con nombre que siguen activos', async () => {
+    const vivo = (await prisma.subject.create({ data: { saveId, name: 'Vivo', role: 'trabajador', notes: '', pueblo: 'orcos' } })).id;
+    const muerto = (await prisma.subject.create({ data: { saveId, name: 'Muerto', role: 'trabajador', notes: '', pueblo: 'orcos', estado: 'MUERTO' } })).id;
+    await prisma.zonePoint.updateMany({ where: { saveId, locationId: zona }, data: { cantidad: 100, activo: true } });
+    const r = await prisma.$transaction((tx) => crearViajero(tx, { saveId, tipo: 'ACOPIO', objetivo: 'piedra', origenLocationId: casa, destinoLocationId: zona, dia: HOY + 4, miembros: [{ subjectId: vivo, rol: 'porteador' }, { subjectId: muerto, rol: 'porteador' }] }));
+    if (!r.ok) throw new Error(r.motivo);
+    await prisma.viajero.update({ where: { id: r.id }, data: { ubicacionLocationId: zona, estado: 'TRABAJANDO' } });
+    await prisma.$transaction(async (tx) => TRABAJOS.ACOPIO!.alLlegar!(tx, await prisma.viajero.findUniqueOrThrow({ where: { id: r.id }, include: { miembros: true } }), HOY + 5, () => 0.5));
+    expect((await prisma.zonePoint.findFirstOrThrow({ where: { saveId, locationId: zona } })).cantidad).toBe(90);
+  });
+
+  it('un lugar que no has visitado no sale como destino de acopio ni se puede lanzar', async () => {
+    await prisma.locationVisit.deleteMany({ where: { saveId, locationId: zona } });
+    const op = await opcionesDePartida(prisma, saveId, ahora);
+    expect(op.acopio.destinos.map((d) => d.id)).not.toContain(zona);
+    const r = await prisma.$transaction((tx) => lanzarPartida(tx, saveId, { tipo: 'ACOPIO', especie: '', categoria: 'piedra', destinoLocationId: zona, porteadorIds: [porteador] }, ahora));
+    expect(r.ok).toBe(false);
   });
 });

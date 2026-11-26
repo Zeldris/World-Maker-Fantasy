@@ -78,7 +78,8 @@ export async function opcionesDePartida(tx: Tx, saveId: string, ahora: number) {
   // Revisión C2 (leve 5): el aviso de «repara» solo si es un edificio dañado lo que falta para salir.
   const origenDanado = !origen && (await tx.building.count({ where: { saveId, status: 'DANADO', locationId: { not: null } } })) > 0;
   // Q-35 (CR-36b): el acopio del Reino. Porteadores: cualquier súbdito adulto que no esté fuera; guardias: soldados o vigías.
-  const recursos = await recursosPorLugar(tx, saveId, save.worldId);
+  // Solo lugares que conoces (como la caza): si no, el panel filtraría el mapa.
+  const recursos = new Map([...(await recursosPorLugar(tx, saveId, save.worldId))].filter(([id]) => visitados.some((v) => v.locationId === id)));
   const libres = subditos.filter((s) => !fuera.subjects.has(s.id) && esAdultoSubdito(s, ahora));
   const lugaresAcopio = await tx.location.findMany({ where: { id: { in: [...recursos.keys()] } }, select: { id: true, name: true, region: true }, orderBy: { name: 'asc' } });
   const acopio = {

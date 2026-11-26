@@ -14,6 +14,7 @@ import { CONSTRUCTION_RECIPES, type ConstructionRecipe } from './construction.js
 import { cuotaDelDia } from './cronista/casaDeObras.js';
 import { totalQuantity, type CatalogLookup, type InventoryRowLike } from './ingredients.js';
 import { descontarZonePointCaza } from './caza.js';
+import { huecoDeMateriales } from './cronista/economiaReino.js';
 import { campamentoCerca } from './campamentos.js';
 import { MAX_PARTIDAS_FACCION } from './partidasFacciones.js';
 import { avisoDeViajero, crearViajero, enlacesDelMundo, esDelReino, rutaMasCorta, TRABAJOS, type Enlace, type ViajeroFila } from './viajeros.js';
@@ -150,8 +151,17 @@ export async function lanzarAcopiosDeFacciones(prisma: PrismaClient, saveId: str
 }
 
 const genericosDe = (v: ViajeroFila, rol: string) => v.miembros.filter((m) => m.rol === rol).reduce((s, m) => s + m.genericos, 0);
-/// Los que cargan: los genéricos y también los súbditos con nombre que el Reino manda de porteadores.
-const cuentaDe = (v: ViajeroFila, rol: string) => v.miembros.filter((m) => m.rol === rol).reduce((s, m) => s + m.genericos + (m.subjectId || m.companionId ? 1 : 0), 0);
+/// Los que cargan: los genéricos (las bajas ya se descontaron de su fila) y los súbditos o compañeros con nombre
+/// que siguen vivos y en pie (un muerto o convaleciente no carga).
+async function cuentaDe(tx: Tx, v: ViajeroFila, rol: string): Promise<number> {
+  const miembros = v.miembros.filter((m) => m.rol === rol);
+  const genericos = miembros.reduce((s, m) => s + m.genericos, 0);
+  const subjectIds = miembros.map((m) => m.subjectId).filter((x): x is string => !!x);
+  const companionIds = miembros.map((m) => m.companionId).filter((x): x is string => !!x);
+  const subditos = subjectIds.length > 0 ? await tx.subject.count({ where: { id: { in: subjectIds }, estado: 'ACTIVO' } }) : 0;
+  const companeros = companionIds.length > 0 ? await tx.companion.count({ where: { id: { in: companionIds }, condicionFisica: { notIn: ['MUERTO', 'CONVALECIENTE'] } } }) : 0;
+  return genericos + subditos + companeros;
+}
 
 /// Q-35: lo que hay por recolectar en cada lugar, por categoría (puntos de recurso activos con cantidad), para
 /// que el Reino elija destino en Reino › Partidas.
@@ -176,7 +186,7 @@ async function acopiarEnDestino(tx: Tx, v: ViajeroFila): Promise<CargaAcopio | n
   if (!categoria || !CATEGORIAS_ACOPIO.includes(categoria)) return null;
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
   const fuentes = await itemsDeCategoria(tx, worldId, categoria);
-  let quedan = UNIDADES_POR_PORTEADOR * cuentaDe(v, 'porteador');
+  let quedan = UNIDADES_POR_PORTEADOR * (await cuentaDe(tx, v, 'porteador'));
   const puntos = await tx.zonePoint.findMany({ where: { saveId: v.saveId, locationId: v.ubicacionLocationId, tipo: 'RECURSO', activo: true, cantidad: { gt: 0 }, targetSlug: { in: [...fuentes.keys()] } }, orderBy: [{ cantidad: 'desc' }, { id: 'asc' }] });
   const porItem = new Map<string, { slug: string; name: string; description: string; n: number }>();
   for (const p of puntos) {
@@ -206,8 +216,21 @@ TRABAJOS[TIPO_ACOPIO] = {
       await avisoDeViajero(tx, v, 'La partida de acopio vuelve con las manos vacías.');
       return;
     }
-    const dueno = esDelReino(v) ? { saveId: v.saveId } : { factionId: v.factionId! };
-    await tx.almacenItem.createMany({ data: carga.items.flatMap((i) => Array.from({ length: i.n }, () => ({ ...dueno, name: i.name, description: i.description, catalogSlug: i.slug }))) });
-    await avisoDeViajero(tx, v, `La partida de acopio vuelve con ${carga.items.map((i) => `${i.n} de ${i.name}`).join(', ')}.`);
+    const reino = esDelReino(v);
+    const dueno = reino ? { saveId: v.saveId } : { factionId: v.factionId! };
+    // CR-53 (Q2): en el Reino, los materiales solo entran hasta el tope del Almacén.
+    let hueco = reino ? await huecoDeMateriales(tx, v.saveId) : Infinity;
+    const metidos: { name: string; n: number }[] = [];
+    let sobran = 0;
+    for (const i of carga.items) {
+      const n = Math.min(i.n, hueco);
+      hueco -= n;
+      sobran += i.n - n;
+      if (n <= 0) continue;
+      metidos.push({ name: i.name, n });
+      await tx.almacenItem.createMany({ data: Array.from({ length: n }, () => ({ ...dueno, name: i.name, description: i.description, catalogSlug: i.slug })) });
+    }
+    const dicho = metidos.length > 0 ? `vuelve con ${metidos.map((i) => `${i.n} de ${i.name}`).join(', ')}` : 'vuelve sin poder descargar';
+    await avisoDeViajero(tx, v, `La partida de acopio ${dicho}${sobran > 0 ? `; no caben ${sobran} más en el Almacén y se pierden` : ''}.`);
   },
 };
