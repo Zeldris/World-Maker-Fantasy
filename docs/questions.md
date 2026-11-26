@@ -230,7 +230,9 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-26
 - Refs: QA-532
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: La matriz tiene 21 filas nuevas (CFG-9 y 20 de ZON: 2, 3, 4, 6, 16, 18, 30…34, 36, 38, 40, 41, 45, 50, 51, 53, 58) como «no se juega, sin ronda registrada; para la fase única del 0.7»: a) se quedan así; b) pasan a «sin jugar» y entran en la puerta de pruebas
 - Recommendation: a) se quedan en «no se juega», como las 32 de Q-17; el 0.7 tiene su fase de pruebas
+- Answer: a
+- Answered: 2026-11-26
