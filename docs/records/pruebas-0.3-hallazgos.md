@@ -12,8 +12,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 ## Estado y roadmap
 
 <!-- resumen: lo genera tools/qa/marca-hallazgo.py desde la tabla; no se edita a mano -->
-- **Pendientes** (15): P49, P66, P252, P262, P272, P310, P464, P466, P474, P476, P477, P478, P481,
-  P490, P492.
+- **Pendientes** (20): P49, P66, P252, P262, P272, P310, P464, P466, P474, P476, P477, P478, P481,
+  P490, P492, P498, P499, P500, P501, P502.
 - **Pendientes de una decisión de la usuaria** (0): ninguno.
 - **Arreglados en parte** (16): P70, P131, P180, P243, P245, P253, P306, P414, P382, P429, P443,
   P451, P469, P470, P471, P491.
@@ -556,3 +556,8 @@ verdad; la calidad narrativa no (las narraciones son del simulador).
 | P492 | Tanda L7 de la ronda local 2 (2026-11-20, t13b2-ketg): Ulkha Ketg dice en un diálogo que la tormenta no dañó al clan, y más tarde el narrador narra «una valla dañada» (la acción de la jugadora hablaba de daños en techos y vallas); además Torgash Ketg llama «forastero» a Gorhorn tras haber hablado con él en ese mismo rato | Pendiente (leve, memoria del diálogo con NPC; para el próximo /gw-opt-ai) |
 | P493 | Tanda L8 de la ronda local 2 (2026-11-20, t13b2-ketg, Ollama real, pasada 3, `QA-518`): «Cuéntame qué pasó con los Maktor, Ulkha.» → réplica de 5 frases que recita la entrada del lore («pacífico y orgulloso, como tú dices», «dos golpes») y la mezcla: «una traición por parte de los Goirntes del Clan Serhu» (en el lore, la casta de Ketg traiciona con ayuda Goirnte). Pide 1-2 frases | Arreglado sin jugar (QA-518, revisión de bloque: solo lo público, ~280 caracteres, 1-2 frases sin recitar; falta jugarlo con Ollama real) |
 | P494 | Tanda L8 de la ronda local 2 (2026-11-20, proceso): el registro de IA (`IA_REGISTRO`) no guarda el texto del prompt y `IA_CASOS` no está en `juego-ia.env`: para ver qué lore entra en una réplica hay que relanzar el juego con `IA_CASOS` a mano (una pasada de más en la L8). Además, `systemd-inhibit` solo existe en el host: va por `tools/qa/host.sh` | Arreglado (QA-519: IA_CASOS junto a IA_REGISTRO en perfil-ia.sh; runbook) |
+| P498 | CR-36a/36b, ronda jugada (Gorhorn, Cazador): ningún acopio de facción sale en 7 días con 7 obras paradas. Los RECURSO solo existen en las zonas que la usuaria abrió; las facciones de Llanuras (feg-ger, clan-serhu, hogar campamento-serhu-interior, sin enlaces propios) tampoco lanzan. Esperado: al menos una facción con obra parada por piedra/madera/fibra lanza un viajero ACOPIO visible en el mapa. | 🔎 sin diagnosticar, media: ¿falta destino por no existir puntos RECURSO fuera de zonas abiertas? Check 3 y 4 no jugados |
+| P499 | CR-36b, Reino › Partidas: en el formulario de acopio, porteadores y guardias listan los mismos 5 nombres sin rol (soldado/vigía/trabajador) y «En marcha» no separa porteadores de guardias. Esperado: ver el rol de cada uno. | 🔎 UX, leve |
+| P500 | CR-36b, acopio del Reino: al salir con soldados como porteadores la guarnición bajó de 5/5 a 1/5 (también salen los porteadores soldados). Esperado según Q-27…Q-43: solo los guardias dejan de contar; confirmar si es intencionado. | 🔎 diseño, media: decidir |
+| P501 | CR-36b: Reino › Visión general solo muestra «materiales 50/60», sin lista del Almacén por objeto; la madera/piedra/fibra traída no se ve por ítem. Esperado: ver cuánto llegó de cada una. | 🔎 UX, leve |
+| P502 | Herramientas: escenario.sh no tiene paso para obra de facción ni acopio de facción (checks 2-4 de CR-36a/36b); y el driver no arranca solo en la nube y muere tras cada «avanzar». | 🔎 herramienta, leve |

@@ -1171,3 +1171,7 @@ B12 (combate no cuenta para capítulo), B27 (Goirnos al saquear humanoides + Ven
 **Aviso para quien pruebe en local:** migración nueva `20260928130000_arquetipo_sin_clase`
 (además de `20260928120000_zona_ultimo_encuentro`); la suite del backend ahora corre los tests
 con Postgres real en serie (proyecto `bd-real` de vitest) y ya no da fallos intermitentes.
+
+## CR-36a/36b (ronda 2026-11-26, Gorhorn, Cazador)
+- Comprobado jugando: acopio del Reino con porteadores y guardias (formulario, vuelta con materiales y aviso, guardias fuera de la guarnición); aviso de caravana en obra parada por odre.
+- No jugado: noticias de obra empezada/terminada en el Cronista y mapa (sin obra de facción preparable), acopio de facción en el mapa (no sale, ver hallazgo) y orden de guardias/porteadores en un encuentro.
