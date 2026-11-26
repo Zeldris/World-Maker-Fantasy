@@ -76,7 +76,7 @@ un tránsito): `doPassiveTurn` narra directo con la clasificación del mock. 25/
   enganchado en `factionExpeditions.ts` (vuelta con botín, asalto rechazado o con carga perdida,
   cambio de banda provocado por un asalto). Para verlas sin recargar: `GET /saves/:id/mundo/nuevas`
   y el hook `useNoticiasMundo` (al terminar cada turno y cada 2 min). Los cambios de banda que causa
-  el propio jugador ya iban a su registro. **Pendiente para 0.2:** cambios de banda por la economía
+  el propio jugador ya iban a su registro. ~~**Pendiente para 0.2:**~~ ✅ cubierto en el `0.2` por `CR-9`…`CR-13`: cambios de banda por la economía
   de facción y noticias de otras fuentes (pasarán a sucesos del Cronista).
 - **Migrar `worldAgenda.ts`** a `FactionRelation`: el conflicto fijo Serhu+Concordia contra
   Helsig+Goshg pasa a leerse de las relaciones reales (sembradas el 2026-09-29), sin cambiar lo que
@@ -88,7 +88,7 @@ un tránsito): `doPassiveTurn` narra directo con la clasificación del mock. 25/
   sincroniza partidas que ya iban más avanzadas; textos y bajas de población, igual. Sin relación en
   BD se usa la agenda como antes. De paso: `factionRelations.integration.test.ts` borraba la
   relación sembrada Serhu→Helsig al terminar; ahora la restaura.
-  **Pendiente para 0.2:** que el conflicto avance por sucesos reales y no por temporizador (motor de
+  ~~**Pendiente para 0.2:**~~ ✅ cubierto en el `0.2` por `CR-9`…`CR-13`: que el conflicto avance por sucesos reales y no por temporizador (motor de
   eventos del Cronista) y que la Concordia→Helsig/Goshg cuente.
 
 ✅ **Fase D cerrada** el 2026-10-02 (sin el Libro de Sucesos `CR-1`…`CR-4`, que sigue pendiente de
@@ -117,11 +117,11 @@ máquina, modelos y versión. Probado en local contra el Ollama simulado.
 `logs/benchmark/fase-f-2026-11-14.json`, carpeta ignorada). Mediana · p90 · máximo: clasificar 3,0 · 3,7 · 4,1 s;
 resolver 10,9 · 14,1 · 14,1 s; narrar 13,1 · 30,5 · 30,5 s; **total 29,0 · 44,7 · 44,7 s** (n=9: el turno 7,
 «Camino despacio hacia el borde del claro», salió bloqueado en 0,4 s y no cuenta). **Falta (Álvaro):** fijar con
-estas cifras el objetivo de turno en el roadmap (pregunta en la bitácora).
+estas cifras el objetivo de turno en el roadmap (pregunta 11 de «Preguntas abiertas» de `21-roadmap.md`).
 
 ## Fase G — Pasada de juego completa (Opus, con el navegador)
 
-⏸ **Aplazada** (2026-10-02, decisión de la usuaria): se empezó con el Ollama simulado y salieron 29
+⏸ **Aplazada y pasada al `0.7`** (2026-10-02, decisión de la usuaria; Q-25, 2026-11-26: no queda nada en el `0.1`): se empezó con el Ollama simulado y salieron 29
 hallazgos (21 arreglados) — estado por tramo y hallazgos en
 [`docs/records/fase-g-0.1-hallazgos.md`](../records/fase-g-0.1-hallazgos.md). El resto del guion
 pasa a la **fase única de pruebas** (ver [`21-roadmap.md`](21-roadmap.md#qué-entra-en-cada-hito),

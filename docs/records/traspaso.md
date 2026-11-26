@@ -164,10 +164,10 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - **Archivado (2026-11-14):** lo hecho hasta el 2026-11-11 y las filas de ramas fusionadas y terminadas, en [`traspaso-archivo.md`](traspaso-archivo.md) (`QA-333`, `QA-342`).
 
 
-1. 2026-11-26 — QA-531: P266, P273 y P486 arreglados con test (P266 jugado con el simulado); a la sesión local para Ollama real
-2. 2026-11-25 — QA-530: lote P472, P484, P485 (comprobados jugando con el simulado) y P483 (arreglado, a la sesión local)
-3. 2026-11-25 — QA-528: generadores (IMG-60…65, MAP-21…25, VOZ-12…16) en cada hito del 0.3 en adelante y cobertura.py con MAP; PR #106
-4. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
+1. 2026-11-26 — QA-532: limpieza del roadmap del paso 4 (Q-21…Q-25); ids tachados ZON-2, ZON-3, ZON-4, ZON-6, ZON-45; CR-73…75, UX-42, UX-43, REI-123 y QA-533…539 entran con hito
+2. 2026-11-26 — QA-531: P266, P273 y P486 arreglados con test (P266 jugado con el simulado); a la sesión local para Ollama real
+3. 2026-11-25 — QA-530: lote P472, P484, P485 (comprobados jugando con el simulado) y P483 (arreglado, a la sesión local)
+4. 2026-11-25 — QA-528: generadores (IMG-60…65, MAP-21…25, VOZ-12…16) en cada hito del 0.3 en adelante y cobertura.py con MAP; PR #106
+5. 2026-11-20 — Cerradas en la ronda local 2 (ya tachadas en sus roadmaps): QA-339, QA-340, QA-341, QA-347, QA-348,
    QA-352, QA-353, QA-354, QA-355, QA-356, QA-370, QA-503, QA-505, QA-506, QA-507, QA-508, QA-510, QA-512,
    QA-513, QA-515, QA-516 (detalle en `roadmap-front.md` y el PR #104)
-5. 2026-11-20 — QA-519: IA_CASOS junto a IA_REGISTRO en las rondas (P494); revisión de bloque de QA-518 cerrada (lore de la réplica sin secretos, P493 sin jugar)
