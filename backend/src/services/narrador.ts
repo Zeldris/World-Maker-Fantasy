@@ -1403,25 +1403,30 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   // P263: si la réplica habla de sí mismo como de otro («mi hermana, Ulkha Ketg»), un segundo intento; si repite, sin réplica.
   // P411: si empieza igual que su réplica anterior, un segundo intento; si repite, se queda la segunda.
   // P420: lo mismo con un nombre propio inventado; si el segundo también lo trae, se queda y se registra.
+  // P273: cada intento va al registro con `intento` y, desde el 2.º, el motivo del rechazo del anterior.
+  let motivoPrevio: string | undefined;
   for (let intento = 0; intento < 2; intento++) {
-    const reply = sinEco(await pedirReplicaNpc(system, prompt));
-    if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) continue;
-    if (reply !== '' && replicaDefectuosa(reply, ctx.npc, ctx.characterName, conoce)) continue;
+    const reply = sinEco(await pedirReplicaNpc(system, prompt, intento + 1, motivoPrevio));
+    if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) { motivoPrevio = 'habla de sí como de otro'; continue; }
+    const defecto = reply !== '' ? replicaDefectuosa(reply, ctx.npc, ctx.characterName, conoce) : null;
+    if (defecto) { motivoPrevio = defecto; continue; }
     const inventado = ctx.nombresConocidos ? nombreInventado(reply, ctx.nombresConocidos, [ctx.characterName, ctx.action, ...ctx.sessionFacts]) : null;
-    if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) continue;
+    if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) { motivoPrevio = inventado ? `nombre inventado: ${inventado}` : 'empieza igual que la réplica anterior'; continue; }
     if (inventado) console.warn(`[lint] nombre inventado en la réplica de ${ctx.npc.name}: «${inventado}»`);
     return reply;
   }
   return '';
 }
 
-async function pedirReplicaNpc(system: string, prompt: string): Promise<string> {
+async function pedirReplicaNpc(system: string, prompt: string, intento = 1, rechazoPrevio?: string): Promise<string> {
   const { text } = await ollamaGenerate({
     model: env.ollamaModelNarrador,
     system,
     prompt,
     format: NPC_REPLY_FORMAT,
     tarea: 'dialogo_npc',
+    intento,
+    rechazoPrevio,
     // 120s (subido de 60s tras un fallo real en partida, 2026-07-23): probado en aislado, la
     // misma llamada tardó ~33s — pero en un turno real esta llamada se encola DETRÁS de la
     // narración principal (30-220s) en el mismo Ollama de concurrencia 1, y cambiar de `system`
@@ -2031,6 +2036,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
       intento: 3,
+      rechazoPrevio: rejectionReasons.length ? rejectionReasons.join(' | ') : undefined,
     });
   };
 
