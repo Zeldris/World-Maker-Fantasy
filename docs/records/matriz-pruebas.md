@@ -13,6 +13,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-4` | Configuración | Panel de configuración | jugado | 6 pestañas, Restablecer/Cancelar/Aplicar; Restablecer devuelve todo (también el ritmo del servidor) |
 | `CFG-5` | Configuración | Persistencia | jugado | tras recargar siguen narración, animaciones, contraste y atajo |
 | `CFG-6` | Configuración | `SettingsContext` | no se juega | contexto interno; se ve por CFG-4/5 |
+| `CFG-9` | Configuración | 2026-10-02 Escala de la interfaz 80 %–150 % `font-size` raíz; clave en Steam Deck y monito | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `CFG-13` | Configuración | Tamaño y tipografía de la narración | jugado | Grande + Serif: narración 14→16 px, Georgia |
 | `CFG-14` | Configuración | Animaciones | jugado | Reducidas: data-motion y animaciones a none |
 | `CFG-26` | Configuración | Atajos de teclado reasignables | jugado | Leyendas Y→U: U abre Leyendas, Y ya no; vuelve a Y al restablecer |
@@ -90,13 +91,35 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-37` | Interfaz | Responder escribiendo | jugado | P141 (Responder escribiendo) |
 | `UX-38` | Interfaz | Noticias del mundo que se pueden tocar | jugado | iconos de categoría, enlace de lugar abre su ficha, y con una oportunidad sembrada la etiqueta «📍 En Las Dunas Ahogadas · hasta el día 41» (también dentro del resumen) |
 | `UX-40` | Interfaz | La marca en la interfaz, sin imágenes | jugado | 2026-11-10, Playwright: Home, ficha de Helek Sirik y hotbar en una partida |
+| `ZON-2` | Mapa de zona | Minimapa permanente (si no se elige A): esquina de la cabecera o del registro, ~200 px, co | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-3` | Mapa de zona | Un solo mapa : la vista de consulta de *Mapa → Zona* pasa a ser la misma vista, con el mov | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-4` | Mapa de zona | Atajos : `M` abre o centra el mapa, `Z` alterna mapa grande / minimapa, flechas o `WASD` m | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-5` | Mapa de zona | 2026-10-05 (adelantada de Z-C a petición de la usuaria: chocar con algo ya no cierra el ma | jugado | registro: pruebas-0.3-hallazgos.md |
+| `ZON-6` | Mapa de zona | Pantalla completa del mapa (`F` o doble clic en el borde) para explorar con detalle. S | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-10` | Mapa de zona | Fichas con placa oscura + pictograma + anillo de disposición (Foundry VTT). La placa conse | jugado | P123, P147 |
 | `ZON-11` | Mapa de zona | Tamaño mínimo garantizado : las fichas se dibujan a tamaño de pantalla fijo (~28 px de diá | jugado | P123 |
 | `ZON-13` | Mapa de zona | Grupos legibles : insignia "×3" en píldora clara fuera de la ficha; a partir de 3, fichas | jugado | P147 |
 | `ZON-14` | Mapa de zona | Ficha del personaje : retrato o inicial, anillo de cristal `accent` (el color de "tu perso | jugado | QA-27 (2026-10-09…17) |
+| `ZON-16` | Mapa de zona | 2026-10-05 (silueta con «?» y anillo punteado si no está descubierto; atenuada con ⏳ si es | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-17` | Mapa de zona | Salidas como estandartes de camino : flecha grande hacia el borde, placa con el nombre (o | jugado | P6, P164 (salidas) |
+| `ZON-18` | Mapa de zona | 2026-10-05 (`ParcelaMarker` a tamaño de pantalla: cimientos punteados con «+», o ficha de  | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-19` | Mapa de zona | Etiquetas de nombre : siempre visibles para los puntos a 2-3 celdas del personaje y para e | jugado | P123, P151 (etiquetas) |
 | `ZON-20` | Mapa de zona | Leyenda compacta fija en una esquina del mapa (BG3), plegable, con las mismas fichas reale | jugado | 2026-10-19: leyenda plegada abajo a la izquierda; al abrirla, las fichas reales (fauna, recurso, NPC, edificio, suelo, cadáver, tú, salida, parcelas) y los colores de facción |
+| `ZON-30` | Mapa de zona | 2026-10-05 (`CeldaResaltada`, roja si el movimiento está bloqueado; cursor de andar, esper | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-31` | Mapa de zona | 2026-10-05 (`lib/zonaRuta.ts`, espejo de `calcularCamino` con sus mismos casos de test; `L | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-32` | Mapa de zona | 2026-10-05 («N pasos · N min · llegas a las HH:MM · +E energía»; `GET /zona` devuelve ya e | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-33` | Mapa de zona | 2026-10-05 (`riesgoDeRuta`: celdas de la ruta prevista en el radio de un hostil conocido e | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-34` | Mapa de zona | 2026-10-05 (`BanderaDestino` y la ruta que queda, con `caminoRestante` de cada paso; se qu | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-35` | Mapa de zona | 2026-10-05 (`useMovimientoZona`: «Parar» se mira justo antes de pedir cada paso, el destin | jugado | registro: pruebas-0.3-hallazgos.md |
+| `ZON-36` | Mapa de zona | 2026-10-05 (ajuste «Velocidad al andar por la zona» en Ajustes › Animaciones: normal 600 m | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-38` | Mapa de zona | 2026-10-05 (solo front, decisión de la usuaria: el siguiente paso se pide para que llegue  | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-40` | Mapa de zona | 2026-10-05 (`zona/MenuFicha.tsx` · `TarjetaFicha`: nombre, tipo, disposición, cantidad, co | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-41` | Mapa de zona | 2026-10-05 (`MenuFicha`: la misma información arriba y las acciones que ya tenía la ficha: | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-45` | Mapa de zona | Lista lateral útil en vez de duplicada (Z25): puntos agrupados por tipo y ordenados por di | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-50` | Mapa de zona | 2026-10-05 (`GET /zona` marca `hostil` con la regla de la persecución, solo si está descub | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-51` | Mapa de zona | 2026-10-05 (`AnilloInteraccion`, sigue al personaje; no en la vista informativa) Radio de  | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-53` | Mapa de zona | 2026-10-05 (`GET /zona` envía la `ruta` de lo descubierto; `RutaPatrulla` en bucle al pasa | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-58` | Mapa de zona | 2026-10-05 (`GET /zona` da `agotado` —enfriamiento de 30 min en ese lugar o sin población— | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-62` | Mapa de zona | Cuadrícula bajo demanda (Z11): oculta por defecto, visible al mantener `Alt`, al hacer zoo | jugado | 2026-10-19: oculta al abrir; visible solo mientras se mantiene `Alt`; «▦ Cuadrícula» la fija (`aria-pressed`) y la quita al volver a pulsar |
 | `ZON-80` | Mapa de zona | Partir `ZonaPanel.tsx` | no se juega | refactor |
 | `ZON-81` | Mapa de zona | Capas SVG ordenadas | no se juega | orden de capas; se ve por ZON-10/13 |
