@@ -256,7 +256,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Status: open
 - Asked: 2026-11-26
 - Question: CR-36: ¿cómo pagan las obras y cuánto tardan?
-- Recommendation: Pagan en Goirnos de su tesoro el valor de los materiales de la receta, tardan los días de la receta, hay una obra a la vez y solo con 7 días de reserva de comida (la misma prudencia que para cazar o reforzar).
+- Recommendation: Pagan en Goirnos de su tesoro el valor de los materiales de la receta, tardan los días de la receta, hay una obra a la vez y solo con 7 días de reserva de comida (la misma prudencia que para cazar o reforzar). Como X4, donde con pocos drones la obra va hasta 4 veces más lenta, el plazo se alarga si tiene pocos trabajadores (hasta ×4). Contrastado el 2026-11-26: X4 https://steamcommunity.com/app/392160/discussions/0/3837676019938317271 ; Bastions https://www.worldanvil.com/w/morea-nasandre/a/bastion-rules-article
 
 ## Q-30
 - Refs: CR-36
@@ -277,4 +277,4 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Status: open
 - Asked: 2026-11-26
 - Question: CR-36: ¿qué pasa con una obra a medias si atacan el asentamiento?
-- Recommendation: Si el asentamiento cae en un asalto mientras hay obra, la obra se pierde con lo pagado. Sabotearla desde el Reino queda para después.
+- Recommendation: (Cambiada tras contrastar, 2026-11-26.) Como en X4, donde la obra se para si matan al constructor y los módulos destruidos vuelven a «en construcción», la obra se para mientras el asentamiento está en guerra o lo asaltan, y sigue después sin perder lo pagado. El saqueo de CR-37 ya se lleva parte del tesoro. Sabotearla desde el Reino queda para después. Fuente: https://steamcommunity.com/app/392160/discussions/0/2269194717045881131
