@@ -335,3 +335,17 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: Una sola regla para todo viajero (acopio, caza, caravanas, expediciones, mensajeros), del Reino y de las facciones: el rol «guardia» que ya prevé ViajeroMiembro. Los guardias salen de tus soldados o vigías y, en las facciones, de sus soldados, y dejan de defender el asentamiento mientras viajan. En un encuentro pelean primero y los porteadores solo si caen los guardias. Las facciones eligen cuántos según el riesgo de la ruta (fauna, bandidos, guerra) y lo que les sobre. Entra en 36b para el acopio y en la infraestructura de CR-64 para lo demás; «escoltar» a viajeros ajenos sigue en CR-64. Contraste: X4 asigna la escolta como orden persistente de «defender al comandante», pero sus escoltas se adelantan o llegan tarde porque solo reaccionan tras el primer golpe (wiki.egosoft.com, Defend Commander; forum.egosoft.com p=4781138). Aquí los guardias van al paso del viajero, en el mismo grupo, y entran en el encuentro desde el primer asalto. Bellwright, Manor Lords y Medieval Dynasty no tienen escolta (en Bellwright solo existe por mod); D&D 5e paga a un guardia como asalariado cualificado, 2 po/día (PHB, Hirelings).
 - Answer: ok
 - Answered: 2026-11-26
+
+## Q-38
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36a: una facción grande necesita muchos edificios iguales (Concordia de Hierro, 1600 bocas: ~150 Pozos), pero Building solo admite uno por facción y receta. ¿a) Le añadimos un campo «cantidad», b) quitamos esa restricción y guardamos una fila por edificio, o c) otra idea?
+- Recommendation: a) Un campo nuevo Building.cantidad (1 por defecto): la facción guarda «Pozo ×150» en una fila, como el resto de su economía, que ya va en agregado. El Reino sigue con una fila por edificio. Las obras de facción van en un modelo propio, ObraFaccion (una por facción), aparte de la cola del Reino.
+
+## Q-39
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36a: ¿con qué tamaño se siembran los edificios al migrar?
+- Recommendation: Para su poblacionMax (no la de hoy): agua 20 + 12 por Pozo con un 10 % de margen; Cisternas para 30 días de agua; Graneros para 30 días de comida. Así crecer hasta su tope no les deja sin agua mientras no haya acopio (36b), porque en 36a su Almacén aún no recibe piedra ni leña.
