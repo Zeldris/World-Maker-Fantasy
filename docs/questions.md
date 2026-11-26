@@ -236,3 +236,45 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: a) se quedan en «no se juega», como las 32 de Q-17; el 0.7 tiene su fase de pruebas
 - Answer: a
 - Answered: 2026-11-26
+
+## Q-27
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36: ahora mismo una facción no echa nada en falta (comida sin tope y agua siempre cubierta por su fuente canónica), así que no tiene motivos para construir. ¿a) Le aplicamos los topes y el agua del Reino para que sus obras arreglen carencias reales, o b) seguimos sin carencias y las obras solo dan ventajas?
+- Recommendation: a) Las facciones con las reglas del Reino: tope de comida 60 + 120 por Granero, tope de agua 60 + 120 por Cisterna, y la fuente canónica cubre solo lo que da hoy al Reino (20 al día) más 12 por Pozo. Al migrar, cada facción recibe los edificios que su tamaño necesita, para que nadie se hunda el primer día.
+
+## Q-28
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36: ¿qué obras levantan las facciones?
+- Recommendation: Pozo, Granero y Cisterna (supervivencia) y el taller de oficio que usa su reparto (Cocina y Corrales, subiendo de escalón). La defensa sigue siendo CR-65. Leñera, Cantera y Fibrería no, porque las facciones no llevan materiales.
+
+## Q-29
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36: ¿cómo pagan las obras y cuánto tardan?
+- Recommendation: Pagan en Goirnos de su tesoro el valor de los materiales de la receta, tardan los días de la receta, hay una obra a la vez y solo con 7 días de reserva de comida (la misma prudencia que para cazar o reforzar).
+
+## Q-30
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36: ¿cómo elige una facción qué construir?
+- Recommendation: Una lista de prioridad fija (sed > almacén de comida lleno o hambre > taller de su oficio). La disposición del líder (CR-38) la matiza cuando exista.
+
+## Q-31
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36: ¿cómo se entera la jugadora de esas obras?
+- Recommendation: Un suceso al empezar y otro al terminar (noticias del mundo y agenda), y el edificio aparece en su asentamiento en el mapa de zona.
+
+## Q-32
+- Refs: CR-36
+- Status: open
+- Asked: 2026-11-26
+- Question: CR-36: ¿qué pasa con una obra a medias si atacan el asentamiento?
+- Recommendation: Si el asentamiento cae en un asalto mientras hay obra, la obra se pierde con lo pagado. Sabotearla desde el Reino queda para después.
