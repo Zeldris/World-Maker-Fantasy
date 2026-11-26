@@ -257,10 +257,12 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-29
 - Refs: CR-36
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: CR-36: ¿cómo pagan las obras y cuánto tardan?
 - Recommendation: (Rehecha el 2026-11-26: la usuaria pide que, como en X4, los trabajadores se muevan y los recursos se transporten, con sus riesgos, y que las acciones vivan en el mapa; ADR 0003.) Nada en Goirnos abstractos: la obra pide los materiales reales de su receta (p. ej. Pozo, 6 de piedra) en el Almacén de la facción (`AlmacenItem.factionId`); los obreros son trabajadores que van a la obra como viajeros si está fuera del asentamiento; el plazo es el de la receta, hasta ×4 con pocos obreros (como los drones de X4); una obra a la vez y con 7 días de reserva de comida. De dónde salen los materiales y sus riesgos, Q-33…Q-36.
+- Answer: ok
+- Answered: 2026-11-26
 
 ## Q-30
 - Refs: CR-36
@@ -291,28 +293,43 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-33
 - Refs: CR-36
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: CR-36: ¿de dónde salen los materiales de la obra?
 - Recommendation: a) Partidas de acopio (leñadores, canteros…) que salen como viajeros, con el mismo motor que las de caza (CR-63), hasta la fuente más cercana de su región y vuelven con la carga. b) Comprarlos a otra facción con una caravana entra cuando las caravanas sean viajeros (CR-64, 0.4). Hasta CR-39, las fuentes son los puntos de recurso de las zonas de su región.
+- Answer: a (b con CR-64)
+- Answered: 2026-11-26
 
 ## Q-34
 - Refs: CR-36
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: CR-36: ¿las partidas de acopio corren riesgos por el camino y se pueden ver y tocar en el mapa?
 - Recommendation: Sí, como las partidas de caza: por el camino pueden toparse con fauna, bandidos o una facción en guerra (combate de fondo, ADR 0002) y perder gente y carga. La jugadora puede cruzárselas en el mapa y preguntarles, comerciar, escoltarlas o asaltarlas; si la carga se pierde, la facción vuelve a mandar otra partida.
+- Answer: ok
+- Answered: 2026-11-26
 
 ## Q-35
 - Refs: CR-36
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: CR-36: ¿el Reino usa las mismas partidas de acopio?
 - Recommendation: Sí, por «los mismos sistemas para todos» del ADR 0003: el Reino puede mandar partidas de acopio desde Reino › Partidas con el mismo motor, y la jugadora sigue pudiendo depositar a mano.
+- Answer: ok
+- Answered: 2026-11-26
 
 ## Q-36
 - Refs: CR-36
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: CR-36: con todo esto la tarea crece: ¿la partimos en pasos?
 - Recommendation: CR-36 pasa de M a L, con pasos dentro de la misma tarea: 36a obras con materiales del Almacén y orden de prioridad; 36b partidas de acopio para facciones y Reino; 36c obreros que viajan a la obra, pausa en guerra y avisos.
+- Answer: ok; la usuaria añade: a estas partidas, y a caravanas u otras acciones, se les podrán asignar guardias que las protejan
+- Answered: 2026-11-26
+
+## Q-37
+- Refs: CR-64
+- Status: open
+- Asked: 2026-11-26
+- Question: Guardias de partidas y caravanas: ¿cómo funcionan y dónde entran?
+- Recommendation: Una sola regla para todo viajero (acopio, caza, caravanas, expediciones, mensajeros), del Reino y de las facciones: el rol «guardia» que ya prevé ViajeroMiembro. Los guardias salen de tus soldados o vigías y, en las facciones, de sus soldados, y dejan de defender el asentamiento mientras viajan. En un encuentro pelean primero y los porteadores solo si caen los guardias. Las facciones eligen cuántos según el riesgo de la ruta (fauna, bandidos, guerra) y lo que les sobre. Entra en 36b para el acopio y en la infraestructura de CR-64 para lo demás; «escoltar» a viajeros ajenos sigue en CR-64. Contraste: X4 asigna la escolta como orden persistente de «defender al comandante», pero sus escoltas se adelantan o llegan tarde porque solo reaccionan tras el primer golpe (wiki.egosoft.com, Defend Commander; forum.egosoft.com p=4781138). Aquí los guardias van al paso del viajero, en el mismo grupo, y entran en el encuentro desde el primer asalto. Bellwright, Manor Lords y Medieval Dynasty no tienen escolta (en Bellwright solo existe por mod); D&D 5e paga a un guardia como asalariado cualificado, 2 po/día (PHB, Hirelings).
