@@ -53,7 +53,7 @@ export async function pelearEncuentro(tx: Tx, v: ViajeroFila, hostil: NonNullabl
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
   const todos = await cazadoresDe(tx, v, worldId);
   // Q-41 (Q-37, para todo viajero): con guardias, pelean ellos solos; los demás entran solo si caen todos.
-  const guardias = todos.filter((h) => h.rol === 'guardia').slice(0, TAMANO_SUBCOMBATE_FONDO);
+  const guardias = todos.filter((h) => h.rol === 'guardia');
   const cazadores = (guardias.length > 0 ? guardias : todos).slice(0, TAMANO_SUBCOMBATE_FONDO);
   if (cazadores.length === 0) return true;
   const { punto, npc } = hostil;
@@ -64,12 +64,15 @@ export async function pelearEncuentro(tx: Tx, v: ViajeroFila, hostil: NonNullabl
   let ronda = (await pelearRonda(tx, v, cazadores, enemigos, dia, random, muertos));
   let r = ronda.r;
   let ganan = r.ganador === 'A';
-  const cayeronGuardias = guardias.length > 0 && guardias.every((g) => !enPie(ronda.condicion.get(g.c.id) ?? 'ILESO'));
+  // Los que pelearon la 1.ª ronda (los guardias que caben en el subcombate); los demás guardias no han peleado aún.
+  const cayeronGuardias = guardias.length > 0 && cazadores.every((g) => !enPie(ronda.condicion.get(g.c.id) ?? 'ILESO'));
   const caidosEnemigos = new Set<string>(r.estados.filter((e) => e.id.startsWith('hostil-') && !enPie(e.condicion)).map((e) => e.id));
   if (cayeronGuardias && !ganan) {
-    // Segunda ronda: los porteadores, contra los enemigos que siguen en pie.
-    const resto = todos.filter((h) => h.rol !== 'guardia').slice(0, TAMANO_SUBCOMBATE_FONDO);
+    // Segunda ronda: primero los guardias que no pelearon y luego los porteadores, contra los enemigos que siguen en pie.
+    const resto = [...guardias.slice(TAMANO_SUBCOMBATE_FONDO), ...todos.filter((h) => h.rol !== 'guardia')].slice(0, TAMANO_SUBCOMBATE_FONDO);
     enemigos = enemigos.filter((e) => !caidosEnemigos.has(e.id));
+    // Si también cayeron todos los enemigos, se quedan con el campo.
+    if (enemigos.length === 0) ganan = true;
     if (resto.length > 0 && enemigos.length > 0) {
       ronda = await pelearRonda(tx, v, resto, enemigos, dia, random, muertos);
       r = ronda.r;
