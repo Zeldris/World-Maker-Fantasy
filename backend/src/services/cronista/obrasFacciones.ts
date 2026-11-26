@@ -114,10 +114,12 @@ export function suministrosParaBocas(bocasMax: number): { pozo: number; cisterna
 }
 
 const SUMINISTROS = ['pozo', 'cisterna', 'granero'] as const;
-const CAMPOS_DE_BOCA = ['poblacion', 'soldados', 'trabajadores', 'visitantes'] as const;
+/// Filas de población de una facción (`filasDeFaccion` en repartoFacciones.ts): los civiles y los trabajadores son su
+/// `poblacion` (los trabajadores, una parte de ella) y los soldados, aparte.
+const CAMPOS_DE_BOCA = ['civiles', 'trabajadores', 'soldados'] as const;
 
 /// Q39: a las facciones del mundo que aún no tienen Pozo, Cisterna ni Granero se les siembran los que necesitan para su
-/// `poblacionMax` (la suma de sus cuatro filas de población, `repartoFacciones`), de modo que nadie arranque en
+/// `poblacionMax` (la suma de sus tres filas de población, `repartoFacciones`), de modo que nadie arranque en
 /// carencia al pasar a las reglas del Reino. Idempotente: solo toca a las que no tienen ninguno de los tres, y cada fila
 /// queda en el mayor de lo que ya tenía y lo calculado (nunca baja una cantidad). Devuelve cuántas facciones sembró.
 export async function sembrarSuministrosDeFacciones(tx: Tx, saveId: string): Promise<number> {
@@ -134,7 +136,7 @@ export async function sembrarSuministrosDeFacciones(tx: Tx, saveId: string): Pro
   for (const f of sin) {
     const filas = await tx.worldPopulation.findMany({ where: { saveId, targetType: 'FACCION', targetSlug: { in: CAMPOS_DE_BOCA.map((c) => `${f.slug}-${c}`) } }, select: { poblacion: true, poblacionMax: true } });
     const k = f.kingdomStats;
-    const hoy = k ? k.poblacion + k.soldados + k.trabajadores + k.visitantes : 0;
+    const hoy = k ? k.poblacion + k.soldados + k.visitantes : 0;
     const bocasMax = Math.max(hoy, filas.reduce((s, x) => s + Math.max(x.poblacion, x.poblacionMax), 0));
     const necesita = suministrosParaBocas(bocasMax);
     const casa = f.buildings[0];

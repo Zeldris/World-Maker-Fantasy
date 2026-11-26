@@ -110,14 +110,15 @@ describe('obras de las facciones (CR-36 36a)', () => {
         buildings: { create: { saveId: null, locationId: casa, recipeKey: 'cocina-serhu', name: 'Cocina', kind: 'cocina', description: 'x', status: 'ACTIVO' } },
       },
     });
-    // Su población máxima (las filas de WorldPopulation) manda sobre lo que tiene hoy: 150 bocas.
+    // Su población máxima (las filas civiles, trabajadores y soldados de `filasDeFaccion`) manda sobre las 80 bocas de
+    // hoy: 80 + 30 + 20 = 130. Una fila de otro nombre (p. ej. «-poblacion») no cuenta.
     await prisma.worldPopulation.createMany({
-      data: [['poblacion', 80, 90], ['soldados', 10, 20], ['trabajadores', 20, 30], ['visitantes', 0, 10]].map(([c, p, m]) => ({ worldId, saveId, targetType: 'FACCION' as const, targetSlug: `clan-siembra-36a-${c}`, label: `${c}`, poblacion: p as number, poblacionMax: m as number, distribucion: {} })),
+      data: [['civiles', 40, 80], ['trabajadores', 20, 30], ['soldados', 10, 20], ['poblacion', 500, 500]].map(([c, p, m]) => ({ worldId, saveId, targetType: 'FACCION' as const, targetSlug: `clan-siembra-36a-${c}`, label: `${c}`, poblacion: p as number, poblacionMax: m as number, distribucion: {} })),
     });
     const hechas = await prisma.$transaction((tx) => sembrarSuministrosDeFacciones(tx, saveId));
     // Solo la nueva: la otra ya tiene Pozo.
     expect(hechas).toBe(1);
-    const esperado = suministrosParaBocas(150);
+    const esperado = suministrosParaBocas(130);
     const filas = await prisma.building.findMany({ where: { factionId: otra.id, recipeKey: { in: ['pozo', 'cisterna', 'granero'] } } });
     expect(Object.fromEntries(filas.map((b) => [b.recipeKey, b.cantidad]))).toEqual(esperado);
     expect(filas.every((b) => b.status === 'ACTIVO' && b.locationId === casa)).toBe(true);
