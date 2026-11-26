@@ -12,7 +12,7 @@ import { simularCombateDeFondo, TAMANO_SUBCOMBATE_FONDO, type CombatienteFondo }
 import { combatienteDeNpc } from './factionExpeditions.js';
 import { descontarZonePointCaza } from './caza.js';
 import { decrementPopulationOnDeath } from './population.js';
-import { aplicarBajas, cazadoresDe } from './partidasCaza.js';
+import { aplicarBajas, cazadoresDe, type Cazador } from './partidasCaza.js';
 import { avisoDeViajero, esDelReino, GANCHOS, type TrasCruzar, type ViajeroFila } from './viajeros.js';
 import { asaltoAlViajero } from './campamentos.js';
 
@@ -38,26 +38,51 @@ async function hostilEn(tx: Tx, v: ViajeroFila, locationId: string) {
   return null;
 }
 
+/// Una ronda de la pelea de fondo: `luchadores` contra `enemigos`; aplica las bajas de los suyos y las suma a `muertos`.
+async function pelearRonda(tx: Tx, v: ViajeroFila, luchadores: Cazador[], enemigos: CombatienteFondo[], dia: number, random: () => number, muertos: Set<string>) {
+  const r = simularCombateDeFondo([...luchadores.map((h) => h.c), ...enemigos], random);
+  const condicion = new Map<string, CondicionFisica>(r.estados.filter((e) => !e.id.startsWith('hostil-')).map((e) => [e.id, e.condicion]));
+  const caen = new Set(r.estados.filter((e) => e.muerto && !e.id.startsWith('hostil-')).map((e) => e.id));
+  await aplicarBajas(tx, v.saveId, luchadores, condicion, caen, dia, 'combate', v.factionId);
+  for (const id of caen) muertos.add(id);
+  return { r, condicion };
+}
+
 /// Pelea de fondo de la partida contra un grupo hostil. Devuelve si se quedan con el campo.
 export async function pelearEncuentro(tx: Tx, v: ViajeroFila, hostil: NonNullable<Awaited<ReturnType<typeof hostilEn>>>, dia: number, random: () => number): Promise<boolean> {
   const { worldId } = await tx.save.findUniqueOrThrow({ where: { id: v.saveId }, select: { worldId: true } });
-  const cazadores = (await cazadoresDe(tx, v, worldId)).slice(0, TAMANO_SUBCOMBATE_FONDO);
+  const todos = await cazadoresDe(tx, v, worldId);
+  // Q-41 (Q-37, para todo viajero): con guardias, pelean ellos solos; los demás entran solo si caen todos.
+  const guardias = todos.filter((h) => h.rol === 'guardia').slice(0, TAMANO_SUBCOMBATE_FONDO);
+  const cazadores = (guardias.length > 0 ? guardias : todos).slice(0, TAMANO_SUBCOMBATE_FONDO);
   if (cazadores.length === 0) return true;
   const { punto, npc } = hostil;
   const base = combatienteDeNpc(npc);
   const n = Math.min(punto.cantidad, TAMANO_SUBCOMBATE_FONDO);
-  const enemigos: CombatienteFondo[] = Array.from({ length: n }, (_, i) => ({ id: `hostil-${punto.id}-${i}`, nombre: npc.name, bando: 'B', attributes: base.attributes, attribute: base.attribute, attributeBonus: base.attributeBonus, nivel: npc.level, conMoral: punto.tipo === 'NPC' }));
-  const r = simularCombateDeFondo([...cazadores.map((h) => h.c), ...enemigos], random);
-  const condicion = new Map<string, CondicionFisica>(r.estados.filter((e) => !e.id.startsWith('hostil-')).map((e) => [e.id, e.condicion]));
-  const muertos = new Set(r.estados.filter((e) => e.muerto && !e.id.startsWith('hostil-')).map((e) => e.id));
-  await aplicarBajas(tx, v.saveId, cazadores, condicion, muertos, dia, 'combate', v.factionId);
-  const caidos = r.estados.filter((e) => e.id.startsWith('hostil-') && !enPie(e.condicion)).length;
+  let enemigos: CombatienteFondo[] = Array.from({ length: n }, (_, i) => ({ id: `hostil-${punto.id}-${i}`, nombre: npc.name, bando: 'B', attributes: base.attributes, attribute: base.attribute, attributeBonus: base.attributeBonus, nivel: npc.level, conMoral: punto.tipo === 'NPC' }));
+  const muertos = new Set<string>();
+  let ronda = (await pelearRonda(tx, v, cazadores, enemigos, dia, random, muertos));
+  let r = ronda.r;
+  let ganan = r.ganador === 'A';
+  const cayeronGuardias = guardias.length > 0 && guardias.every((g) => !enPie(ronda.condicion.get(g.c.id) ?? 'ILESO'));
+  const caidosEnemigos = new Set<string>(r.estados.filter((e) => e.id.startsWith('hostil-') && !enPie(e.condicion)).map((e) => e.id));
+  if (cayeronGuardias && !ganan) {
+    // Segunda ronda: los porteadores, contra los enemigos que siguen en pie.
+    const resto = todos.filter((h) => h.rol !== 'guardia').slice(0, TAMANO_SUBCOMBATE_FONDO);
+    enemigos = enemigos.filter((e) => !caidosEnemigos.has(e.id));
+    if (resto.length > 0 && enemigos.length > 0) {
+      ronda = await pelearRonda(tx, v, resto, enemigos, dia, random, muertos);
+      r = ronda.r;
+      ganan = r.ganador === 'A';
+      for (const e of r.estados) if (e.id.startsWith('hostil-') && !enPie(e.condicion)) caidosEnemigos.add(e.id);
+    }
+  }
+  const caidos = caidosEnemigos.size;
   if (caidos > 0) {
     await descontarZonePointCaza(tx, v.saveId, punto.id, caidos);
     const lugar = await tx.location.findUnique({ where: { id: punto.locationId }, select: { region: true } });
     for (let i = 0; i < caidos; i++) await decrementPopulationOnDeath(tx, v.saveId, npc.raza ?? null, npc.slug, lugar?.region ?? null);
   }
-  const ganan = r.ganador === 'A';
   const lugar = await tx.location.findUnique({ where: { id: punto.locationId }, select: { name: true } });
   await avisoDeViajero(tx, v, `Por el camino, en ${lugar?.name ?? 'un paso'}, la partida se topa con ${n} ${npc.name}: ${ganan ? 'los rechaza' : 'se retira y vuelve a casa'}${caidos > 0 ? ` (caen ${caidos})` : ''}${muertos.size > 0 ? `; pierde a ${muertos.size} de los suyos` : ''}.`);
   return ganan;

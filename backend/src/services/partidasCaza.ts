@@ -50,12 +50,17 @@ export interface CargaCaza {
 /// Q6: probabilidad de atar a un animal abatido (la de la especie, con el tope de la caza limpia).
 export const CHANCE_CAPTURA_TOPE = 90;
 
+/// Cómo se llama en combate un genérico según su rol (sin rol conocido, «Cazador»).
+const ETIQUETA_GENERICO: Record<string, string> = { porteador: 'Porteador', guardia: 'Guardia' };
+
 export interface Cazador {
   c: CombatienteFondo;
   miembroId: string;
   companionId?: string;
   subjectId?: string;
   generico?: boolean;
+  /// Rol de su miembro en la partida (`ViajeroMiembro.rol`): los guardias pelean primero (Q-41).
+  rol?: string;
 }
 
 /// Los combatientes de una partida: compañeros con sus atributos, súbditos y genéricos como soldados
@@ -67,7 +72,7 @@ export async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Prom
     const a = (comp.attributes ?? {}) as unknown as AttributeBlock;
     const m = v.miembros.find((x) => x.companionId === comp.id)!;
     out.push({
-      miembroId: m.id, companionId: comp.id,
+      miembroId: m.id, companionId: comp.id, rol: m.rol,
       c: { id: comp.id, nombre: comp.name, bando: 'A', attributes: a, attribute: (a.destreza ?? 0) > (a.fuerza ?? 0) ? 'destreza' : 'fuerza', attributeBonus: 1, nivel: NIVEL_SOLDADO_GENERICO, conMoral: true, conNombre: true },
     });
   }
@@ -76,12 +81,12 @@ export async function cazadoresDe(tx: Tx, v: ViajeroFila, worldId: string): Prom
   const sinArma = subditos.length > 0 ? await subditosSinArma(tx, v.saveId, (await tx.worldState.findUnique({ where: { saveId: v.saveId }, select: { fictionalMinutes: true } }))?.fictionalMinutes ?? 0) : new Set<string>();
   for (const s of subditos) {
     const m = v.miembros.find((x) => x.subjectId === s.id)!;
-    out.push({ miembroId: m.id, subjectId: s.id, c: { ...soldadoGenerico(s.id, s.name, 'A', await baseDePueblo(tx, worldId, s.pueblo ?? 'orcos'), !sinArma.has(s.id)), conNombre: false } });
+    out.push({ miembroId: m.id, subjectId: s.id, rol: m.rol, c: { ...soldadoGenerico(s.id, s.name, 'A', await baseDePueblo(tx, worldId, s.pueblo ?? 'orcos'), !sinArma.has(s.id)), conNombre: false } });
   }
   const raza = v.factionId ? (await tx.faction.findUnique({ where: { id: v.factionId }, select: { raza: true } }))?.raza ?? null : null;
   for (const m of v.miembros.filter((x) => x.genericos > 0)) {
     const base = await baseDePueblo(tx, worldId, raza);
-    for (let i = 0; i < m.genericos; i++) out.push({ miembroId: m.id, generico: true, c: soldadoGenerico(`${m.id}-${i}`, 'Cazador', 'A', base, true) });
+    for (let i = 0; i < m.genericos; i++) out.push({ miembroId: m.id, generico: true, rol: m.rol, c: soldadoGenerico(`${m.id}-${i}`, ETIQUETA_GENERICO[m.rol] ?? 'Cazador', 'A', base, true) });
   }
   return out;
 }
@@ -105,7 +110,9 @@ export async function aplicarBajas(tx: Tx, saveId: string, cazadores: Cazador[],
   const genericosMuertos = new Map<string, number>();
   for (const h of cazadores) if (h.generico && muertos.has(h.c.id)) genericosMuertos.set(h.miembroId, (genericosMuertos.get(h.miembroId) ?? 0) + 1);
   for (const [miembroId, n] of genericosMuertos) await tx.viajeroMiembro.update({ where: { id: miembroId }, data: { genericos: { decrement: n } } });
-  const caidos = [...genericosMuertos.values()].reduce((s, n) => s + n, 0);
+  // Los guardias salieron de los soldados (ya descontados al salir) y no cuentan como población.
+  const guardiasMuertos = cazadores.filter((h) => h.generico && h.rol === 'guardia' && muertos.has(h.c.id)).length;
+  const caidos = [...genericosMuertos.values()].reduce((s, n) => s + n, 0) - guardiasMuertos;
   if (factionId && caidos > 0) {
     const k = await tx.kingdomStats.findFirst({ where: { factionId }, select: { id: true, poblacion: true, trabajadores: true } });
     if (k) await tx.kingdomStats.update({ where: { id: k.id }, data: { poblacion: Math.max(0, k.poblacion - caidos), trabajadores: Math.max(0, k.trabajadores - caidos) } });

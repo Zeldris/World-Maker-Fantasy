@@ -15,6 +15,7 @@ import { revisarPiezas } from './partidasCaza.js';
 import './partidasCaptura.js';
 import './viajerosEncuentros.js';
 import { lanzarPartidasDeFacciones } from './partidasFacciones.js';
+import { lanzarAcopiosDeFacciones } from './partidasAcopio.js';
 import { vigilarDelReino } from './defensaReino.js';
 import { lanzarAsaltosAlReino, revisarCampamentos } from './campamentos.js';
 import { patrullasContraCampamentos } from './ataquesCampamento.js';
@@ -148,6 +149,8 @@ export async function avanzarMundoHasta(
       await paso('comercio', () => avanzarComercio(prisma, saveId, d, random));
       // CR-63 (63g): las facciones con comida de sobra mandan sus partidas de caza.
       await paso('partidasFacciones', () => lanzarPartidasDeFacciones(prisma, saveId, d));
+      // CR-36b: las facciones con la obra parada por madera, piedra o fibras mandan una partida de acopio.
+      await paso('acopiosFacciones', () => lanzarAcopiosDeFacciones(prisma, saveId, d));
       // CR-50 (50a): campamentos de bandidos que aparecen y reciben refuerzos.
       await paso('campamentos', () => revisarCampamentos(prisma, saveId, d, random));
       // CR-50 (50b): los de la región de la Capital la asaltan si el Reino tiene riqueza.

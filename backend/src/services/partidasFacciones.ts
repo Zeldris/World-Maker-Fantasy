@@ -29,9 +29,10 @@ export function diasDeReservaFaccion(k: { comida: number; poblacion: number; sol
   return bocas > 0 ? k.comida / bocas : Infinity;
 }
 
-/// Cazadores de una facción que están fuera con sus partidas (no cazan en agregado).
+/// Cazadores de una facción que están fuera con sus partidas (no cazan en agregado). Solo los de rol «cazador»:
+/// los porteadores y guardias de un acopio (CR-36b) no son cazadores.
 export async function cazadoresFuera(tx: Tx, factionId: string): Promise<number> {
-  const r = await tx.viajeroMiembro.aggregate({ where: { viajero: { factionId, ...enMarcha } }, _sum: { genericos: true } });
+  const r = await tx.viajeroMiembro.aggregate({ where: { rol: 'cazador', viajero: { factionId, ...enMarcha } }, _sum: { genericos: true } });
   return r._sum.genericos ?? 0;
 }
 
