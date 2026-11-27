@@ -417,7 +417,7 @@ Todo corre en el equipo del jugador. Sin login, con un único usuario implícito
 | Narrador | Llama 3.1 8B (`tarkor-narrador-llama31`, cuantizado q4_K_M, contexto de 8k; temperatura 0 en las salidas JSON y más alta en la narración libre) | Cuenta el resultado ya fijado del turno |
 | Cronista y clasificador | Qwen 2.5 1.5B instruct | Decide atributo, dificultad y duración de una acción libre; redacta sucesos del mundo |
 | Sugerencias | Qwen 3.5 4B | Propone tres acciones posibles |
-| Embeddings | nomic-embed-text | Búsqueda semántica (RAG) en el lore y en los hechos de la partida |
+| Embeddings | bge-m3 | Búsqueda semántica (RAG) en el lore y en los hechos de la partida |
 
 - **Una sola cola de generación:** dos generaciones nunca compiten por el procesador.
 - **Salidas en JSON validadas:** si una no cumple, se reintenta o se cae a un texto determinista.

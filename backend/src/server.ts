@@ -18,6 +18,7 @@ import { registrarAvanceTrasAcciones } from './services/avanceDiario.js';
 import { ollamaGenerate } from './lib/ollama.js';
 import { ambitoTurnoIa } from './lib/iaRegistro.js';
 import { narratorWarmupPrompt } from './services/narrador.js';
+import { reembeberHechos } from './services/worldFacts.js';
 
 const app = Fastify({ logger: true, requestTimeout: 0 });
 
@@ -102,6 +103,14 @@ startWorldTickWorker();
 void ollamaGenerate({ model: env.ollamaModelNarrador, prompt: narratorWarmupPrompt(), maxTokens: 1, timeoutMs: 60_000, keepAlive: '1h', tarea: 'calentar' })
   .then(() => app.log.info(`Narrador (${env.ollamaModelNarrador}) precalentado en Ollama (prefijo real cacheado).`))
   .catch((err) => app.log.warn(`Warm-up del narrador falló (no bloquea el arranque): ${err instanceof Error ? err.message : err}`));
+
+// QA-523: los hechos sin vector (los anteriores a bge-m3) se rehacen en segundo plano. Si Ollama no responde, queda
+// para el siguiente arranque; mientras, esos hechos solo entran en el turno por recientes.
+void reembeberHechos()
+  .then((n) => {
+    if (n > 0) app.log.info(`Re-embebidos ${n} hechos del mundo con ${env.ollamaModelEmbeddings}.`);
+  })
+  .catch((err) => app.log.warn(`Re-embebido de hechos a medias, sigue en el próximo arranque: ${err instanceof Error ? err.message : err}`));
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, async () => {

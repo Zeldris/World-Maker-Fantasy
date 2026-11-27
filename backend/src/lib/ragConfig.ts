@@ -12,7 +12,8 @@ import { createHash } from 'node:crypto';
 ///                          --prefijos-nomic         los dos prefijos de nomic-embed-text (`search_query: `, `search_document: `)
 ///   RAG_MODELO             --modelo <nombre>        modelo de Ollama que embebe el lore (`QA-351`, R7; por defecto bge-m3,
 ///                                                   `QA-361`; nomic-embed-text sigue con --modelo). Solo el lore: los hechos
-///                                                   de partida (`SessionFact`, vector(768)) siguen con OLLAMA_MODEL_EMBEDDINGS.
+///                                                   de partida (`SessionFact`, vector(1024)) usan OLLAMA_MODEL_EMBEDDINGS
+///                                                   (por defecto bge-m3 también, `QA-523`).
 ///   RAG_BUSQUEDA           --hibrida                `vector` (por defecto) o `hibrida` (`QA-351`, R5): vector + texto
 ///                                                   completo sobre cada trozo, fusionadas con RRF (k 60). No cambia el índice.
 /// En los textos, `\n` es un salto de línea. El servidor del juego lee las mismas variables: si se reindexa con

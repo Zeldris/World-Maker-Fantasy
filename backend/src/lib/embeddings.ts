@@ -3,9 +3,8 @@ import { embedQueue } from './ollamaQueue.js';
 import { nsToMs, registrarLlamada } from './iaRegistro.js';
 
 /// Cliente para /api/embed de Ollama (RAG del lore, ver LoreChunk en schema.prisma).
-/// nomic-embed-text produce vectores de 768 dimensiones, responde en ~1-2s. Cola PROPIA
-/// (embedQueue, roadmap de velocidad 2026-07-19) separada de classify/narrate — es un modelo
-/// pequeño que no compite de verdad por RAM, y compartir la cola de concurrencia-1 solo
+/// bge-m3 produce vectores de 1024 dimensiones (lore y hechos del mundo, QA-361/QA-523). Cola PROPIA
+/// (embedQueue, roadmap de velocidad 2026-07-19) separada de classify/narrate: compartir la cola de concurrencia-1 solo
 /// serializaba el RAG detrás de generaciones de 30-220s sin necesidad.
 /// `modelo`: por defecto OLLAMA_MODEL_EMBEDDINGS; el lore puede usar otro (`RAG_MODELO`, `QA-351`).
 export async function embed(text: string, modelo: string = env.ollamaModelEmbeddings): Promise<number[]> {
@@ -37,8 +36,7 @@ export async function embed(text: string, modelo: string = env.ollamaModelEmbedd
         body: JSON.stringify({
           model: modelo,
           input: text,
-          // A diferencia de classifyAction, aquí NO forzamos keep_alive '0': es un modelo pequeño
-          // (274MB), convivir con los otros dos no supone presión real de RAM, y descargarlo cada
+          // A diferencia de classifyAction, aquí NO forzamos keep_alive '0': descargarlo cada
           // vez obligaba a recargarlo desde disco en cada turno — visto en pruebas: eso sumaba
           // segundos reales de más sin necesidad. Usa el keep_alive por defecto (env.ollamaKeepAlive).
           keep_alive: env.ollamaKeepAlive,

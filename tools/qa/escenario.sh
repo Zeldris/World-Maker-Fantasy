@@ -133,7 +133,7 @@ for m in json.load(sys.stdin).get("models", []):
 modelos_del_juego() {
   local par var val
   for par in OLLAMA_MODEL_NARRADOR=tarkor-narrador-llama31 OLLAMA_MODEL_CRONISTA=qwen2.5:1.5b-instruct \
-    OLLAMA_MODEL_SUGERENCIAS=qwen3.5:4b OLLAMA_MODEL_EMBEDDINGS=nomic-embed-text; do
+    OLLAMA_MODEL_SUGERENCIAS=qwen3.5:4b OLLAMA_MODEL_EMBEDDINGS=bge-m3; do
     var="${par%%=*}"
     val="${!var:-}"
     [ -n "$val" ] || val="$(sed -n "s/^$var=[\"']\{0,1\}\([^\"'#]*\).*/\1/p" backend/.env 2>/dev/null | tail -n1 | tr -d '[:space:]')"

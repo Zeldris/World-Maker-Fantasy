@@ -17,7 +17,9 @@ export const env = {
   /// comparable al 7B en esta tarea concreta, con `think: false` (ollama.ts) evitando que el modo
   /// de razonamiento de la familia qwen3.5 se coma el timeout entero sin responder.
   ollamaModelSugerencias: process.env.OLLAMA_MODEL_SUGERENCIAS ?? 'qwen3.5:4b',
-  ollamaModelEmbeddings: process.env.OLLAMA_MODEL_EMBEDDINGS ?? 'nomic-embed-text',
+  /// QA-523: el modelo de los hechos del mundo (`SessionFact`, vector(1024)); el mismo que el del lore (`RAG_MODELO`),
+  /// para no tener dos modelos de embeddings turnándose la memoria. Otro modelo tiene que dar 1024 dimensiones.
+  ollamaModelEmbeddings: process.env.OLLAMA_MODEL_EMBEDDINGS ?? 'bge-m3',
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE ?? '5m',
   /// QA-308 (`/gw-opt-ai` del 2026-11-11): el modelo del Cronista, con el 5m por defecto, se recargaba tras 5 min sin uso
   /// (6-7 s, el 22 % de las llamadas en la ronda local). Todas sus llamadas (clasificar, respaldo, prompts de imagen)

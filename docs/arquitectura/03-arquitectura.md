@@ -78,7 +78,7 @@ resolviéndose en segundo plano (acciones largas, tránsitos), consulta periódi
 | Narrador (respuesta al jugador) | `OLLAMA_MODEL_NARRADOR` | `tarkor-narrador-llama31` (Llama 3.1 8B, desde el 2026-09-14, [04 § 14](04-decisiones-tecnicas.md#14-veredicto-de-modelos-alternativos-jugando-turnos-reales-en-vivo--2026-09-14)). Respaldo: `tarkor-narrador` (Qwen 2.5 7B), sin instalar desde la limpieza del 2026-09-28 |
 | Cronista y clasificador de acciones | `OLLAMA_MODEL_CRONISTA` | `qwen2.5:1.5b-instruct` |
 | Sugerencias | `OLLAMA_MODEL_SUGERENCIAS` | `qwen3.5:4b` |
-| Embeddings (RAG de lore, hechos de sesión) | `OLLAMA_MODEL_EMBEDDINGS` | `nomic-embed-text` |
+| Embeddings (RAG de lore, hechos de sesión) | `OLLAMA_MODEL_EMBEDDINGS` (hechos), `RAG_MODELO` (lore) | `bge-m3` (1024 dimensiones, `QA-361`, `QA-523`) |
 
 `OLLAMA_KEEP_ALIVE` (5 min) mantiene el modelo cargado entre turnos. Las salidas del modelo se
 piden en JSON (`format`) y el backend las valida; si no cumplen, reintenta o cae a un texto

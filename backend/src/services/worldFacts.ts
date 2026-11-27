@@ -150,6 +150,29 @@ export async function appendSessionFacts(saveId: string, existing: string[], new
   await pruneOldFacts(saveId);
 }
 
+/// QA-523: rehace el vector de los hechos que no lo tienen (la migración a bge-m3 vació los de nomic). Solo toca
+/// `embedding`; lo hecho queda hecho, así que repetirlo o cortarlo a medias no pierde nada: sigue por lo pendiente. Los
+/// más recientes primero. Si Ollama falla, lanza. `saveId` lo acota a una partida (tests). Devuelve cuántos rehízo.
+const LOTE_REEMBEBIDO = 50;
+export async function reembeberHechos(saveId: string | null = null): Promise<number> {
+  let hechos = 0;
+  for (;;) {
+    const pendientes = await prisma.$queryRaw<{ id: string; text: string }[]>`
+      SELECT id, text FROM "SessionFact"
+      WHERE embedding IS NULL AND (${saveId}::text IS NULL OR "saveId" = ${saveId})
+      ORDER BY "createdAt" DESC
+      LIMIT ${LOTE_REEMBEBIDO}
+    `;
+    if (pendientes.length === 0) return hechos;
+    for (const { id, text } of pendientes) {
+      const vector = await embed(text);
+      hechos += await prisma.$executeRaw`
+        UPDATE "SessionFact" SET embedding = ${toVectorLiteral(vector)}::vector WHERE id = ${id} AND embedding IS NULL
+      `;
+    }
+  }
+}
+
 /// Lo que sabe un NPC (QA-289, fila 2 de `docs/ia/investigacion-narrador-repos.md`, P266): los últimos hechos que
 /// presenció o que son públicos, en orden cronológico. Es lo único que recibe su réplica (`generateNpcReply`).
 const MAX_FACTS_NPC = 8;
@@ -224,7 +247,7 @@ export async function selectRelevantFacts(
   const vector = await embed([action, ...escena].join(' · '));
   const rows = await prisma.$queryRaw<{ text: string }[]>`
     SELECT text FROM "SessionFact"
-    WHERE "saveId" = ${saveId}
+    WHERE "saveId" = ${saveId} AND embedding IS NOT NULL
     ORDER BY embedding <=> ${toVectorLiteral(vector)}::vector
     LIMIT ${MAX_SENT_FACTS + RECENCY_GUARANTEED}
   `;

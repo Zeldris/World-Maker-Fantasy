@@ -84,7 +84,7 @@ Usar `migrate deploy`, no `migrate dev` — `migrate dev` crea una base de datos
 
 ```
 cd backend
-npm run reindex-lore     # crea el World "helek-sirik" + indexa docs/rpgtarkor/*.md (necesita Ollama corriendo, usa nomic-embed-text)
+npm run reindex-lore     # crea el World "helek-sirik" + indexa docs/rpgtarkor/*.md (necesita Ollama corriendo, usa bge-m3)
 npm run seed-catalog     # ubicaciones, NPCs, objetos, fauna/flora, rutas (worldCatalog.ts)
 npm run seed-image-prompts  # opcional: prompts de imagen para la Enciclopedia
 ```
@@ -102,7 +102,7 @@ Cuatro modelos, cada uno con su papel (ver [03-arquitectura.md § 3.3](03-arquit
 | Narrador (narración principal) | `tarkor-narrador-llama31` (modelo propio, `FROM llama3.1:8b-instruct-q4_K_M`) | `ollama pull llama3.1:8b-instruct-q4_K_M` y luego, desde `backend/`: `ollama create tarkor-narrador-llama31 -f Modelfile.llama31` |
 | Cronista (clasificación de acciones) | `qwen2.5:1.5b-instruct` | `ollama pull qwen2.5:1.5b-instruct` |
 | Sugerencias ("Sugerir" bajo demanda, separado del Narrador desde 2026-08-21) | `qwen3.5:4b` | `ollama pull qwen3.5:4b` |
-| Embeddings (RAG de lore) | `nomic-embed-text` | `ollama pull nomic-embed-text` |
+| Embeddings (RAG de lore y hechos del mundo) | `bge-m3` | `ollama pull bge-m3` |
 
 Si se cambia un `Modelfile`, hay que reconstruir su modelo con el mismo `ollama create`. El narrador en uso lo fija `OLLAMA_MODEL_NARRADOR` en `backend/.env`.
 

@@ -36,7 +36,7 @@ vi.mock('../lib/embeddings.js', () => ({
   toVectorLiteral: (vector: number[]) => `[${vector.join(',')}]`,
 }));
 
-const { loadSessionFacts, loadFactsKnownBy, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO, esParentescoConsigoMismo } = await import('./worldFacts.js');
+const { loadSessionFacts, loadFactsKnownBy, appendSessionFacts, selectRelevantFacts, ventanaReciente, PREFIJO_RECUERDO, esParentescoConsigoMismo, reembeberHechos } = await import('./worldFacts.js');
 
 describe('loadSessionFacts', () => {
   beforeEach(() => findManySessionFact.mockReset());
@@ -198,6 +198,37 @@ describe('selectRelevantFacts', () => {
     queryRaw.mockResolvedValue([{ text: 'Gistera Koh se despidió y se marchó, no volverá a aparecer.' }, { text: 'hecho de relleno 2' }]);
     const result = await selectRelevantFacts('acción del jugador', 'save1', 'world1', facts);
     expect(result).not.toContain('Gistera Koh se despidió y se marchó, no volverá a aparecer.');
+  });
+});
+
+describe('reembeberHechos (QA-523)', () => {
+  beforeEach(() => {
+    queryRaw.mockReset();
+    executeRaw.mockReset().mockResolvedValue(1);
+    embed.mockReset().mockResolvedValue([0.1, 0.2, 0.3]);
+  });
+
+  it('embebe el texto de cada hecho sin vector, por lotes, hasta que no queda ninguno', async () => {
+    queryRaw
+      .mockResolvedValueOnce([{ id: 'a', text: 'hecho a' }, { id: 'b', text: 'hecho b' }])
+      .mockResolvedValueOnce([{ id: 'c', text: 'hecho c' }])
+      .mockResolvedValue([]);
+    expect(await reembeberHechos()).toBe(3);
+    expect(embed.mock.calls).toEqual([['hecho a'], ['hecho b'], ['hecho c']]);
+    expect(executeRaw).toHaveBeenCalledTimes(3);
+  });
+
+  it('sin hechos pendientes no embebe nada', async () => {
+    queryRaw.mockResolvedValue([]);
+    expect(await reembeberHechos()).toBe(0);
+    expect(embed).not.toHaveBeenCalled();
+  });
+
+  it('si Ollama falla, lanza y conserva lo ya hecho (se reanuda en el siguiente arranque)', async () => {
+    queryRaw.mockResolvedValueOnce([{ id: 'a', text: 'hecho a' }, { id: 'b', text: 'hecho b' }]);
+    embed.mockResolvedValueOnce([0.1]).mockRejectedValueOnce(new Error('Ollama caído'));
+    await expect(reembeberHechos()).rejects.toThrow('Ollama caído');
+    expect(executeRaw).toHaveBeenCalledTimes(1);
   });
 });
 

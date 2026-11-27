@@ -886,7 +886,9 @@ model SessionFact {
   text      String
   /// Mismo patrón que LoreChunk.embedding — habilitado a mano vía `CREATE EXTENSION vector`, no
   /// gestionado por Prisma (preview feature postgresqlExtensions), ver comentario del datasource.
-  embedding Unsupported("vector(768)")?
+  /// bge-m3, 1024 dimensiones (QA-523). Sin vector (NULL) el hecho no entra en la búsqueda por similitud hasta que
+  /// `reembeberHechos` (worldFacts.ts) lo rehace al arrancar el servidor.
+  embedding Unsupported("vector(1024)")?
   /// QA-289 (P266): NPC presentes cuando se registró (por nombre); la réplica de un NPC solo ve estos y los públicos.
   testigos  String[]                    @default([])
   /// Sucesos del mundo (Cronista): los sabe cualquiera. Los hechos anteriores a QA-289 quedaron públicos.
@@ -1523,8 +1525,8 @@ model LoreChunk {
   /// solo como metadato de depuración/trazabilidad hacia el .md de origen.
   tags      String[]
   sourceDoc String
-  /// nomic-embed-text produce vectores de 768 dimensiones; sin dimensión fija para poder medir otro
-  /// modelo (`RAG_MODELO`, QA-351: bge-m3 da 1024). Tipo no soportado nativamente por
+  /// bge-m3 da vectores de 1024 (QA-361); sin dimensión fija para poder medir otro modelo (`RAG_MODELO`, QA-351).
+  /// Tipo no soportado nativamente por
   /// Prisma Client — se escribe/lee con SQL crudo ($executeRaw/$queryRaw) en lib/embeddings.ts.
   embedding Unsupported("vector")?
   /// Texto completo de título + trozo para la búsqueda híbrida (QA-351), lo llena reindex-lore.
