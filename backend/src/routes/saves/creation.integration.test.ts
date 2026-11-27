@@ -218,7 +218,7 @@ describe('POST /saves/:id/restart borra la Faction de un reino fundado en la par
   });
 
   afterAll(async () => {
-    await prisma.faction.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.faction.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

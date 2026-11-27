@@ -193,7 +193,7 @@ describe('POST /saves/:id/combat/matar/:npcSlug con participantId (combate múlt
   });
 
   afterAll(async () => {
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

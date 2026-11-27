@@ -85,8 +85,8 @@ describe('dynamicModeOffer en /turn/narrate', () => {
   });
 
   afterAll(async () => {
-    await prisma.zonePoint.deleteMany({ where: { locationId, targetSlug: 'fauna-prueba-oferta-modo-dinamico-21' } });
-    await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'fauna-prueba-oferta-modo-dinamico-21' } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId, targetSlug: 'fauna-prueba-oferta-modo-dinamico-21' } });
+    if (worldId) await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'fauna-prueba-oferta-modo-dinamico-21' } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

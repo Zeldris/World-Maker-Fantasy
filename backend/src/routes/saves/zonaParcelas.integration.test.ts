@@ -68,8 +68,8 @@ describe('GET /saves/:id/zona — icono de parcela', () => {
   });
 
   afterAll(async () => {
-    await prisma.parcela.deleteMany({ where: { locationId: interiorLocationId } });
-    await prisma.building.deleteMany({ where: { id: buildingId } });
+    if (interiorLocationId) await prisma.parcela.deleteMany({ where: { locationId: interiorLocationId } });
+    if (buildingId) await prisma.building.deleteMany({ where: { id: buildingId } });
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.location.delete({ where: { id: interiorLocationId } });
   });

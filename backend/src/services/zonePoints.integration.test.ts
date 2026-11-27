@@ -73,8 +73,8 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
   });
 
   afterAll(async () => {
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'fauna-prueba-zonepoint-19' } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (worldId) await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'fauna-prueba-zonepoint-19' } });
     await prisma.location.delete({ where: { id: locationId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
@@ -142,7 +142,7 @@ describe('recalcularZonePointsDeLocation + zonePointsSummaryFor (Postgres real)'
     });
 
     afterAll(async () => {
-      await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
+      if (saveId) await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'gistera-koh' } });
       await prisma.zonePoint.delete({ where: { id: npcZonePointId } });
     });
 

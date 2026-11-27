@@ -66,7 +66,7 @@ describe('avanzarExpedicionesDePartida — ciclo completo (Fase 13-B)', () => {
 
   afterAll(async () => {
     for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
-    await prisma.save.deleteMany({ where: { id: { in: [saveId, saveAjenaId] } } });
+    if (saveId && saveAjenaId) await prisma.save.deleteMany({ where: { id: { in: [saveId, saveAjenaId] } } });
   });
 
   it('lanza, llega, completa, deposita stock y da XP; el mismo día dos veces es idempotente; la intercepción pierde la carga', async () => {
@@ -207,7 +207,7 @@ describe('avanzarExpedicionesDePartida — intercepción con combate (Fase 13-C)
     REGION_OWNING_FACTIONS[REGION] = duenosOriginales;
     for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
     for (const n of npcSnapshot) await prisma.npc.update({ where: { id: n.id }, data: { attributes: n.attributes as object, level: n.level, muertoEnMundo: n.muertoEnMundo } });
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('guardias que ganan: la expedición sigue, completa con stock y la presión no cambia', async () => {
@@ -357,7 +357,7 @@ describe('avanzarExpedicionesDePartida — por partida (CR-7)', () => {
     REGION_OWNING_FACTIONS[REGION] = duenosOriginales;
     for (const n of npcSnapshot) await prisma.npc.update({ where: { id: n.id }, data: { attributes: n.attributes as object, level: n.level } });
     for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
-    await prisma.save.deleteMany({ where: { id: { in: [a, b] } } });
+    if (a && b) await prisma.save.deleteMany({ where: { id: { in: [a, b] } } });
   });
 
   it('lanza en la copia de la partida; la intercepción mata en esa partida y no en otra ni en el mundo', async () => {
@@ -409,7 +409,7 @@ describe('avanzarExpedicionesDePartida — expediciones dirigidas (CR-34 34b)', 
 
   afterAll(async () => {
     for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('con hambre sale a por comida y lo comestible va a la reserva; sin hambre, sin motivo', async () => {

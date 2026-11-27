@@ -57,7 +57,7 @@ describe('GET /saves/:id/leyendas (CR-19)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('solo sale lo que sabe, lo más reciente primero (también el comienzo de la historia, que vivió)', async () => {

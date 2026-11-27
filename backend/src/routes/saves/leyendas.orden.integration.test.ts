@@ -34,7 +34,7 @@ describe('Leyendas: orden dentro del día (P343)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('el mismo día sale en el orden real de los sucesos, el más reciente primero', async () => {

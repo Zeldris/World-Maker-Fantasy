@@ -31,8 +31,8 @@ describe('combate: acabarlo descubre al NPC', () => {
   });
 
   afterAll(async () => {
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

@@ -29,8 +29,10 @@ cargarEnv({ path: join(RAIZ, '.env') });
 type Progreso = { id: string; nivel: number; xp: number };
 
 let prisma: PrismaClient;
-let progreso: Progreso[] = [];
-let interioresPrevios = new Set<string>();
+// `undefined` mientras `setup` no las haya leído: si falla antes, `teardown` no puede borrar nada con un
+// `notIn: []`, que casa con todas las filas.
+let progreso: Progreso[] | undefined;
+let interioresPrevios: Set<string> | undefined;
 
 const INTERIOR_DE_PRUEBA = 'cuartel-avanzado-interior-';
 
@@ -102,9 +104,11 @@ export async function setup(): Promise<void> {
 }
 
 export async function teardown(): Promise<void> {
-  const ids = progreso.map((p) => p.id);
-  await prisma.npcProfessionProgress.deleteMany({ where: { id: { notIn: ids } } });
-  for (const p of progreso) await prisma.npcProfessionProgress.updateMany({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
-  await prisma.location.deleteMany({ where: { slug: { startsWith: INTERIOR_DE_PRUEBA }, id: { notIn: [...interioresPrevios] } } });
+  if (progreso) {
+    const ids = progreso.map((p) => p.id);
+    await prisma.npcProfessionProgress.deleteMany({ where: { id: { notIn: ids } } });
+    for (const p of progreso) await prisma.npcProfessionProgress.updateMany({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
+  }
+  if (interioresPrevios) await prisma.location.deleteMany({ where: { slug: { startsWith: INTERIOR_DE_PRUEBA }, id: { notIn: [...interioresPrevios] } } });
   await prisma.$disconnect();
 }

@@ -41,9 +41,9 @@ describe('Zona de inicio: la fauna hostil se queda en su guarida (P88)', () => {
   });
 
   afterAll(async () => {
-    await prisma.zonePoint.deleteMany({ where: { saveId } });
-    await prisma.worldPopulation.deleteMany({ where: { saveId } });
-    await prisma.worldState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.zonePoint.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldPopulation.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

@@ -29,8 +29,8 @@ describe('GET /saves/:id/diario ordena por fecha del mundo (P379)', () => {
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.worldState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

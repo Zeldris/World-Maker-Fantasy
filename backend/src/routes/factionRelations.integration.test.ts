@@ -60,14 +60,14 @@ describe('GET /world/:slug/faction-relations (2026-09-21)', () => {
   });
 
   afterAll(async () => {
-    await prisma.discoveredEntity.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.discoveredEntity.deleteMany({ where: { saveId } });
     if (relacionPrevia) {
       await prisma.factionRelation.update({
         where: { sourceFactionId_targetFactionId: { sourceFactionId: serhuId, targetFactionId: helsigId } },
         data: relacionPrevia,
       });
     } else {
-      await prisma.factionRelation.deleteMany({ where: { sourceFactionId: serhuId, targetFactionId: helsigId } });
+      if (serhuId && helsigId) await prisma.factionRelation.deleteMany({ where: { sourceFactionId: serhuId, targetFactionId: helsigId } });
     }
     await prisma.save.delete({ where: { id: saveId } });
   });

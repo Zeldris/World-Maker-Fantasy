@@ -32,7 +32,7 @@ describe('difusión de sucesos al personaje (CR-18 18b)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   const ahora = async () => (await prisma.worldState.findUniqueOrThrow({ where: { saveId } })).fictionalMinutes;

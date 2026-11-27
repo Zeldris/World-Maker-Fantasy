@@ -52,8 +52,8 @@ describe('POST /saves/:id/reino/fundar — Location-interior dinámica (2026-09-
   });
 
   afterAll(async () => {
-    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
-    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    if (saveId) await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    if (worldId && saveId) await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -176,9 +176,9 @@ describe('POST /saves/:id/reino/diplomacia', () => {
   });
 
   afterAll(async () => {
-    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
-    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
-    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    if (sourceFactionId) await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
+    if (saveId) await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    if (worldId && saveId) await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -370,10 +370,10 @@ describe('POST /saves/:id/reino/mercado/comprar y /vender', () => {
   });
 
   afterAll(async () => {
-    await prisma.almacenItem.deleteMany({ where: { OR: [{ saveId }, { factionId: targetFactionId }] } });
-    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
-    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
-    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    if (saveId && targetFactionId) await prisma.almacenItem.deleteMany({ where: { OR: [{ saveId }, { factionId: targetFactionId }] } });
+    if (sourceFactionId) await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
+    if (saveId) await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    if (worldId && saveId) await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -529,10 +529,10 @@ describe('GET /saves/:id/reino/mercado/:targetFactionSlug', () => {
   });
 
   afterAll(async () => {
-    await prisma.almacenItem.deleteMany({ where: { factionId: targetFactionId, name: 'Ración de carne fresca (catálogo test)' } });
-    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
-    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
-    await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
+    if (targetFactionId) await prisma.almacenItem.deleteMany({ where: { factionId: targetFactionId, name: 'Ración de carne fresca (catálogo test)' } });
+    if (sourceFactionId) await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId }, { targetFactionId: sourceFactionId }] } });
+    if (saveId) await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: `ayuntamiento-interior-${saveId}` } }, { to: { slug: `ayuntamiento-interior-${saveId}` } }] } });
+    if (worldId && saveId) await prisma.location.deleteMany({ where: { worldId, slug: `ayuntamiento-interior-${saveId}` } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

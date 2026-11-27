@@ -66,8 +66,8 @@ describe('CRUD de OrdenProduccion (2026-09-21)', () => {
   });
 
   afterAll(async () => {
-    await prisma.ordenProduccion.deleteMany({ where: { buildingId: { in: [buildingId, buildingOtraSaveId, herreriaId] } } });
-    await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId, herreriaId] } } });
+    if (buildingId && buildingOtraSaveId && herreriaId) await prisma.ordenProduccion.deleteMany({ where: { buildingId: { in: [buildingId, buildingOtraSaveId, herreriaId] } } });
+    if (buildingId && buildingOtraSaveId && herreriaId) await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId, herreriaId] } } });
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.save.delete({ where: { id: otraSaveId } });
   });

@@ -35,7 +35,7 @@ describe('CRUD de AlmacenLimite (2026-09-21)', () => {
   });
 
   afterAll(async () => {
-    await prisma.almacenLimite.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.almacenLimite.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

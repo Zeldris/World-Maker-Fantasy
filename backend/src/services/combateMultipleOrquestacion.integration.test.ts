@@ -93,8 +93,8 @@ describe('combate múltiple: orquestación real contra Postgres', () => {
   });
 
   afterAll(async () => {
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -3346,8 +3346,8 @@ describe('1 contra varios: la espera de la cita (P353, regla B) respeta los efec
   });
 
   afterAll(async () => {
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

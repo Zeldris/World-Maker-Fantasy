@@ -75,10 +75,10 @@ describe('P116 — huir del combate vuelve a un sitio seguro y quita la oferta f
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.locationLink.delete({ where: { id: linkId } });
-    await prisma.location.deleteMany({ where: { id: { in: [locationId, vecinaId] } } });
+    if (locationId && vecinaId) await prisma.location.deleteMany({ where: { id: { in: [locationId, vecinaId] } } });
   });
 
   for (const [nombre, ruta] of [

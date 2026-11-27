@@ -788,9 +788,9 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     });
 
     afterAll(async () => {
-      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
       await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: null, pendingCombatNpcSlugs: [] } });
-      await prisma.zonePoint.deleteMany({ where: { locationId } });
+      if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
       await prisma.location.delete({ where: { id: locationId } });
     });
 
@@ -830,10 +830,10 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
     });
 
     afterAll(async () => {
-      await prisma.combatEncounter.deleteMany({ where: { saveId } });
+      if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
       await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: null, pendingCombatNpcSlugs: [] } });
-      await prisma.zonePoint.deleteMany({ where: { locationId } });
-      await prisma.npcState.deleteMany({ where: { saveId, npcId: { in: ids } } });
+      if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+      if (saveId) await prisma.npcState.deleteMany({ where: { saveId, npcId: { in: ids } } });
       await prisma.npc.deleteMany({ where: { id: { in: ids } } });
       await prisma.location.delete({ where: { id: locationId } });
     });
@@ -917,7 +917,7 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
 
     afterAll(async () => {
       await prisma.save.update({ where: { id: saveId }, data: { currentLocationId: null } });
-      await prisma.npcState.deleteMany({ where: { saveId, npcId } });
+      if (saveId && npcId) await prisma.npcState.deleteMany({ where: { saveId, npcId } });
       await prisma.npc.delete({ where: { id: npcId } });
       await prisma.location.delete({ where: { id: locationId } });
     });
@@ -1144,8 +1144,8 @@ describe('POST /saves/:id/modo-dinamico/interactuar + /responder + /ignorar', ()
       });
 
       afterAll(async () => {
-        await prisma.npcState.deleteMany({ where: { saveId, npcId: principalId } });
-        await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'test-dynamicmode-principal-oculto' } });
+        if (saveId && principalId) await prisma.npcState.deleteMany({ where: { saveId, npcId: principalId } });
+        if (saveId) await prisma.discoveredEntity.deleteMany({ where: { saveId, entityType: 'npc', entitySlug: 'test-dynamicmode-principal-oculto' } });
         await prisma.npc.delete({ where: { id: principalId } });
       });
 

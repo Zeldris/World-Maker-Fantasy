@@ -43,13 +43,13 @@ describe('GET /saves/:id/zona — NPC fijo de otra zona (P254)', () => {
   });
 
   afterAll(async () => {
-    await prisma.sessionFact.deleteMany({ where: { saveId } });
-    await prisma.quest.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.zonePoint.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.sessionFact.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.quest.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.zonePoint.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.npc.deleteMany({ where: { id: { in: npcIds } } });
-    await prisma.location.deleteMany({ where: { id: { in: [locOrigenId, locDestinoId] } } });
+    if (locOrigenId && locDestinoId) await prisma.location.deleteMany({ where: { id: { in: [locOrigenId, locDestinoId] } } });
   });
 
   it('en la zona a la que llega la jugadora no se pintan ni se reubican', async () => {

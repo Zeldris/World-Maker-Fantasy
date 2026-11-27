@@ -98,3 +98,8 @@ Los dos de `iaRegistro.ts`, cerrados con ~~`QA-520`~~ ✅ 2026-11-20.
 ## Pendientes leves de la revisión de bloque de QA-531 (2026-11-26)
 
 - `narrador.ts` `JSON_LEAK_REGEX` (~2384): no casa `hitoMotivo"` (la alternativa `hito` pide `"` justo detrás); si el modelo escribe `"hitoMotivo": …` en `narration` sin otra clave antes, `stripLeakedJson` no lo corta. Arreglo: `hito(?:Motivo)?` y un caso en su test.
+
+## Pendientes leves de la revisión de bloque de QA-523 (2026-11-27)
+
+- `worldFacts.ts` (~167): la dimensión 1024 no se valida; con `OLLAMA_MODEL_EMBEDDINGS` de otro tamaño, el re-embebido falla en cada arranque y `appendSessionFacts` lanza en cada turno con hechos nuevos. Arreglo: comprobar `vector.length === 1024` en un solo punto, con un error que nombre la variable.
+- `server.ts` (~109): el re-embebido de todas las partidas arranca a la vez que el precalentamiento y comparte `embedQueue` con el RAG; contamina la medición de `QA-523` (cada instantánea anterior a la migración vuelve a vaciar los vectores): medir tras el log «Re-embebidos N hechos».

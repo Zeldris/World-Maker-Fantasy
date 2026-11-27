@@ -26,7 +26,7 @@ describe('tablones de avisos (CR-40 40c)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('la partida nueva tiene un tablón en cada ciudad con interior', async () => {

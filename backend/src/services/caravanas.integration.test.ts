@@ -38,7 +38,7 @@ describe('CR-47 — caravanas del Reino', () => {
   });
 
   afterAll(async () => {
-    await prisma.almacenItem.deleteMany({ where: { factionId: helsigId, catalogSlug } });
+    if (helsigId && catalogSlug) await prisma.almacenItem.deleteMany({ where: { factionId: helsigId, catalogSlug } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

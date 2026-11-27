@@ -58,7 +58,7 @@ describe('/combat/huir-en-curso', () => {
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

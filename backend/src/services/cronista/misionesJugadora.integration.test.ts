@@ -51,7 +51,7 @@ describe('misiones secundarias de la jugadora (CR-40 40e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('cazar: aceptar, una por facción, y se cumple con las piezas abatidas (XP, Goirnos, reputación, Libro)', async () => {

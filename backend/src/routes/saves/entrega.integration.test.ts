@@ -56,10 +56,10 @@ describe('Entregar objeto a NPC (2026-08-31)', () => {
   });
 
   afterAll(async () => {
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -153,9 +153,9 @@ describe('Entregar objeto a NPC: guards (2026-08-31)', () => {
   });
 
   afterAll(async () => {
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -239,8 +239,8 @@ describe('Entregar objeto a NPC: restringido a solo compañeros de equipo (2026-
   });
 
   afterAll(async () => {
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

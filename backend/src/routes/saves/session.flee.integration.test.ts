@@ -54,7 +54,7 @@ describe('/combat/flee: condición de carrera con una escritura paralela de pend
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

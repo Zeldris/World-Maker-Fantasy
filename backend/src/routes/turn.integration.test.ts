@@ -4277,7 +4277,7 @@ describe('Matar (CONVALECIENTE): condición de carrera en turnos concurrentes (a
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.worldPopulation.updateMany({
+    if (worldId) await prisma.worldPopulation.updateMany({
       where: { worldId, targetType: 'RAZA', targetSlug: 'orcos-llanuras', saveId: null },
       data: { poblacion: 600 },
     });
@@ -4801,7 +4801,7 @@ describe('Muerte permanente sin punto de guardado: reinicio total (2026-08-31)',
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('el turno de muerte queda pendiente, y resolverlo reinicia la partida entera', async () => {
@@ -5562,9 +5562,9 @@ describe('Crafteo con resultCantidad > 1 (2026-08-30): fundir Garras de Kirelon 
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.worldState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -5973,8 +5973,8 @@ describe('Saqueo/desuello de CombatEncounter: se materializa en NpcState real al
 
   afterAll(async () => {
     vi.restoreAllMocks();
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -6958,8 +6958,8 @@ describe('Viaje largo interrumpido a mitad de camino (integración real, solo LL
     pickTravelInterruptionMock.mockReset();
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.npc.delete({ where: { id: interruptionNpcId } });
-    await prisma.locationLink.deleteMany({ where: { OR: [{ fromId: originId }, { fromId: midId }] } });
-    await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
+    if (originId && midId) await prisma.locationLink.deleteMany({ where: { OR: [{ fromId: originId }, { fromId: midId }] } });
+    if (originId && midId && destId) await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
   });
 
   // P164 (usuaria, 2026-10-17): la lista de «Viajar» (varias zonas de una vez) es cosa de una montura.
@@ -7198,8 +7198,8 @@ describe('Viaje largo interrumpido con candidato PACÍFICO: ofrece Interactuar e
     pickTravelInterruptionMock.mockReset();
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.npc.delete({ where: { id: interruptionNpcId } });
-    await prisma.locationLink.deleteMany({ where: { OR: [{ fromId: originId }, { fromId: midId }] } });
-    await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
+    if (originId && midId) await prisma.locationLink.deleteMany({ where: { OR: [{ fromId: originId }, { fromId: midId }] } });
+    if (originId && midId && destId) await prisma.location.deleteMany({ where: { id: { in: [originId, midId, destId] } } });
   });
 
   it('al resolverse el tránsito, NO fuerza combate y arma pendingDynamicModeOffer con el candidato pacífico', async () => {
@@ -7281,8 +7281,8 @@ describe('discoveredLocationSlug viaja en el turno de primera llegada real (hall
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.locationLink.deleteMany({ where: { fromId: originId } });
-    await prisma.location.deleteMany({ where: { id: { in: [originId, destId] } } });
+    if (originId) await prisma.locationLink.deleteMany({ where: { fromId: originId } });
+    if (originId && destId) await prisma.location.deleteMany({ where: { id: { in: [originId, destId] } } });
   });
 
   it('primer viaje al destino: discoveredLocationSlug trae el slug real del destino', async () => {
@@ -8282,7 +8282,7 @@ describe('Combate "fantasma": un NPC agresivo puede volver a forzar combate tras
   });
 
   afterAll(async () => {
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -8580,7 +8580,7 @@ describe('Atar/inmovilizar sin cuerdas: el guard determinista bloquea ANTES de n
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -9366,12 +9366,12 @@ describe('Franja 3 de "Interactuar": colisión de celda para fauna agresiva dete
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.npc.delete({ where: { id: agresivoNpcId } });
-    await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'test-colision-agresivo' } });
+    if (worldId) await prisma.worldPopulation.deleteMany({ where: { worldId, targetSlug: 'test-colision-agresivo' } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 
   afterEach(async () => {
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
     await prisma.save.update({ where: { id: saveId }, data: { pendingCombatNpcSlugs: [] } });
   });
 

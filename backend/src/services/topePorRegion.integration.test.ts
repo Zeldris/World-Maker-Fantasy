@@ -40,7 +40,7 @@ describe('P255: tope por región con un edificio dañado', () => {
   });
 
   afterEach(async () => {
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
   });
 
   afterAll(async () => {

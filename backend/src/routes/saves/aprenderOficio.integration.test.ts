@@ -56,11 +56,11 @@ describe('Aprender oficio de un Maestro (2026-08-31)', () => {
   // por corrida, dejando 5 residuos huérfanos por ejecución — confirmado en producción: 855
   // partidas "Gorhorn de prueba (aprender oficio)" acumuladas en 5 días).
   afterEach(async () => {
-    await prisma.professionProgress.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.worldState.deleteMany({ where: { saveId } });
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.professionProgress.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('con reputación y Goirnos suficientes, cobra el coste y crea ProfessionProgress real', async () => {

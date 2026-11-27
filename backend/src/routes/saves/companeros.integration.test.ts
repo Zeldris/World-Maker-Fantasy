@@ -62,9 +62,9 @@ describe('Compañeros: condición de carrera en confirmaciones concurrentes (aud
   });
 
   afterAll(async () => {
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -131,10 +131,10 @@ describe('Compañeros: cobertura de ruta — captura → tameo → confirmar (au
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -316,8 +316,8 @@ describe('Compañeros: captura en grupo — el bug original (2026-08-28)', () =>
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -373,9 +373,9 @@ describe('Compañeros: cobertura de ruta — equipo de compañero + Almacén de 
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.almacenItem.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.almacenItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -448,11 +448,11 @@ describe('Compañeros: cobertura de ruta — plantillas de equipo (auditoría de
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.almacenItem.deleteMany({ where: { saveId } });
-    await prisma.subject.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.almacenItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.subject.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -573,8 +573,8 @@ describe('POST /saves/:id/companeros/:companionId/asignar-edificio (hueco D, 202
   });
 
   afterAll(async () => {
-    await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId] } } });
-    await prisma.companion.deleteMany({ where: { saveId } });
+    if (buildingId && buildingOtraSaveId) await prisma.building.deleteMany({ where: { id: { in: [buildingId, buildingOtraSaveId] } } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
     await prisma.save.delete({ where: { id: otraSaveId } });
   });
@@ -730,9 +730,9 @@ describe('POST /saves/:id/capturas/:itemId/depositar — condición de carrera c
   });
 
   afterAll(async () => {
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -798,9 +798,9 @@ describe('POST /saves/:id/capturar/:npcSlug con participantId (combate múltiple
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -1076,8 +1076,8 @@ describe('Compañeros: Alfa de la Manada — segundo slot de Domador + elección
   });
 
   afterAll(async () => {
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -1189,9 +1189,9 @@ describe('rolReino de Companion: plantilla y ruta directa (H-1, 2026-09-28)', ()
   });
 
   afterAll(async () => {
-    await prisma.building.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -1264,8 +1264,8 @@ describe('Almacén de Reino: la comida depositada cuenta para la Comida del Rein
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.almacenItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.almacenItem.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

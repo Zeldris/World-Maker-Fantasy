@@ -27,7 +27,7 @@ const DIPLOMACIA = ['TRATADO_COMERCIAL', 'ALIANZA', 'GUERRA_DECLARADA', 'TREGUA'
 
 describe('simulación de 60 días con decisiones de facción (CR-34 34f)', () => {
   const saves: string[] = [];
-  let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> = [];
+  let progresoSnapshot: Awaited<ReturnType<typeof prisma.npcProfessionProgress.findMany>> | undefined;
   let worldId: string;
 
   beforeAll(async () => {
@@ -37,8 +37,8 @@ describe('simulación de 60 días con decisiones de facción (CR-34 34f)', () =>
 
   afterAll(async () => {
     await prisma.save.deleteMany({ where: { id: { in: saves } } });
-    await prisma.npcProfessionProgress.deleteMany({ where: { npc: { worldId }, id: { notIn: progresoSnapshot.map((p) => p.id) } } });
-    for (const p of progresoSnapshot) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
+    if (worldId && progresoSnapshot) await prisma.npcProfessionProgress.deleteMany({ where: { npc: { worldId }, id: { notIn: progresoSnapshot.map((p) => p.id) } } });
+    for (const p of progresoSnapshot ?? []) await prisma.npcProfessionProgress.update({ where: { id: p.id }, data: { nivel: p.nivel, xp: p.xp } });
   });
 
   async function simular(estilo: 'TRANQUILO' | 'CAOTICO', semilla: number) {

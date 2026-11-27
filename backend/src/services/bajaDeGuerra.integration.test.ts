@@ -43,7 +43,7 @@ describe('BAJA_DE_GUERRA al matar NPC de la facción dueña de la región', () =
 
   afterEach(async () => {
     // Solo el Reino del jugador (las copias del mundo de la partida se quedan).
-    await prisma.faction.deleteMany({ where: { saveId, origenSlug: null } });
+    if (saveId) await prisma.faction.deleteMany({ where: { saveId, origenSlug: null } });
   });
 
   afterAll(async () => {

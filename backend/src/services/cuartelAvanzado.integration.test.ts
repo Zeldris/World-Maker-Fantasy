@@ -46,7 +46,7 @@ describe('Cuartel Avanzado — conquista territorial (2026-09-21)', () => {
   });
 
   afterEach(async () => {
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
   });
 
   afterAll(async () => {

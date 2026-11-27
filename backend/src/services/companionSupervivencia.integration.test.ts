@@ -50,7 +50,7 @@ describe('advanceCompanionSurvival', () => {
   });
 
   afterAll(async () => {
-    await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -211,10 +211,10 @@ describe('autoEquiparDesdeAlmacen', () => {
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.almacenItem.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.almacenItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -279,10 +279,10 @@ describe('autoEquiparDesdeAlmacen — 2 owners compitiendo por el mismo tipo de 
   });
 
   afterAll(async () => {
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.almacenItem.deleteMany({ where: { saveId } });
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.almacenItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.plantillaEquipo.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

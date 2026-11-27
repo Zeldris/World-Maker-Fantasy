@@ -57,7 +57,7 @@ describe('el combate 1v1 clásico descubre al NPC al cerrarse (P328/P107)', () =
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

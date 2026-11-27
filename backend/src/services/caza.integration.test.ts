@@ -149,6 +149,8 @@ describe('iniciarCaza — integración real (Postgres, sobre el catálogo de hel
   }
 
   async function limpiarSave(saveId: string) {
+    // Sin id (falló el montaje), un filtro `{ saveId: undefined }` borraría las filas de todas las partidas.
+    if (!saveId) return;
     await prisma.combatParticipant.deleteMany({ where: { encounter: { saveId } } });
     await prisma.combatEncounter.deleteMany({ where: { saveId } });
     await prisma.companion.deleteMany({ where: { saveId } });

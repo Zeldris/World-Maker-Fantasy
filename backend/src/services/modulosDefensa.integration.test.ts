@@ -25,7 +25,7 @@ describe('módulos de defensa (CR-65 65a)', () => {
     })).id;
   });
   afterEach(async () => {
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
   });
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });

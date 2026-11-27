@@ -40,8 +40,8 @@ describe('Grupos de combate (2026-09-08)', () => {
   });
 
   afterAll(async () => {
-    await prisma.companion.deleteMany({ where: { saveId } });
-    await prisma.combatGroup.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.companion.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatGroup.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

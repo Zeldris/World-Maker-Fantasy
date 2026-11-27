@@ -41,10 +41,10 @@ describe('GET /saves/:id resincroniza la descripción de las habilidades inicial
   });
 
   afterAll(async () => {
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.skillBar.deleteMany({ where: { saveId } });
-    await prisma.savedAction.deleteMany({ where: { saveId } });
-    await prisma.worldState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.skillBar.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.savedAction.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -107,9 +107,9 @@ describe('GET /saves/:id renombra por clase las habilidades repetidas (QA-243)',
   });
 
   afterAll(async () => {
-    await prisma.skillBar.deleteMany({ where: { saveId } });
-    await prisma.savedAction.deleteMany({ where: { saveId } });
-    await prisma.worldState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.skillBar.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.savedAction.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.worldState.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

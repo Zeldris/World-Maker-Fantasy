@@ -96,10 +96,10 @@ describe('Cuartel Avanzado en territorio ajeno — evento territorial real (2026
   });
 
   afterAll(async () => {
-    await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId: playerFactionId }, { targetFactionId: playerFactionId }] } });
-    await prisma.parcela.deleteMany({ where: { location: { worldId, slug: { contains: saveId } } } });
-    await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: { contains: saveId } } }, { to: { slug: { contains: saveId } } }] } });
-    await prisma.location.deleteMany({ where: { worldId, slug: { contains: saveId } } });
+    if (playerFactionId) await prisma.factionRelation.deleteMany({ where: { OR: [{ sourceFactionId: playerFactionId }, { targetFactionId: playerFactionId }] } });
+    if (worldId && saveId) await prisma.parcela.deleteMany({ where: { location: { worldId, slug: { contains: saveId } } } });
+    if (saveId) await prisma.locationLink.deleteMany({ where: { OR: [{ from: { slug: { contains: saveId } } }, { to: { slug: { contains: saveId } } }] } });
+    if (worldId && saveId) await prisma.location.deleteMany({ where: { worldId, slug: { contains: saveId } } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

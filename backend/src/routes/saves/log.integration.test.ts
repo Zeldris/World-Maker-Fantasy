@@ -53,8 +53,8 @@ describe('GET /saves/:id/diario — calendario y fusión de capítulos (2026-09-
   });
 
   afterAll(async () => {
-    await prisma.sessionSummary.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.sessionSummary.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

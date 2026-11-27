@@ -40,7 +40,7 @@ describe('zonePointVisiblePara + questSlugsAceptadosPara (Postgres real)', () =>
   });
 
   afterEach(async () => {
-    await prisma.quest.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.quest.deleteMany({ where: { saveId } });
   });
 
   it('el Orco Enfurecido está OCULTO antes de aceptar la misión de Gistera', async () => {

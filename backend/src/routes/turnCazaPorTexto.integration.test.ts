@@ -90,9 +90,9 @@ describe('B29 — atacar por texto a fauna adyacente (/turn/classify)', () => {
   afterEach(async () => {
     vi.restoreAllMocks();
     classifyAction.mockClear();
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.update({ where: { id: saveId }, data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingCombatNpcSlugs: [] } });
   });
 

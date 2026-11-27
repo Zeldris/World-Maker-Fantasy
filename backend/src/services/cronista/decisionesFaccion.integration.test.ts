@@ -55,7 +55,7 @@ describe('decidirFacciones — guerra, paz y corte de la cadena (CR-34 34c)', ()
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('Serhu declara la guerra a Helsig, Helsig pide la paz, Serhu la acepta con hambre y la cadena se corta', async () => {
@@ -156,7 +156,7 @@ describe('propuestas al Reino de la jugadora (CR-34 34e)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('propone un tratado con plazo; aceptarlo lo deja en las dos direcciones y abre su comercio', async () => {

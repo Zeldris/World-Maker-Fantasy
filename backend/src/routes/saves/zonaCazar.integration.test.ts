@@ -136,10 +136,10 @@ describe('POST /saves/:id/zona/cazar', () => {
 
   afterEach(async () => {
     vi.restoreAllMocks();
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.update({
       where: { id: saveId },
       data: { pendingDynamicModeOffer: Prisma.JsonNull, pendingCombatNpcSlugs: [] },
@@ -511,8 +511,8 @@ describe('GET /saves/:id/zona sigue mostrando otros grupos de la misma especie t
   });
 
   afterEach(async () => {
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.npcState.deleteMany({ where: { saveId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (saveId) await prisma.npcState.deleteMany({ where: { saveId } });
   });
 
   it('un NpcState "ausente" (6h tras derrota, `scope=Location`) NO oculta los ZonePoint FAUNA restantes de la misma especie', async () => {

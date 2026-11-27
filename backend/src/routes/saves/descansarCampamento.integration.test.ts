@@ -44,7 +44,7 @@ describe('Descansar en campamento (2026-09-08)', () => {
   });
 
   afterEach(async () => {
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
   });
 
   afterAll(async () => {

@@ -192,15 +192,15 @@ describe('POST /saves/:id/zona/mover', () => {
 
   afterAll(async () => {
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId, maestroNpcId, guardiaNpcId, principalNpcId] } } });
+    if (agresivoNpcId && pacificoNpcId && dinamicoNpcId && maestroNpcId && guardiaNpcId && principalNpcId) await prisma.npc.deleteMany({ where: { id: { in: [agresivoNpcId, pacificoNpcId, dinamicoNpcId, maestroNpcId, guardiaNpcId, principalNpcId] } } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 
   afterEach(async () => {
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.npcState.deleteMany({ where: { saveId, npcId: { in: [dinamicoNpcId, principalNpcId] } } });
-    await prisma.sessionFact.deleteMany({ where: { saveId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId && dinamicoNpcId && principalNpcId) await prisma.npcState.deleteMany({ where: { saveId, npcId: { in: [dinamicoNpcId, principalNpcId] } } });
+    if (saveId) await prisma.sessionFact.deleteMany({ where: { saveId } });
     await prisma.save.update({
       where: { id: saveId },
       data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull },
@@ -375,7 +375,7 @@ describe('POST /saves/:id/zona/mover', () => {
   // `zonaAusenteHastaMinutes`) que sí aplica a fauna genérica. Ver `zonePointNpcMuertoParaSiempre`.
   describe('NPC único (kind: PRINCIPAL) derrotado — muerte permanente, nunca reaparece (2026-09-20)', () => {
     afterEach(async () => {
-      await prisma.npcState.deleteMany({ where: { saveId, npcId: principalNpcId } });
+      if (saveId && principalNpcId) await prisma.npcState.deleteMany({ where: { saveId, npcId: principalNpcId } });
     });
 
     it('vivo: colisiona normalmente como cualquier AGRESIVO', async () => {

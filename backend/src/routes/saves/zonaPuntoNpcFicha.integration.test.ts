@@ -27,11 +27,11 @@ describe('GET /saves/:id/zona — punto de NPC fijo (P107, P462)', () => {
   });
 
   afterAll(async () => {
-    await prisma.discoveredEntity.deleteMany({ where: { saveId } });
-    await prisma.zonePoint.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.discoveredEntity.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.zonePoint.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.npc.deleteMany({ where: { id: npcId } });
-    await prisma.location.deleteMany({ where: { id: locId } });
+    if (npcId) await prisma.npc.deleteMany({ where: { id: npcId } });
+    if (locId) await prisma.location.deleteMany({ where: { id: locId } });
   });
 
   const punto = async () => {

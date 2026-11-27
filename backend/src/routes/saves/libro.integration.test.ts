@@ -32,7 +32,7 @@ describe('GET /saves/:id/libro', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   async function pedir(query = '') {

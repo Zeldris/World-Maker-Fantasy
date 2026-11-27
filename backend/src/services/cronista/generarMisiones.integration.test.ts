@@ -38,7 +38,7 @@ describe('renovarTablones (CR-40 40d)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('cuelga misiones del mundo de la partida, válidas y sin repetir tipo; no rellena dos veces el mismo día', async () => {
@@ -100,7 +100,7 @@ describe('ofrecerTrabajoDeNpc (CR-40 40f)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('el NPC con nombre propone una misión personal de las plantillas; la misma si se le vuelve a preguntar', async () => {

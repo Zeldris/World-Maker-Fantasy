@@ -102,8 +102,8 @@ describe('Grupos de fauna reales (GET /zona, POST /zona/mover)', () => {
   });
 
   afterEach(async () => {
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.update({
       where: { id: saveId },
       data: { zonaPosX: 25, zonaPosY: 25, zonaCaminoPendiente: Prisma.JsonNull, pendingDynamicModeOffer: Prisma.JsonNull, zonaUltimoEncuentro: Prisma.JsonNull },

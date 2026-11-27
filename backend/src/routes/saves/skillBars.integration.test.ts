@@ -51,8 +51,8 @@ describe('Barras de habilidades múltiples (2026-09-06)', () => {
   });
 
   afterAll(async () => {
-    await prisma.skillBar.deleteMany({ where: { saveId } });
-    await prisma.savedAction.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.skillBar.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.savedAction.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

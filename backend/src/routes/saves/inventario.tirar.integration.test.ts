@@ -49,9 +49,9 @@ describe('POST /saves/:id/inventario/:itemId/tirar', () => {
   });
 
   afterAll(async () => {
-    await prisma.droppedItem.deleteMany({ where: { saveId } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.droppedItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.inventoryItem.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -175,10 +175,10 @@ describe('POST /saves/:id/dropped-items/:droppedItemId/recoger', () => {
   });
 
   afterAll(async () => {
-    await prisma.droppedItem.deleteMany({ where: { saveId: { in: [saveId, otherSaveId] } } });
-    await prisma.inventoryItem.deleteMany({ where: { saveId: { in: [saveId, otherSaveId] } } });
-    await prisma.logEntry.deleteMany({ where: { saveId: { in: [saveId, otherSaveId] } } });
-    await prisma.save.deleteMany({ where: { id: { in: [saveId, otherSaveId] } } });
+    if (saveId && otherSaveId) await prisma.droppedItem.deleteMany({ where: { saveId: { in: [saveId, otherSaveId] } } });
+    if (saveId && otherSaveId) await prisma.inventoryItem.deleteMany({ where: { saveId: { in: [saveId, otherSaveId] } } });
+    if (saveId && otherSaveId) await prisma.logEntry.deleteMany({ where: { saveId: { in: [saveId, otherSaveId] } } });
+    if (saveId && otherSaveId) await prisma.save.deleteMany({ where: { id: { in: [saveId, otherSaveId] } } });
   });
 
   it('recoger un DroppedItem de OTRA partida: 404 (nunca visible/recogible fuera de su propia save)', async () => {

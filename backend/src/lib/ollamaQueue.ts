@@ -55,8 +55,10 @@ export class OllamaQueue {
 
 export const ollamaQueue = new OllamaQueue();
 
-/// Cola SEPARADA solo para embeddings (roadmap de velocidad, 2026-07-19): nomic-embed-text pesa
-/// 274MB y responde en ~1-2s — obligarlo a esperar detrás de una generación de 30-220s del modelo
-/// grande en la misma cola de concurrencia-1 no protege nada (no compiten de verdad por RAM) y
-/// solo bloquea el RAG en serie con narrar/clasificar cuando podrían solaparse.
+/// Cola SEPARADA solo para embeddings (roadmap de velocidad, 2026-07-19): un embedding responde en
+/// segundos y esperar detrás de una generación de 30-220s del modelo grande, en la misma cola de
+/// concurrencia 1, solo pone el RAG en serie con narrar/clasificar cuando podrían solaparse. La premisa
+/// de entonces (modelo de 274MB, sin competir por la RAM) ya no vale: bge-m3, el modelo del lore y de los
+/// hechos (QA-523), ocupa 1,1 GiB residente y quita capas de GPU a qwen (QA-524 en
+/// docs/producto/roadmap-front.md, medido en la ronda local 3, 2026-11-21).
 export const embedQueue = new OllamaQueue();

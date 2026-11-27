@@ -137,10 +137,10 @@ describe('GET /saves/:id/zona — compañero de fauna con nombre propio', () => 
   });
 
   afterAll(async () => {
-    await prisma.discoveredEntity.deleteMany({ where: { saveId } });
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (saveId) await prisma.discoveredEntity.deleteMany({ where: { saveId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
     await prisma.save.delete({ where: { id: saveId } });
-    await prisma.npc.deleteMany({ where: { id: { in: [duenoNpcId, companionNpcId, soloNpcId] } } });
+    if (duenoNpcId && companionNpcId && soloNpcId) await prisma.npc.deleteMany({ where: { id: { in: [duenoNpcId, companionNpcId, soloNpcId] } } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 

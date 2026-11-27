@@ -29,7 +29,7 @@ describe('Libro de Sucesos: modelos (CR-1)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('guarda un suceso con actores y una cadena causa → efecto', async () => {
@@ -126,7 +126,7 @@ describe('registrarSuceso (CR-2)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('calcula familia, texto e importancia (jugador autor + NPC del núcleo) y guarda actores y causas', async () => {
@@ -260,7 +260,7 @@ describe('emisores de recuperación y cadáveres (CR-3)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: saveId } });
+    if (saveId) await prisma.save.deleteMany({ where: { id: saveId } });
   });
 
   it('la recuperación y el cadáver que desaparece dejan RECUPERACION_NPC y CADAVER_DESAPARECE', async () => {

@@ -65,9 +65,9 @@ describe('ZonePoint por partida (Postgres real)', () => {
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: { in: [saveA, saveB] } } });
+    if (saveA && saveB) await prisma.save.deleteMany({ where: { id: { in: [saveA, saveB] } } });
     await prisma.worldPopulation.delete({ where: { id: poblacionId } });
-    await prisma.zonePoint.deleteMany({ where: { locationId } });
+    if (locationId) await prisma.zonePoint.deleteMany({ where: { locationId } });
     await prisma.location.delete({ where: { id: locationId } });
   });
 

@@ -67,8 +67,8 @@ describe('Parcelas — GET estado / POST construir (2026-09-21)', () => {
   });
 
   afterAll(async () => {
-    await prisma.parcela.deleteMany({ where: { locationId: kingdomLocationId } });
-    await prisma.building.deleteMany({ where: { saveId } });
+    if (kingdomLocationId) await prisma.parcela.deleteMany({ where: { locationId: kingdomLocationId } });
+    if (saveId) await prisma.building.deleteMany({ where: { saveId } });
     await prisma.location.delete({ where: { id: kingdomLocationId } });
     await prisma.save.delete({ where: { id: saveId } });
   });

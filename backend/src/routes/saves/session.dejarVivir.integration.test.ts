@@ -53,7 +53,7 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug', () => {
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -178,8 +178,8 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug — aviso de misión pendi
   });
 
   afterAll(async () => {
-    await prisma.quest.deleteMany({ where: { saveId } });
-    await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.quest.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 
@@ -238,8 +238,8 @@ describe('POST /saves/:id/combat/dejar-vivir/:npcSlug con participantId (combate
   });
 
   afterAll(async () => {
-    await prisma.logEntry.deleteMany({ where: { saveId } });
-    await prisma.combatEncounter.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.logEntry.deleteMany({ where: { saveId } });
+    if (saveId) await prisma.combatEncounter.deleteMany({ where: { saveId } });
     await prisma.save.delete({ where: { id: saveId } });
   });
 

@@ -49,7 +49,7 @@ describe('producirFacciones / decaerRelaciones — integración (Fase 4, por par
   });
 
   afterAll(async () => {
-    await prisma.save.deleteMany({ where: { id: { in: [saveId, otraId] } } });
+    if (saveId && otraId) await prisma.save.deleteMany({ where: { id: { in: [saveId, otraId] } } });
   });
 
   it('procesa UN día una sola vez, deposita stock con tope y decae la presión, sin tocar el catálogo ni otra partida', async () => {
