@@ -32,6 +32,15 @@ class AvisoLectura(unittest.TestCase):
         self.assertIn('marca-hallazgo.py', texto)
         self.assertIn('recover.py', texto)
 
+    def test_sed_del_mapa_de_roadmaps_avisa_con_cobertura(self):
+        salida = correr({'tool_name': 'Bash', 'tool_input': {'command': 'sed -n 120,140p docs/producto/21-roadmap.md'}})
+        self.assertIn('cobertura.py --fila', contexto(salida))
+
+    def test_mapa_de_roadmaps_con_su_herramienta_no_avisa(self):
+        salida = correr({'tool_name': 'Bash', 'tool_input': {
+            'command': 'python3 tools/roadmap/cobertura.py --fila QA-1 docs/producto/21-roadmap.md'}})
+        self.assertEqual(salida, '')
+
     def test_diff_de_un_roadmap_avisa_con_ver_py(self):
         orden = 'git diff origin/main...origin/claude/x -- docs/producto/roadmap-front-ux.md | head -80'
         self.assertIn('tools/roadmap/ver.py', contexto(correr({'tool_name': 'Bash', 'tool_input': {'command': orden}})))

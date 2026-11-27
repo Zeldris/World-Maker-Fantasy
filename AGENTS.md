@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.9.0 -->
 # World-Maker-Fantasy — instrucciones para agentes
 
 Este proyecto se trabaja por relevos desde **dos cuentas de Claude** (y OpenCode para el lore): una sesión puede
@@ -14,15 +14,16 @@ la primera línea): scripts en `.claude/gw/scripts/`, skills en `.claude/skills/
 2. `git fetch origin <rama>`: `recover.py --state` dice en «Remote» si vas al día con `origin/<rama>`, el último commit
    coincide con la bitácora, y el check está en verde antes de tocar nada (`python3 .claude/gw/scripts/config.py get check`).
 3. Sigue por el **siguiente paso** de la bitácora, salvo que la usuaria pida otra cosa.
-4. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día:
-   `git fetch origin main` y, si trae commits, `git merge origin/main` (merge, nunca rebase: las ramas están subidas).
+4. **Al empezar cada tarea y al fusionar cada PR, trae `main`** (`QA-72`), aunque parezca al día, con
+   `python3 .claude/gw/scripts/merge-main.py` (fetch, commit del ledger de métricas; se niega con más cambios sin
+   commit y hace `git merge origin/main`; merge, nunca rebase: las ramas están subidas).
    Si el conflicto toca la misma lógica por los dos lados o dos migraciones, se para y se consulta a la usuaria.
 5. Al empezar cada tarea, aplica la skill `gw-selector` y sigue el flujo de skills de una tarea (diseño, prototipo,
    bugs, PR, retro) de [`docs/runbooks/skills-y-modelos.md`](docs/runbooks/skills-y-modelos.md#cómo-se-usa-el-flujo-de-una-tarea).
 6. **La sesión se abre con el repo como carpeta de trabajo**; en otra no carga `.claude/settings.json` (ni sus
    ganchos): dilo a la usuaria, y mientras, `git config core.hooksPath .githooks` y la marca de revisión y el CI a mano.
 
-**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza), abre
+**Antes de buscar código de un sistema** (turno, zona, combate, reino, súbditos, Cronista, caza, generadores de imágenes, mapas y voces), abre
 [`docs/mapa-agente.md`](docs/mapa-agente.md): funciones de entrada, tests, tablas, interfaz y qué no leer (`QA-108`).
 Orden y fases de todo el trabajo: [mapa de roadmaps](docs/producto/21-roadmap.md#mapa-de-roadmaps), y la forma de
 trabajo de cada plan de hito (p. ej. [`plan-roadmap-0.1.md`](docs/producto/plan-roadmap-0.1.md)).
@@ -39,16 +40,18 @@ Cada sesión corre en un contenedor temporal: **lo que no está subido a GitHub 
 - **Ninguna tarea sin hito** (usuaria, 2026-10-02): su número, con `python3 tools/roadmap/siguiente-id.py <serie>`
   (mira las ramas remotas, `QA-290`); toda tarea nueva entra en una fase de su roadmap o en una fila de
   «Qué entra en cada hito» (`21-roadmap.md`); `python3 tools/roadmap/cobertura.py` tiene que dar «SIN HITO: 0».
-- Commit + push (`bash .claude/gw/scripts/push.sh <rama>`, en segundo plano: reintenta si falla por red y da por
+- Commit + push (`bash .claude/gw/scripts/push.sh <rama>`, en segundo plano con `timeout` de 5400000 ms (90 min), sin bucles de espera: reintenta si falla por red y da por
   subido solo lo que `git ls-remote` confirma) en cada punto estable: **nunca más de 30-45 minutos sin subir**, y **la bitácora en el mismo commit** que el trabajo. Algo a
   medias o en rojo se sube igual, con `WIP:` delante y en la bitácora qué falla y por qué.
+- **No se hace un commit solo para el ledger de métricas** (`docs/metrics/ledger.jsonl`), aunque un gancho lo pida:
+  lo lleva el `pre-commit` del siguiente commit de trabajo.
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla** (`QA-48`): el cambio
   puede haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la usuaria dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
 - **Las preguntas a la usuaria**: lista numerada, cada una con su recomendación (`questions.py add`; un subagente las
   devuelve a la sesión principal); responde por número y `questions.py answer "5. a, 6. ok"` lo apunta.
 - **Al cerrar cada tarea o PR** (y cada fase, y cada lote de una rama larga, `QA-305`), con todo subido y la bitácora al día, se pide a la usuaria un `/clear`
-  en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
+  en una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar. Un «Siguiente» tras un cierre se contesta igual.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida**, con `python3 .claude/gw/scripts/ci-status.py` (un
   rojo se lee con `--failed`, no con el registro entero del job). Uno que no arranca (sin cuota, sin runners) es
   rojo: se dice a la usuaria, y el check local del mismo commit (`pre-push`, o `tools/qa/ci-local.sh`, `QA-215`) vale
@@ -92,7 +95,7 @@ cada estado, con `python3 tools/qa/marca-hallazgo.py --lista <grupo>` (`QA-322`)
 - Primera línea en español: qué cambia, con los identificadores de las tareas tocadas. Un commit que cambia código
   empieza por `feat: `, `fix: ` o `hotfix: ` y lleva `Refs: <id>` en el bloque final: el `commit-msg` le pide la
   ficha de la tarea (`docs/tasks/<id>.md`, con `python3 .claude/gw/scripts/task.py new <id>`) y una entrada nueva
-  de su decision log (`task.py log <id> --agent <skill|sesión>`); los de docs, bitácora y métricas siguen sin prefijo
+  de su decision log (`task.py log <id> --agent <skill|session>`); los de docs, bitácora y métricas siguen sin prefijo
   (`taskRecord`, usuaria, 2026-11-18).
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check y de los tests.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.

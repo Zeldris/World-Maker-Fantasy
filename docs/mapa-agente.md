@@ -285,6 +285,22 @@ En pausa hasta traer el repo aparte de la usuaria (`VOZ-6`); al traerlo, esta se
   voz de una raza», «Fauna y criaturas», «Acoplamiento a Tarkor») con `grep -n '^## '` + `sed -n`. Tareas,
   `docs/producto/roadmap-voces.md`.
 
+## Mapa del mundo (generación local, `map-generator/`)
+
+Solo Python 3 estándar. Plan y tareas: `docs/producto/roadmap-mapas.md`; uso completo, `map-generator/README.md`.
+
+- **Scripts:** `map-generator/importar.py` (el `.map` de Azgaar una vez; no pisa un `helek.json` editado sin
+  `--sobrescribir`), `map-generator/medir.py` (medidas contra `canon.json`), `map-generator/comprobar.py` (reglas de
+  `lore.json`), `map-generator/exportar.py` (al juego: `frontend/src/data/helekRegiones.ts` y
+  `frontend/src/data/helekCapas.ts`; `--comprobar` falla si están desfasados), `map-generator/consultar.py#resolver`
+  (consultas de solo lectura para armar lotes), `map-generator/editar.py` (lotes por consola o desde el visor),
+  `map-generator/abrir.sh` (visor y editor en `http://127.0.0.1:8765/`).
+- **Datos:** `map-generator/mundo/helek.json` (la fuente; una fila por elemento), `map-generator/canon.json` y
+  `map-generator/lore.json` (**solo los cambia la usuaria**), `map-generator/viaje.json`.
+- **Test:** `python3 -m unittest discover -s map-generator/tests`.
+- **Juego:** `frontend/src/components/panels/InteractiveMap.tsx` dibuja las regiones exportadas.
+- **Trampa:** tras editar `helek.json` hay que volver a exportar; Berig está bloqueado por defecto en el editor.
+
 ## Modo empaquetado (`window.__TARKOR__`, `INS-33`)
 
 El juego dentro de la app de escritorio (Tauri) recibe `window.__TARKOR__` antes de cualquier script; en desarrollo y

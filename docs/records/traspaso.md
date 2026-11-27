@@ -12,13 +12,13 @@ cada commit.**
 |---|---|
 | **Actualizado** | 2026-11-27 |
 | **Ramas de trabajo** | Cada sesión, su rama y su fila (`QA-69`, `QA-136`). Activas: `claude/frontend-improvements-roadmap-0mpckt` (desde 2026-10-06), `claude/limpieza` (desde 2026-10-27, `QA-271`). Fusionadas y por cerrar: `claude/gw-update-0.5.0`, `claude/lore-enciclopedia`, `claude/generador-mapas`, `claude/banco-narrador`. Filas de ramas cerradas: [`traspaso-archivo.md`](traspaso-archivo.md#filas-archivadas-2026-11-14-qa-342). Parada desde el 2026-09-28: `claude/instalador-empaquetado` (lo decide la usuaria). Las demás, en `main`. `.claude/` va versionado con `git add` normal (`QA-112`); a `main`, **por pull request**, o con la cuota de Actions agotada por `tools/qa/ci-local.sh` y push directo (`QA-215`). |
-| **Último commit en `main`** | PR #103 de `claude/wonderful-volta-662qt8` (2026-11-19, `2b7ff9ba`, CI en verde): flujo Galivelop-workflow v0.8.1; antes, PR #102 (`docs/metrics/` como contenido, retro `QA-511`), PR #100 de `claude/marca-imagenes` y PR #99. |
+| **Último commit en `main`** | PR #105 de `claude/wonderful-volta-662qt8` (2026-11-24, `904226bd`, CI en verde): flujo Galivelop-workflow 0.8.1 → 0.9.0 y `QA-527` en el hito 0.3; antes, PR #103 (flujo v0.8.1), PR #102 y PR #100. |
 | **Hito** | Único frente: la puerta de pruebas (paso 3 de [la línea](../producto/21-roadmap.md#la-línea-usuaria-2026-10-21)). Después, `0.3` Reino profundo, Fases D y E — [plan](../producto/plan-roadmap-0.3.md). El `0.1` y el `0.2` siguen abiertos solo por lo que espera a Álvaro (se cierran en el paso 4) |
-| **Tarea en curso · `claude/ronda-local-2`** | PR abierto a `main`: https://github.com/Zeldris/World-Maker-Fantasy/pull/104 (2026-11-20, ronda local 2: L1-L8, ~~QA-509~~…~~QA-519~~, retro aprobada); se fusiona con el CI en verde. Al fusionarse, rama terminada. Quedan P311, P485, P491, P492, P493 (jugar con Ollama real) y `QA-520` (barrido de `iaRegistro.ts`) para otra rama. |
-| **Tarea en curso · `claude/ronda-local-3`** | 🚧 Ronda local 3 (Deck, Ollama real, bge-m3): L1-L5 jugadas. ~~QA-525~~ ✅, ~~QA-526~~ ✅ (por jugar: P272, P251, P496, P497). Abierto: P252. Apuntados QA-544 (GVE T13) y QA-545 (GVE T14), en claude/gve-rag. Traer origin/main da conflicto en 6 docs (sin resolver). Siguiente: QA-523 (subagente sonnet). |
+| **Tarea en curso · `claude/ronda-local-2`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
+| **Tarea en curso · `claude/ronda-local-3`** | 🚧 Ronda local 3 (Deck, Ollama real, bge-m3): L1-L5 jugadas. ~~QA-525~~ ✅, ~~QA-526~~ ✅ (por jugar: P272, P251, P496, P497). Abierto: P252. Apuntados QA-544 (GVE T13) y QA-545 (GVE T14), en claude/gve-rag. origin/main traído (merge 2026-11-27); nuestras Q-3…Q-10 pasan a Q-27…Q-34. Siguiente: QA-523 (subagente sonnet). |
 | **Tarea en curso · `claude/gve-rag`** | ✅ GVE T10-T12 corridas en la Deck (2026-11-21, logs/gve/cierre.sh sobre 60cc6b6c, bge-m3): ~~QA-361~~ T12 da R7, caché M5 bge-m3 con paridad 0, ~~QA-359~~ T10 (semilla estable, 0 de 470 poco_anclado con 0,75), ~~QA-360~~ N1-N4 (N4 con umbral 0,53, decisión de Álvaro). Siguiente: pasar los resultados al GVE; PR a main de esta rama si Álvaro lo pide; luego merge en claude/ronda-local-3 (en pausa por el índice bge-m3). |
 | **Tarea en curso · `claude/frontend-improvements-roadmap-0mpckt`** | 2026-11-02: flujo Galivelop-workflow v0.2.0 → v0.4.3 (`aplicar.py --update`, 3 ganchos nuevos, sin `comprobar.yml`). Desvíos y hallazgos del flujo, propuestos arriba en `docs/records/propuestas-flujo.md` (P1-P13). Pieza de difusión en `docs/media/2026-10-23/01-mundo-vivo` (formato nuevo); Reddit, sin publicar hasta pegar sus normas (aviso de `tools/qa/difusion.py`; la nube no lee reddit.com). Fases 1 y 2 hechas; retro aprobada (R1 `tools/qa/difusion.py` en el check, R3 en opt-tokens.md). **Siguiente:** fase 3 (code-review de R1, `revisado.sh --footer`, PR). |
-| **Tarea en curso · `claude/wonderful-volta-662qt8`** | PR a main: flujo Galivelop-workflow v0.8.1 (gw-update 0.8.0 → 0.8.1, 2026-11-19). Fases 1-3 hechas (revisión trivial, 0 hallazgos; retro decidida: C1-C3 para gw-harvest, C4 aplazada, C5 la aplica la usuaria). Al fusionarse, rama terminada. Sigue pendiente IMG-59 en la Deck. |
+| **Tarea en curso · `claude/wonderful-volta-662qt8`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/narrador-tiempos`** | Fusionada en `main` (PR #97, 2026-11-15) y, con ~~`QA-347`~~, ~~`QA-348`~~ y las tandas 131-132, en `claude/ronda-local-2` (2026-11-15). Rama terminada. |
 | **Tarea en curso · `claude/marca-imagenes`** | Al fusionarse, rama terminada: no queda nada pendiente en ella. |
 | **Tarea en curso · `claude/img-6-pilotos`** | 3 commits fuera de `main` (2026-11-03): `pilotos.sh` con la cadena fotorreal y el veredicto de la usuaria sobre los 5 pilotos (Pastos 9/10, aullador 3-4/10, Cardo 5/10, Hulki 6/10, aullador en zona 7/10), que no está en `claude/imagenes-por-fases`. **Siguiente:** al cerrar IMG-55…57, pasar el veredicto al roadmap de imágenes de esa rama y borrar esta. |
@@ -33,13 +33,18 @@ Orden de lectura para decidir el siguiente trabajo, de lo general a lo concreto:
    hito»](../producto/21-roadmap.md#qué-entra-en-cada-hito) dice, hito a hito (`0.1` → `1.0`), qué
    tareas de cada roadmap tocan. Todas las tareas de todos los roadmaps están asignadas a un hito
    (comprobado con `python3 tools/roadmap/cobertura.py`, 2026-10-02: 367 de 367).
-3. **[Plan del hito actual (`0.2`)](../producto/plan-roadmap-0.2.md)** — fases A-G del `0.2` en orden, con su estado. El del `0.1` ([plan-roadmap-0.1.md](../producto/plan-roadmap-0.1.md)) sigue abierto solo por sus Fases E y F.
+3. **[Plan del hito en curso (`0.3`)](../producto/plan-roadmap-0.3.md)** — pruebas de juego primero, luego `0.3` (Reino profundo) por fases. Los del `0.1` ([plan-roadmap-0.1.md](../producto/plan-roadmap-0.1.md)) y `0.2` ([plan-roadmap-0.2.md](../producto/plan-roadmap-0.2.md)) están cerrados.
 4. **Los roadmaps por tema** — el detalle de cada tarea, con su estado (`✅`, `🚧`, pendiente):
    - [roadmap-front.md](../producto/roadmap-front.md) — `CFG` `BAS` `DAD` `MOD` `PAN` `HUD` `NAR` `CMB` `ATM` `PRE` `SON` `QA` `INT`
    - [roadmap-front-ux.md](../producto/roadmap-front-ux.md) — `UX` (fases UX-A…UX-F)
    - [roadmap-front-zona.md](../producto/roadmap-front-zona.md) — `ZON` (fases Z-A…Z-F)
    - [roadmap-front-reino.md](../producto/roadmap-front-reino.md) — `REI` (fases R-A…R-F)
    - [roadmap-cronista.md](../producto/roadmap-cronista.md) — `CR` (fases 1-8)
+   - [roadmap-imagenes.md](../producto/roadmap-imagenes.md) — `IMG` (generador de imágenes)
+   - [roadmap-voces.md](../producto/roadmap-voces.md) — `VOZ` (generador de voces; en pausa hasta el `0.3`)
+   - [roadmap-mapas.md](../producto/roadmap-mapas.md) — `MAP` (generador de mapas)
+   - [roadmap-idiomas.md](../producto/roadmap-idiomas.md) — `IDI` (internacionalización)
+   Desde el `0.3` cada hito incluye sus imágenes, su mapa y sus voces (usuaria, 2026-11-24).
 5. **Lore:** propuestas pendientes de Álvaro en `docs/borradores-opencode/propuestas-lore.md` (nunca
    editar `docs/rpgtarkor/` directamente, ver `AGENTS.md`). Las propuestas de OpenCode las revisa la otra
    cuenta de Claude (rama `claude/wonderful-volta-662qt8`); la última revisión, la del 2026-10-07 (36 de
@@ -162,9 +167,8 @@ Lo pendiente está en [`docs/records/pendientes-leves.md`](pendientes-leves.md);
 - ~~`QA-520`~~ ✅ 2026-11-20 (`claude/ronda-local-3`): `app.prefijo_linea` señala la línea quitada (`−`), la primera con `\n` al principio y una ventana en líneas largas.
 
 
-
-1. 2026-11-21 — QA-526: casos fijos de dialogo_npc para P251 (Torgash y Tirag) y banco-calidad con --semillas y comprobar; en la Deck, tal cual 0/10, con la verdad obligatoria Torgash 5/5
-2. 2026-11-21 — QA-525: la réplica de un NPC recibe las frases del lore que casan con la pregunta (P272, por jugar en la Deck)
-3. 2026-11-21 — QA-522: casos RAG con bge-m3 (Serhu +esperado; Vaelira a no obligatorio), rag-eval fallan 0
-4. 2026-11-21 — QA-327, QA-328, QA-329, QA-330, QA-331, QA-336, QA-344, QA-351, QA-358, QA-359, QA-360, QA-361: tareas del GVE (claude/gve-rag) traídas a la ronda local 3 por merge; detalle en Hecho recientemente y en roadmap-front.md
+1. 2026-11-26 — QA-540 (/gw-opt-tokens), QA-532 (limpieza del roadmap, Q-21…Q-25) y QA-531 (P266, P273, P486 con test; falta Ollama real)
+2. 2026-11-25 — QA-530 (P472, P483, P484, P485) y QA-528 (generadores en cada hito, cobertura.py con MAP; PR #106)
+3. 2026-11-21 — QA-526 (casos fijos de dialogo_npc, P251) y QA-525 (lore en la réplica del NPC, P272 por jugar en la Deck)
+4. 2026-11-21 — QA-522 (casos RAG con bge-m3, rag-eval fallan 0) y GVE QA-327…QA-331, QA-336, QA-344, QA-351, QA-358…QA-361 (claude/gve-rag)
 5. 2026-11-20 — QA-521: arrancar-juego.sh se para con un Ollama real sin IA_PERFIL (falta verlo en la Deck)

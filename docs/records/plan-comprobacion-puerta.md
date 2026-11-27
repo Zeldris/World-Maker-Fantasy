@@ -34,6 +34,7 @@ las partes locales de otros ids (abajo) no se cuentan dos veces.
 | P268 | «Le entrego raciones al orco» con el narrador real: los guards ya no lo toman por un viaje («raciones de viaje», `TRAVEL_INTENT_REGEX`) |
 | P435 | En la ronda en que ataca un NPC (p. ej. el Orco de `mv-hondonada-hostiles`), la narración bajo «… ATACA CON» va en tercera persona y cuenta su ataque, no el acercamiento. Con el simulado sale su texto fijo o el respaldo de combate (P94) |
 | P271 | Con el narrador real, tras dar Clemente a un rival, el rival no llama «Clemente» a Gorhorn: la memoria dice «Fama de la jugadora, por lo que ha hecho…» |
+| P483 | Con el narrador real, al cumplir un objetivo el aviso dice cuál («Objetivo cumplido: <título>», `hitoMotivo`, QA-530), y caer vencido o dado por muerto no cuenta como objetivo (solo lo pide el prompt, sin guarda en código) |
 
 Partes locales de ids que sí están en tandas (la tanda comprueba lo visible con el simulado; esto queda para la local, sin
 contarlo otra vez): P245 (por qué fallan los 3 intentos del narrador en GPU y que Gistera conteste con preguntas es del
@@ -47,7 +48,7 @@ Cuenta: 7 + 6 + 5 + 5 + 5 + 5 + 7 + 4 + 2 + 3 (solo locales: P244, P268, P271) =
 
 Los 81 «pendientes» del resumen (`marca-hallazgo.py --resumen`), repartidos así (cada id en un solo sitio):
 
-- **Fuera de tanda.** Locales (Ollama real, la Deck o arte, a «Para la sesión local»): P49 y P66 (arte), P251, P252, P262-P266, P272-P274 y P311.
+- **Fuera de tanda.** Locales (Ollama real, la Deck o arte, a «Para la sesión local»): P49 y P66 (arte), P251, P252, P262-P266, P272-P274 y P311. P266, P273 y P486 tienen arreglo de QA-531 (2026-11-26): ver con Ollama real que no vuelven.
   Decididas por la usuaria (2026-11-08, abajo): P248, P254, P259, P270 y P364 pasan a los lotes. Ya pasado a Álvaro: P317. De herramientas
   (`escenario.sh` y sus pasos, sin `QA-*` nuevo mientras nada bloquee): P370, P371, P374, P377, P382, P383 y P427.
 - **Tandas 89-91: la nota dice arreglado (o puede haberlo arreglado otro cambio) y falta jugarlo.** Se juega

@@ -58,6 +58,8 @@ export interface NarrationResult {
   /// docs/mecanicas/10-niveles-xp-reino.md § 3.2: el modelo solo propone el TIPO de hito narrativo, el
   /// backend traduce a XP. "capitulo" no está aquí porque ese lo emite el backend, no el modelo.
   hito?: HitoTipo | null;
+  /// P483: título corto de lo que cumple/descubre el `hito` (se muestra junto a «Objetivo cumplido»).
+  hitoMotivo?: string | null;
   /// docs/mecanicas/10-niveles-xp-reino.md § 5: eventos de Reino, uno por turno como mucho, poco frecuentes
   /// a propósito — el backend valida y materializa (mismo patrón que newItem/newCompanion).
   newTerritory?: { name: string; region?: string; description: string } | null;
@@ -1417,25 +1419,30 @@ Escribe SOLO tu réplica hablada, en primera persona y entre comillas, coherente
   // P263: si la réplica habla de sí mismo como de otro («mi hermana, Ulkha Ketg»), un segundo intento; si repite, sin réplica.
   // P411: si empieza igual que su réplica anterior, un segundo intento; si repite, se queda la segunda.
   // P420: lo mismo con un nombre propio inventado; si el segundo también lo trae, se queda y se registra.
+  // P273: cada intento va al registro con `intento` y, desde el 2.º, el motivo del rechazo del anterior.
+  let motivoPrevio: string | undefined;
   for (let intento = 0; intento < 2; intento++) {
-    const reply = sinEco(await pedirReplicaNpc(system, prompt));
-    if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) continue;
-    if (reply !== '' && replicaDefectuosa(reply, ctx.npc, ctx.characterName, conoce)) continue;
+    const reply = sinEco(await pedirReplicaNpc(system, prompt, intento + 1, motivoPrevio));
+    if (reply !== '' && hablaDeSiComoOtro(reply, ctx.npc.name)) { motivoPrevio = 'habla de sí como de otro'; continue; }
+    const defecto = reply !== '' ? replicaDefectuosa(reply, ctx.npc, ctx.characterName, conoce) : null;
+    if (defecto) { motivoPrevio = defecto; continue; }
     const inventado = ctx.nombresConocidos ? nombreInventado(reply, ctx.nombresConocidos, [ctx.characterName, ctx.action, ...ctx.sessionFacts]) : null;
-    if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) continue;
+    if (intento === 0 && (empiezaIgual(reply, ctx.replicaAnterior) || inventado)) { motivoPrevio = inventado ? `nombre inventado: ${inventado}` : 'empieza igual que la réplica anterior'; continue; }
     if (inventado) console.warn(`[lint] nombre inventado en la réplica de ${ctx.npc.name}: «${inventado}»`);
     return reply;
   }
   return '';
 }
 
-async function pedirReplicaNpc(system: string, prompt: string): Promise<string> {
+async function pedirReplicaNpc(system: string, prompt: string, intento = 1, rechazoPrevio?: string): Promise<string> {
   const { text } = await ollamaGenerate({
     model: env.ollamaModelNarrador,
     system,
     prompt,
     format: NPC_REPLY_FORMAT,
     tarea: 'dialogo_npc',
+    intento,
+    rechazoPrevio,
     // 120s (subido de 60s tras un fallo real en partida, 2026-07-23): probado en aislado, la
     // misma llamada tardó ~33s — pero en un turno real esta llamada se encola DETRÁS de la
     // narración principal (30-220s) en el mismo Ollama de concurrencia 1, y cambiar de `system`
@@ -1708,7 +1715,7 @@ DIÁLOGO (una sola voz): cuando el jugador habla a un NPC, la réplica de ese NP
 
 SALUD: fuera de combate nunca empeores "condicionFisica" — solo puedes proponerla si el personaje se cura o descansa de verdad (mejora), o déjala en null.
 
-Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" — en caso contrario, null. Esto es poco frecuente, no pasa en cada turno.
+Progresión: si este turno logra algo significativo que no sea solo superar la tirada (un descubrimiento importante, cerrar un objetivo menor, cerrar un objetivo mayor/misión larga), rellena "hito" con "descubrimiento", "objetivo_menor" u "objetivo_mayor" y "hitoMotivo" con el título corto (máx. 8 palabras) de ese objetivo o descubrimiento — en caso contrario, null en ambos. Ser vencido, herido o dado por muerto NUNCA es un objetivo cumplido. Esto es poco frecuente, no pasa en cada turno.
 
 Misiones: nunca crees misiones nuevas: "newQuest" va SIEMPRE a null (las misiones las da el mundo, no tú). Si esta acción cumple de verdad una misión que ya existía, rellena "questProgress" con el título EXACTO de esa misión y "COMPLETADA" — en caso contrario, null (muy poco frecuente). Nunca das una misión por fallida: eso lo decide el juego.
 
@@ -1816,6 +1823,7 @@ ${factsBlock(ctx.backgroundLore ?? [])}`;
         },
       },
       hito: { type: ['string', 'null'], enum: ['descubrimiento', 'objetivo_menor', 'objetivo_mayor', null] },
+      hitoMotivo: { type: ['string', 'null'] },
       // Campos de Reino (roadmap de velocidad, 2026-07-19): solo entran en el schema cuando
       // reinoActive los sugiere — el resto de turnos ni siquiera se le ofrece la posibilidad de
       // rellenarlos, así que no puede gastar tokens devolviendo "newTerritory": null, etc.
@@ -2044,6 +2052,7 @@ export async function narrateAction(ctx: TurnContext & { roll?: RollResult }): P
       temperature: combatTemperature,
       tarea: 'narrar_respaldo',
       intento: 3,
+      rechazoPrevio: rejectionReasons.length ? rejectionReasons.join(' | ') : undefined,
     });
   };
 
@@ -2347,6 +2356,7 @@ export function deterministicFallbackNarration(ctx: {
     newItem: null,
     newCompanion: null,
     hito: null,
+    hitoMotivo: null,
     newQuest: null,
     questProgress: null,
     condicionFisica: null,
@@ -2782,8 +2792,9 @@ export function hasCombatVocabulary(narration: string): boolean {
 // artículo, y «sin inmutarse» no cuenta dentro de una subordinada con «que» (habla del rival, no del jugador).
 // P477 (ronda local 2, grupo 5 tanda C): con el golpe «de lleno», «se hunde en la arcilla… a escasos centímetros de su
 // cabeza» (el arma en el suelo, no en el rival) y, con el jugador a GRAVE, «soporta el impacto… apenas conmovido».
+// P486 (QA-531): con el golpe del NPC conectando y matando a Gorhorn, «recibe el golpe… pero su cuerpo no se dobla».
 const COMBAT_MISS_LEAK_REGEX =
-  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos) de (su|sus|tu|tus|la|el) (cabeza|rostro|cara|cuello|garganta|pecho|cuerpo|oreja|ojo)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|(?<!\bque\b[^.;]{0,40})(sin inmutarse|(ni|no) se inmuta))\b/i;
+  /\b(esquiv[oa]|esquivando|esquiv[aá]ndol[oa]|elude|eludiendo|evade|evita el golpe|sortea|sorteando|por un pelo|ni siquiera (roza|toca)|sin (rozarlo|rozarla|tocarlo|tocarla)|detiene el golpe en seco|para en seco|se aparta|se desv[ií]a|bloquea por completo|bloquea\s+(el|su|un|tu)\s+(ataque|golpe|zarpazo|tajo|estocada|mandoble)|no logra conectar|no consigue conectar|no llega a conectar|a escasos (cent[ií]metros|palmos|dedos) de (su|sus|tu|tus|la|el) (cabeza|rostro|cara|cuello|garganta|pecho|cuerpo|oreja|ojo)|se (hunde|clava) en (la|el) (arcilla|suelo|tierra|barro|arena|roca)|apenas conmovid[oa]|no se (dobla|doblan|doblega|doblegan)|(?<!\bque\b[^.;]{0,40})(sin inmutarse|(ni|no) se inmuta))\b/i;
 
 export function hasFalseCombatMiss(narration: string, combatRealHitLanded?: boolean, nonExchangeAttackHitLanded?: boolean): boolean {
   if (!combatRealHitLanded && !nonExchangeAttackHitLanded) return false;

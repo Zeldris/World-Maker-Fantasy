@@ -576,3 +576,17 @@ describe('turno de diálogo puro sin narrador (P464b, P466, P474, P476)', () => 
     expect(unirReplica('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?»', '«El hambre.»', ulkha)).toBe('Gorhorn le pregunta a Ulkha Ketg: «¿Qué te trae?» «El hambre.»');
   });
 });
+
+describe('P273: dialogo_npc lleva intento y el motivo del rechazo anterior', () => {
+  it('el reintento va con intento 2 y el motivo; el primero sin motivo', async () => {
+    ollamaGenerate.mockReset();
+    ollamaGenerate
+      .mockResolvedValueOnce({ text: JSON.stringify({ reply: 'Ulkha Ketg se inclina hacia ti.' }) })
+      .mockResolvedValueOnce({ text: JSON.stringify({ reply: '«Pasa, viajero.»' }) });
+    await generateNpcReply({ npc: { name: 'Ulkha Ketg', role: 'guardia', personality: '', bio: '' }, characterName: 'Gorhorn', action: 'Hola', sessionFacts: [] });
+    const [a, b] = ollamaGenerate.mock.calls.map((c) => c[0] as { intento?: number; rechazoPrevio?: string });
+    expect(a).toMatchObject({ intento: 1 });
+    expect(a!.rechazoPrevio).toBeUndefined();
+    expect(b).toMatchObject({ intento: 2, rechazoPrevio: 'acotación sin frase hablada' });
+  });
+});

@@ -13,6 +13,7 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-4` | Configuración | Panel de configuración | jugado | 6 pestañas, Restablecer/Cancelar/Aplicar; Restablecer devuelve todo (también el ritmo del servidor) |
 | `CFG-5` | Configuración | Persistencia | jugado | tras recargar siguen narración, animaciones, contraste y atajo |
 | `CFG-6` | Configuración | `SettingsContext` | no se juega | contexto interno; se ve por CFG-4/5 |
+| `CFG-9` | Configuración | 2026-10-02 Escala de la interfaz 80 %–150 % `font-size` raíz; clave en Steam Deck y monito | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `CFG-13` | Configuración | Tamaño y tipografía de la narración | jugado | Grande + Serif: narración 14→16 px, Georgia |
 | `CFG-14` | Configuración | Animaciones | jugado | Reducidas: data-motion y animaciones a none |
 | `CFG-26` | Configuración | Atajos de teclado reasignables | jugado | Leyendas Y→U: U abre Leyendas, Y ya no; vuelve a Y al restablecer |
@@ -23,6 +24,25 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CFG-39` | Configuración | Prompts de imagen con reglas FLUX | jugado | Regenerar el banner del múrgol con el LLM real y generarlo en la Deck (`v8-cfg39-s7`): sin px, sin negativos, cierre una vez |
 | `CFG-40` | Configuración | Región y ejemplos en los prompts de imagen | jugado | Banner del cuernahoja (estepa roja) y del nievón (Cristal Helado) con el LLM real, todo en inglés; `cfg40/cuernahoja-s7` en la Deck |
 | `CFG-43` | Configuración | Interfaz local del generador de imágenes | jugado | Miniatura real del múrgol macho desde la interfaz en la Deck (104 s), nota y «Elegir esta» a `salida/images/fauna/murgol-macho-thumbnail.png`; con la casilla de referencia (su banner del juego), 202 s; por elemento (2026-10-24): miniatura en 104 s (estimado 103) a `generated/fauna/murgol-macho/`, nota y elegida `murgol-macho-thumbnail.png`; lista con miniaturas vista en Chrome; la lista trae toda la enciclopedia con lo anidado (2.550 elementos con el juego arrancado: variantes por sexo, de raza y de tiempo, mapas de zona, 310 habilidades, 9 clases y 31 especializaciones); `test_interfaz_imagenes` 35/35 |
+| `IMG-4` | Configuración | Guía visual del mundo y plantilla de prompt | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-5` | Configuración | Script que monta el prompt desde la ficha | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-14` | Configuración | Momento del día y estación como condiciones | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-15` | Configuración | Calidad del generador local frente a ChatGPT | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-16` | Configuración | Prompt `fotorreal` que llega entero | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-17` | Configuración | Gradación y medida en ffmpeg | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-18` | Configuración | Bocetos SVG de forma | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-19` | Configuración | Tanda de borradores | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-21` | Configuración | Pautas con la fauna | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-22` | Configuración | Pautas con flora, lugar, objeto y raza | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-23` | Configuración | Perfil `fotorreal` en `generar.sh`, `probar.sh` y `mundo.json` | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-24` | Configuración | Plantillas de boceto por plan corporal | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-27` | Configuración | Encuadre del sujeto en la cadena de planos desde la ficha | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-28` | Configuración | El sol fuera de cuadro | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-29` | Configuración | Scout: condicionar con los banners del juego (LoRA y referencia) | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-30` | Configuración | Paso 0 del LoRA: `sd.cpp` con LoRAs de FLUX.3 en la Deck | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-31` | Configuración | Banner ajeno como referencia de acabado | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-32` | Configuración | LoRA de estilo en Kaggle | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `IMG-33` | Configuración | El LoRA de estilo en el perfil fotorreal | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
 | `INT-1` | Cronista en la interfaz | Familias de sucesos con identidad propia | jugado | 2026-10-19: Leyendas con 5 familias, cada una con icono y color propios (Diplomacia, Tus hechos, Facciones, Tu Reino, Crónica); el filtro Diplomacia deja solo sus 6 entradas |
 | `INT-2` | Cronista en la interfaz | Importancia visible | jugado | 2026-10-19: tres niveles (NORMAL sin borde, DESTACADO con borde, GRAVE con borde rojo y sello: «Gorhorn muere», «funda el reino») |
 | `INT-3` | Cronista en la interfaz | Causas enlazadas | jugado | 2026-10-19: «Por qué pasó: Día 1 Gorhorn funda el reino…» en «Fundador» lleva a la causa y la resalta |
@@ -71,13 +91,35 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `UX-37` | Interfaz | Responder escribiendo | jugado | P141 (Responder escribiendo) |
 | `UX-38` | Interfaz | Noticias del mundo que se pueden tocar | jugado | iconos de categoría, enlace de lugar abre su ficha, y con una oportunidad sembrada la etiqueta «📍 En Las Dunas Ahogadas · hasta el día 41» (también dentro del resumen) |
 | `UX-40` | Interfaz | La marca en la interfaz, sin imágenes | jugado | 2026-11-10, Playwright: Home, ficha de Helek Sirik y hotbar en una partida |
+| `ZON-2` | Mapa de zona | Minimapa permanente (si no se elige A): esquina de la cabecera o del registro, ~200 px, co | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-3` | Mapa de zona | Un solo mapa : la vista de consulta de *Mapa → Zona* pasa a ser la misma vista, con el mov | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-4` | Mapa de zona | Atajos : `M` abre o centra el mapa, `Z` alterna mapa grande / minimapa, flechas o `WASD` m | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-5` | Mapa de zona | 2026-10-05 (adelantada de Z-C a petición de la usuaria: chocar con algo ya no cierra el ma | jugado | registro: pruebas-0.3-hallazgos.md |
+| `ZON-6` | Mapa de zona | Pantalla completa del mapa (`F` o doble clic en el borde) para explorar con detalle. S | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-10` | Mapa de zona | Fichas con placa oscura + pictograma + anillo de disposición (Foundry VTT). La placa conse | jugado | P123, P147 |
 | `ZON-11` | Mapa de zona | Tamaño mínimo garantizado : las fichas se dibujan a tamaño de pantalla fijo (~28 px de diá | jugado | P123 |
 | `ZON-13` | Mapa de zona | Grupos legibles : insignia "×3" en píldora clara fuera de la ficha; a partir de 3, fichas | jugado | P147 |
 | `ZON-14` | Mapa de zona | Ficha del personaje : retrato o inicial, anillo de cristal `accent` (el color de "tu perso | jugado | QA-27 (2026-10-09…17) |
+| `ZON-16` | Mapa de zona | 2026-10-05 (silueta con «?» y anillo punteado si no está descubierto; atenuada con ⏳ si es | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-17` | Mapa de zona | Salidas como estandartes de camino : flecha grande hacia el borde, placa con el nombre (o | jugado | P6, P164 (salidas) |
+| `ZON-18` | Mapa de zona | 2026-10-05 (`ParcelaMarker` a tamaño de pantalla: cimientos punteados con «+», o ficha de  | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-19` | Mapa de zona | Etiquetas de nombre : siempre visibles para los puntos a 2-3 celdas del personaje y para e | jugado | P123, P151 (etiquetas) |
 | `ZON-20` | Mapa de zona | Leyenda compacta fija en una esquina del mapa (BG3), plegable, con las mismas fichas reale | jugado | 2026-10-19: leyenda plegada abajo a la izquierda; al abrirla, las fichas reales (fauna, recurso, NPC, edificio, suelo, cadáver, tú, salida, parcelas) y los colores de facción |
+| `ZON-30` | Mapa de zona | 2026-10-05 (`CeldaResaltada`, roja si el movimiento está bloqueado; cursor de andar, esper | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-31` | Mapa de zona | 2026-10-05 (`lib/zonaRuta.ts`, espejo de `calcularCamino` con sus mismos casos de test; `L | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-32` | Mapa de zona | 2026-10-05 («N pasos · N min · llegas a las HH:MM · +E energía»; `GET /zona` devuelve ya e | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-33` | Mapa de zona | 2026-10-05 (`riesgoDeRuta`: celdas de la ruta prevista en el radio de un hostil conocido e | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-34` | Mapa de zona | 2026-10-05 (`BanderaDestino` y la ruta que queda, con `caminoRestante` de cada paso; se qu | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-35` | Mapa de zona | 2026-10-05 (`useMovimientoZona`: «Parar» se mira justo antes de pedir cada paso, el destin | jugado | registro: pruebas-0.3-hallazgos.md |
+| `ZON-36` | Mapa de zona | 2026-10-05 (ajuste «Velocidad al andar por la zona» en Ajustes › Animaciones: normal 600 m | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-38` | Mapa de zona | 2026-10-05 (solo front, decisión de la usuaria: el siguiente paso se pide para que llegue  | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-40` | Mapa de zona | 2026-10-05 (`zona/MenuFicha.tsx` · `TarjetaFicha`: nombre, tipo, disposición, cantidad, co | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-41` | Mapa de zona | 2026-10-05 (`MenuFicha`: la misma información arriba y las acciones que ya tenía la ficha: | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-45` | Mapa de zona | Lista lateral útil en vez de duplicada (Z25): puntos agrupados por tipo y ordenados por di | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-50` | Mapa de zona | 2026-10-05 (`GET /zona` marca `hostil` con la regla de la persecución, solo si está descub | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-51` | Mapa de zona | 2026-10-05 (`AnilloInteraccion`, sigue al personaje; no en la vista informativa) Radio de  | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-53` | Mapa de zona | 2026-10-05 (`GET /zona` envía la `ruta` de lo descubierto; `RutaPatrulla` en bucle al pasa | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
+| `ZON-58` | Mapa de zona | 2026-10-05 (`GET /zona` da `agotado` —enfriamiento de 30 min en ese lugar o sin población— | no se juega | sin ronda de juego registrada (definición reconocida por QA-532); queda para la fase única de pruebas del 0.7 |
 | `ZON-62` | Mapa de zona | Cuadrícula bajo demanda (Z11): oculta por defecto, visible al mantener `Alt`, al hacer zoo | jugado | 2026-10-19: oculta al abrir; visible solo mientras se mantiene `Alt`; «▦ Cuadrícula» la fija (`aria-pressed`) y la quita al volver a pulsar |
 | `ZON-80` | Mapa de zona | Partir `ZonaPanel.tsx` | no se juega | refactor |
 | `ZON-81` | Mapa de zona | Capas SVG ordenadas | no se juega | orden de capas; se ve por ZON-10/13 |
@@ -131,6 +173,19 @@ coge un bloque y lo deja en «jugado» (`QA-105`, [runbook](../runbooks/rondas-d
 | `CR-65` | Mundo vivo | Defensa del Reino y milicia 2026-10-07 (Fase E del `0.3`, Q2-Q3 de su ronda, aceptada el 2 | jugado | jugado 2026-10-21 (reino-sano-defensas): guarnición 5/5, equipos de milicia comprados, alerta de la Torre un día antes, «Llamar a la milicia» (P295), cobertura de la Empalizada, asalto con defensas (día 44) y Reparar de la Empalizada; P284 reconfirmado sin milicia, P285 no se vio (P296) |
 | `CR-67` | Mundo vivo | Intensidad de los asaltos en Configuración 2026-10-08 (Fase E, Q7, corregida el 2026-10-08 | jugado | 2026-10-20: Configuración › Partida, Intensidad Dura y Tamaño Fácil se guardan (WorldState.intensidadAsaltos=DURA, tamanoAsaltos=FACIL) y siguen tras recargar; sin ver su efecto en un asalto (texto de Intensidad: P257) |
 | `NAR-9` | Narrador | Rumores en "El mundo" | jugado | 2026-10-19: un rumor del Cronista sale en pergamino con «Desde El Margen Silencioso · pasó el día 9» y «Ver en Leyendas», que abre Leyendas con la entrada resaltada; los «Se dice que…» de `darNoticia` salen sin estilo (P226) |
+| `MAP-1` | Otros | Importador de solo lectura del `.map` | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-2` | Otros | Medidas automáticas y test del canon | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-3` | Otros | El lore en datos y su comprobador | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-4` | Otros | El juego lee del mapa propio | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-5` | Otros | Visor local por capas | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-6` | Otros | Editar regiones y fronteras | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-7` | Otros | Editar relieve y costa | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-8` | Otros | Ríos, rutas y lugares | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-9` | Otros | Guardar con historial | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-14` | Otros | Capas del juego | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-16` | Otros | El mapa lo gestionan agentes | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-17` | Otros | Mejorar el agente local del mapa con lo que hace Haiku | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
+| `MAP-18` | Otros | El agente local, para encargos de verdad | no se juega | herramienta local de desarrollo, no se juega (QA-528) |
 | `PAN-9b` | Paneles | Leyendas de tu partida | jugado | P137 |
 | `REI-33` | Reino | Editar, reactivar y borrar órdenes (R13, R14): pestaña "Desactivadas" con *Reactivar*; men | jugado | 2026-10-19: ⏸ desactiva; «Desactivadas (1)» con Reactivar y Borrar; Borrar pide confirmación «No se puede deshacer» y borra (0 órdenes en la base); límite editable solo en «único» |
 | `REI-40` | Reino | Agrupado por recurso (R9): una fila/carta por tipo con cantidad, icono, categoría (comida, | jugado | 2026-10-19, Súbditos › Almacén: «Raciones de viaje ×1» agrupado, con Retirar y tope; P215 |

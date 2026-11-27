@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.9.0 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`) comprueba en cada diff, además de los fallos de siempre. Son los
@@ -238,3 +238,5 @@ Desde el piloto de Galivelop-workflow (2026-10-22) los ganchos y scripts del flu
   En WMF, lo que solo existe en una máquina concreta (Ollama real, la Deck) no entra en el CI, que usa
   `tools/ci/mock-ollama.mjs`: su prueba de humo se apunta como pendiente en el plan, con quién y dónde (`AGENTS.md`,
   «Comprobar»). (criterio)
+- El código que lee lo que escribe un agente o una persona (la línea del selector, trailers, respuestas a preguntas)
+  lleva al menos un test con una muestra real, copiada de una transcripción o de la bitácora. (criterio)

@@ -68,7 +68,7 @@ const MOTIVO_FASE: Record<Exclude<FaseJuego, 'libre'>, string> = {
   ocupado: 'Estás ocupado con otra actividad.',
   encuentro: 'Primero reacciona a quien te corta el paso.',
   combate: 'Estás en combate.',
-  dinamico: 'Estás en mitad de una escena.',
+  dinamico: 'Estás en mitad de una escena: responde con las opciones del menú (Responder, Ignorar, Seguir mi camino).',
   eleccion: 'Primero termina la elección pendiente.',
   muerte: 'Primero resuelve lo que ha pasado tras tu muerte.',
   fin: 'La partida ha terminado.',
@@ -128,4 +128,13 @@ export function etiquetaDeFase(fase: FaseJuego): EtiquetaFase | null {
   if (fase === 'libre') return null
   const e = ETIQUETA_FASE[fase]
   return { ...e, imagen: imagenFase(fase) }
+}
+
+/// Motivo del composer bloqueado tras los casos de turno en marcha (P484, QA-530): si la fase no deja
+/// escribir, su motivo va antes que el genérico de «capa encima», porque en una escena la propia
+/// escena cuenta como capa y taparía la explicación de qué hacer.
+export function motivoComposerFase(permiso: Permiso, capaEncimaAbierta: boolean): string | undefined {
+  if (!permiso.permitido && permiso.motivo) return permiso.motivo
+  if (capaEncimaAbierta) return 'Resuelve lo que tienes abierto antes de escribir una nueva acción.'
+  return permiso.motivo ?? undefined
 }

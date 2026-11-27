@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.9.0 -->
 # scout-updates — notas del proyecto
 
 Las lee primero la skill `gw-scout-updates`: qué vigilar y qué no. El flujo las crea una vez; desde entonces son del
@@ -45,3 +45,7 @@ al girar y sesgo de posición). La memoria y la latencia se miden aparte en la D
 
 - La estimación del paso 2 de la skill (unos 90k tokens por sección); no se busca sin el sí de la usuaria.
 - No releer `arquitectura.md` entera: `compare.py --section <título>` (retro del 2026-10-20, 146k arrastrados).
+
+- **Tras instalar una skill con tests** (`scripts/test_*.py`) en un gw-update: `python3 tools/qa/skills-con-tests.py`
+  antes del primer push; el `pre-push` lo exige con sus pasos en `ci.yml` y `tools/qa/ci-local.sh` (retro del
+  gw-update 0.9.0, 2026-11-24).

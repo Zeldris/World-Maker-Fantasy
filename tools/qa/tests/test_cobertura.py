@@ -7,7 +7,8 @@ import unittest
 from comun import RAIZ, carpeta, escribir
 
 ROADMAPS = ['roadmap-front.md', 'roadmap-front-ux.md', 'roadmap-front-zona.md', 'roadmap-front-reino.md',
-            'roadmap-cronista.md', 'roadmap-imagenes.md', 'roadmap-voces.md', 'roadmap-idiomas.md']
+            'roadmap-cronista.md', 'roadmap-imagenes.md', 'roadmap-voces.md', 'roadmap-idiomas.md',
+            'roadmap-mapas.md']
 MAPA = '''# Roadmap
 
 Mapa: `QA-2` sigue abierta. ''' + 'x' * 300 + '''
@@ -64,6 +65,14 @@ class Fila(unittest.TestCase):
         r = self.fila('QA-9')
         self.assertEqual(r.returncode, 1)
         self.assertEqual(r.stdout.splitlines(), ['QA-9: no está definida en ningún roadmap', 'hito: SIN HITO'])
+
+    def test_definiciones_tachadas_con_texto_y_con_emoji(self):
+        # QA-532: `| ~~QA-1~~ ✅ fecha (…) |` y `- 🚧 **QA-2**` también son definiciones.
+        escribir(os.path.join(self.dir, 'docs', 'producto', 'roadmap-front.md'),
+                 '| ~~QA-1~~ ✅ 2026-10-02 (hecha) | **Uno** |\n- 🚧 **QA-2** Dos\n')
+        for i in ('QA-1', 'QA-2'):
+            r = self.fila(i)
+            self.assertNotIn('no está definida', r.stdout, i)
 
     def test_sin_id(self):
         r = self.fila()

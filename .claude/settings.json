@@ -7,6 +7,9 @@
       "Bash(tools/qa/host.sh bash tools/qa/escenario.sh:*)",
       "Bash(bash tools/qa/host.sh tools/qa/escenario.sh:*)",
       "Bash(tools/qa/host.sh tools/qa/escenario.sh:*)"
+    ],
+    "deny": [
+      "mcp__Claude_Docs"
     ]
   },
   "env": {
@@ -111,6 +114,15 @@
           {
             "type": "command",
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/whole-read.py"
+          }
+        ]
+      },
+      {
+        "matcher": "^(Read|Grep|Glob|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/other-repo-read.py"
           }
         ]
       }

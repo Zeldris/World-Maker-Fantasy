@@ -24,3 +24,19 @@ describe('QA-510: las filas rechazo del registro llevan prompt_chars', () => {
     expect(filas[1]!.promptChars).toBeGreaterThan(filas[0]!.promptChars!);
   });
 });
+
+describe('P273: narrar_respaldo lleva los motivos de rechazo del grande', () => {
+  it('el intento 3 pasa rechazoPrevio con los motivos de los intentos 1 y 2', async () => {
+    ollamaGenerate.mockReset();
+    registrarLlamada.mockReset();
+    const mala = JSON.stringify({ narration: 'Gorhorn mira the river con calma.', newFacts: [] });
+    ollamaGenerate.mockResolvedValueOnce({ text: mala }).mockResolvedValueOnce({ text: mala }).mockResolvedValue({ text: JSON.stringify({ narration: 'Gorhorn otea el paso.', newFacts: [] }) });
+    const { narrateAction } = await import('./narrador.js');
+    await narrateAction({ worldFacts: ['Hecho A.'], characterSummary: 'Gorhorn, orco.', characterName: 'Gorhorn', action: 'Miro el paso' } as unknown as Parameters<typeof narrateAction>[0]);
+    const llamadas = ollamaGenerate.mock.calls.map((c) => c[0] as { tarea: string; rechazoPrevio?: string });
+    const motivos = registrarLlamada.mock.calls.map((c) => (c[0] as { rechazo: string }).rechazo);
+    expect(llamadas[2]!.tarea).toBe('narrar_respaldo');
+    expect(llamadas[2]!.rechazoPrevio).toBe(motivos.join(' | '));
+    expect(llamadas[2]!.rechazoPrevio).toBeTruthy();
+  });
+});

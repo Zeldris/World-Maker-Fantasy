@@ -99,7 +99,7 @@ export function ExtendedRollBadge({ roll, characterName, live = false }: { roll:
               <GatheringDiceReveal roll={roll.tirada} oficioLabel="Recolección" />
             ) : (
               <div className={`${BADGE} ${OK}`} data-testid="recoleccion-tirada">
-                <GatheringRollBadge roll={roll.tirada} label="Explorar" />
+                <GatheringRollBadge roll={roll.tirada} label="Recolección" />
               </div>
             ))}
           {roll.segundas && roll.segundas.length > 0 && <SegundasTiradasBadge segundas={roll.segundas} />}

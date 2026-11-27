@@ -2,11 +2,11 @@
 
 ## Why
 
-Arreglo de P251 y P496 tras los casos (Q-8 a Q-10, usuario: 8a, 9a, 10a).
+Arreglo de P251 y P496 tras los casos (Q-32 a Q-34, usuario: 8a, 9a, 10a).
 
 ## Alternatives
 
-Pasar el bloque de verdad entero (guerras, etiquetas, compañeros): más tokens y más riesgo de recitar; descartado (Q-8).
+Pasar el bloque de verdad entero (guerras, etiquetas, compañeros): más tokens y más riesgo de recitar; descartado (Q-32).
 
 ## Changed because
 

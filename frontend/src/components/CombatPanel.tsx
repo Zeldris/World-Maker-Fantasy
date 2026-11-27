@@ -824,6 +824,12 @@ export function CombatPanel({
           // por fila basta para seguir viendo el tipo de un vistazo, sin el efecto "confeti". Filas
           // en vez de chips envueltos: más fácil de leer de arriba abajo en un panel estrecho.
           <div ref={usablesRef} data-testid="combate-usables" className="space-y-3 rounded-lg border border-accent-600/50 bg-accent-500/5 p-2.5">
+            {/* P485 (QA-530): el bloqueo por energía se dice con texto visible, no solo en el tooltip. */}
+            {combatAbilities.some((a) => a.energyCost > energia) && (
+              <p data-testid="combate-sin-energia" className="text-xs text-amber-300">
+                ⚡ Sin energía suficiente para las habilidades en gris: Defenderse la recupera, o usa un consumible.
+              </p>
+            )}
             {combatAbilities.length > 0 &&
               // Rediseño de combate (2026-08-09, petición explícita: "podamos crear tabs en el
               // combate con las habilidades de daño, las defensivas y las de utilidad más

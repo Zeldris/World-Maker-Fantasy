@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.9.0 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la usuaria aprueba un cambio. El flujo
@@ -139,7 +139,12 @@ del juego (tiempos, modelos locales, RAG) no es de esta skill: es de `gw-opt-ai`
 - **Suelo fijo de ~77k por llamada**, también tras `/clear` (`measure.py`, sesión de `claude/gw-update-0.5.0`,
   2026-11-04): instrucciones del sistema y herramientas; sin palanca desde el proyecto. El 2026-11-16 (v0.7.0 del
   flujo) era ~81k, el 87 % del arranque: la única palanca es que la usuaria desconecte en claude.ai los conectores
-  que no use en las sesiones de código (p. ej. Claude Docs), ~4k por llamada (`QA-363`).
+  que no use en las sesiones de código (p. ej. Claude Docs), ~4k por llamada (`QA-363`). En la nube no se puede
+  (usuaria, 2026-11-26): `QA-540` lo quita con `permissions.deny: ["mcp__Claude_Docs"]` en `.claude/settings.json`;
+  la siguiente pasada comprueba con `measure.py` que el arranque fijo baja.
+- **Avisos que no frenan** (`/gw-opt-tokens` de `QA-532`, 2026-11-26): con `aviso-lectura.py` (`QA-349`) en marcha, la
+  principal leyó `traspaso.md` 13 veces (184k arrastrados) y `plan-comprobacion-puerta.md` 8 (110k); `21-roadmap.md`,
+  13 (91k), ya en el aviso (`QA-540`). Si vuelve a pasar, el siguiente paso es contar los avisos ignorados, no otro aviso.
 
 - **Subagentes con Opus para lo mecánico** (`claude/interfaz-imagenes`, 2026-10-25, `QA-233`): 3 de 4; el de reescribir
   la interfaz con un plan cerrado fue con Sonnet y salió bien. Se aplica `gw-selector` al lanzar cada uno.
